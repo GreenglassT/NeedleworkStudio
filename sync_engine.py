@@ -137,9 +137,11 @@ class SyncEngine:
             ps = p.get('part_stitches_data', [])
             bs = p.get('backstitches_data', [])
             kn = p.get('knots_data', [])
+            bd = p.get('beads_data', [])
             ps_json = json.dumps(ps) if isinstance(ps, list) and len(ps) <= _MAX_STITCH_ITEMS else '[]'
             bs_json = json.dumps(bs) if isinstance(bs, list) and len(bs) <= _MAX_STITCH_ITEMS else '[]'
             kn_json = json.dumps(kn) if isinstance(kn, list) and len(kn) <= _MAX_STITCH_ITEMS else '[]'
+            bd_json = json.dumps(bd) if isinstance(bd, list) and len(bd) <= _MAX_STITCH_ITEMS else '[]'
 
             progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
 
@@ -153,25 +155,25 @@ class SyncEngine:
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,
                               grid_data=?, legend_data=?, thumbnail=?, updated_at=?,
                               progress_data=?, project_status=?,
-                              part_stitches_data=?, backstitches_data=?, knots_data=?, brand=?
+                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?
                        WHERE id=? AND user_id=?""",
                     (name, grid_w, grid_h, color_count,
                      grid_json, legend_json, thumbnail,
                      server_updated, progress_json, project_status,
-                     ps_json, bs_json, kn_json, brand,
+                     ps_json, bs_json, kn_json, bd_json, brand,
                      local['id'], user_id))
             else:
                 cursor.execute(
                     """INSERT INTO saved_patterns
                            (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                             thumbnail, created_at, updated_at, progress_data, project_status,
-                            part_stitches_data, backstitches_data, knots_data, brand)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            part_stitches_data, backstitches_data, knots_data, beads_data, brand)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (slug, user_id, name, grid_w, grid_h,
                      color_count, grid_json, legend_json, thumbnail,
                      _clamp_timestamp(p.get('created_at', server_updated), server_time),
                      server_updated, progress_json,
-                     project_status, ps_json, bs_json, kn_json, brand))
+                     project_status, ps_json, bs_json, kn_json, bd_json, brand))
             stats['patterns_pulled'] += 1
 
         # --- Pull pattern deletes ---
@@ -256,14 +258,14 @@ class SyncEngine:
         pattern_rows = cursor.execute(
             """SELECT slug, name, grid_w, grid_h, color_count, grid_data, legend_data,
                       thumbnail, created_at, updated_at, progress_data, project_status,
-                      part_stitches_data, backstitches_data, knots_data, brand
+                      part_stitches_data, backstitches_data, knots_data, beads_data, brand
                FROM saved_patterns WHERE user_id = ? AND updated_at > ?""",
             (user_id, since)).fetchall()
 
         patterns_upsert = []
         for row in pattern_rows:
             p = dict(row)
-            for field in ('grid_data', 'legend_data', 'part_stitches_data', 'backstitches_data', 'knots_data'):
+            for field in ('grid_data', 'legend_data', 'part_stitches_data', 'backstitches_data', 'knots_data', 'beads_data'):
                 if p.get(field):
                     try:
                         p[field] = json.loads(p[field])

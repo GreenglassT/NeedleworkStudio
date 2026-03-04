@@ -576,6 +576,7 @@
         .modal-all-owned { text-align:center; padding:30px 20px; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:18px; color:var(--text-dim); }
     </style>
     <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='stitch-renderer.js') }}"></script>
     <script src="{{ url_for('static', filename='pdf-export.js') }}"></script>
     <script src="{{ url_for('static', filename='svg-export.js') }}"></script>
     <script src="{{ url_for('static', filename='oxs-export.js') }}"></script>
@@ -1017,6 +1018,7 @@
                     part_stitches: p.part_stitches || [],
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
+                    beads: p.beads || [],
                 }, {
                     onProgress(done, total) {
                         target.innerHTML = '<i class="ti ti-loader-2 spin"></i> ' + done + '/' + total;
@@ -1060,6 +1062,7 @@
                     part_stitches: p.part_stitches || [],
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
+                    beads: p.beads || [],
                 };
 
                 const filename = patternSlug(p.name) + '_' + p.grid_w + 'x' + p.grid_h + '.json';
@@ -1091,6 +1094,7 @@
                     part_stitches: p.part_stitches || [],
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
+                    beads: p.beads || [],
                 });
                 toast('SVG exported.', { type: 'success' });
             } catch (err) {
@@ -1117,6 +1121,7 @@
                     part_stitches: p.part_stitches || [],
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
+                    beads: p.beads || [],
                 });
                 toast('OXS exported.', { type: 'success' });
             } catch (err) {
@@ -1273,6 +1278,7 @@
                     part_stitches: src.part_stitches || [],
                     backstitches: src.backstitches || [],
                     knots: src.knots || [],
+                    beads: src.beads || [],
                 };
 
                 const saveResp = await fetch('/api/saved-patterns', {
@@ -1440,6 +1446,7 @@
                             part_stitches: p.part_stitches || [],
                             backstitches: p.backstitches || [],
                             knots: p.knots || [],
+                            beads: p.beads || [],
                         })),
                     };
                     downloadBlob(JSON.stringify(payload, null, 2), 'patterns-batch-' + ids.length + '.json', 'application/json');
@@ -1454,6 +1461,7 @@
                             part_stitches: p.part_stitches || [],
                             backstitches: p.backstitches || [],
                             knots: p.knots || [],
+                            beads: p.beads || [],
                         };
                         if (format === 'pdf') await generatePatternPDF(p.name, data);
                         else if (format === 'svg') generatePatternSVG(p.name, data);

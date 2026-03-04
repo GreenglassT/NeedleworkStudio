@@ -441,6 +441,8 @@ def _ensure_saved_patterns_table():
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN backstitches_data TEXT DEFAULT '[]'")
     if 'knots_data' not in existing:
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN knots_data TEXT DEFAULT '[]'")
+    if 'beads_data' not in existing:
+        conn.execute("ALTER TABLE saved_patterns ADD COLUMN beads_data TEXT DEFAULT '[]'")
     if 'slug' not in existing:
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN slug TEXT")
         # Backfill existing patterns with random slugs
@@ -647,9 +649,9 @@ def _validate_grid_dims(grid_w, grid_h):
 
 
 def _serialize_stitch_layers(data):
-    """Serialize part_stitches/backstitches/knots from request data.
+    """Serialize part_stitches/backstitches/knots/beads from request data.
     Handles lists (serialize), strings (pass through), or None (default '[]').
-    Returns (ps_json, bs_json, kn_json)."""
+    Returns (ps_json, bs_json, kn_json, bd_json)."""
     def _ser(v):
         if isinstance(v, list): return json.dumps(v)
         if isinstance(v, str):  return v
@@ -657,7 +659,8 @@ def _serialize_stitch_layers(data):
     ps = data.get('part_stitches') or data.get('part_stitches_data')
     bs = data.get('backstitches') or data.get('backstitches_data')
     kn = data.get('knots') or data.get('knots_data')
-    return _ser(ps), _ser(bs), _ser(kn)
+    bd = data.get('beads') or data.get('beads_data')
+    return _ser(ps), _ser(bs), _ser(kn), _ser(bd)
 
 
 def _parse_progress_data(pd_json):
@@ -2250,7 +2253,7 @@ def api_save_pattern():
         brand = 'DMC'
 
     # New stitch layers (optional — default to empty arrays)
-    ps_json, bs_json, kn_json = _serialize_stitch_layers(data)
+    ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(data)
 
     conn = get_db()
     cursor = conn.cursor()
@@ -2262,11 +2265,11 @@ def api_save_pattern():
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, current_user.id, name, grid_w, grid_h, color_count,
                  grid_json, legend_json, thumbnail, source_image_path, gen_settings_json,
-                 ps_json, bs_json, kn_json, brand)
+                 ps_json, bs_json, kn_json, bd_json, brand)
             )
             inserted = True
             break
@@ -2336,7 +2339,7 @@ def api_import_pattern():
         brand = 'DMC'
 
     # v2 stitch layers
-    ps_json, bs_json, kn_json = _serialize_stitch_layers(data)
+    ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(data)
 
     conn = get_db()
     cursor = conn.cursor()
@@ -2348,11 +2351,11 @@ def api_import_pattern():
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, current_user.id, name, grid_w, grid_h, color_count,
                  grid_json, legend_json, thumbnail, None, None,
-                 ps_json, bs_json, kn_json, brand)
+                 ps_json, bs_json, kn_json, bd_json, brand)
             )
             inserted = True
             break
@@ -2397,7 +2400,7 @@ def api_get_saved_pattern(pattern_slug):
     cursor.execute(
         """SELECT id, slug, name, grid_w, grid_h, color_count, grid_data, legend_data, thumbnail,
                   created_at, updated_at, source_image_path, generation_settings, progress_data,
-                  project_status, part_stitches_data, backstitches_data, knots_data, brand
+                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand
              FROM saved_patterns
             WHERE slug = ? AND user_id = ?""",
         (pattern_slug, current_user.id)
@@ -2414,6 +2417,7 @@ def api_get_saved_pattern(pattern_slug):
         result['part_stitches'] = json.loads(result.pop('part_stitches_data') or '[]')
         result['backstitches'] = json.loads(result.pop('backstitches_data') or '[]')
         result['knots'] = json.loads(result.pop('knots_data') or '[]')
+        result['beads'] = json.loads(result.pop('beads_data') or '[]')
     except (json.JSONDecodeError, TypeError):
         return jsonify({'error': 'Pattern data is corrupted'}), 500
 
@@ -2511,9 +2515,11 @@ def api_update_saved_pattern(pattern_slug):
         part_stitches = data.get('part_stitches')
         backstitches = data.get('backstitches')
         knots = data.get('knots')
+        beads = data.get('beads')
         ps_json = json.dumps(part_stitches) if isinstance(part_stitches, list) else None
         bs_json = json.dumps(backstitches) if isinstance(backstitches, list) else None
         kn_json = json.dumps(knots) if isinstance(knots, list) else None
+        bd_json = json.dumps(beads) if isinstance(beads, list) else None
 
         total_size = len(grid_json) + len(legend_json)
         if ps_json:
@@ -2522,6 +2528,8 @@ def api_update_saved_pattern(pattern_slug):
             total_size += len(bs_json)
         if kn_json:
             total_size += len(kn_json)
+        if bd_json:
+            total_size += len(bd_json)
         if total_size > MAX_PATTERN_FULL:
             return jsonify({'error': 'Pattern data too large (max 4 MB)'}), 400
         color_count = len(legend_data)
@@ -2545,6 +2553,9 @@ def api_update_saved_pattern(pattern_slug):
         if kn_json is not None:
             fields.append('knots_data=?')
             params.append(kn_json)
+        if bd_json is not None:
+            fields.append('beads_data=?')
+            params.append(bd_json)
         params.extend([pattern_id, current_user.id])
         cursor.execute(
             f'UPDATE saved_patterns SET {",".join(fields)} WHERE id=? AND user_id=?',
@@ -2918,14 +2929,14 @@ def api_sync_pattern_download(slug):
     row = conn.execute(
         """SELECT slug, name, grid_w, grid_h, color_count, grid_data, legend_data,
                   thumbnail, created_at, updated_at, progress_data, project_status,
-                  part_stitches_data, backstitches_data, knots_data, brand
+                  part_stitches_data, backstitches_data, knots_data, beads_data, brand
            FROM saved_patterns WHERE slug = ? AND user_id = ?""",
         (slug, uid)).fetchone()
     if not row:
         return jsonify({'error': 'Pattern not found'}), 404
     result = dict(row)
     # Parse JSON fields back to objects for the client
-    for field in ('grid_data', 'legend_data', 'part_stitches_data', 'backstitches_data', 'knots_data'):
+    for field in ('grid_data', 'legend_data', 'part_stitches_data', 'backstitches_data', 'knots_data', 'beads_data'):
         if result.get(field):
             try:
                 result[field] = json.loads(result[field])
@@ -2966,18 +2977,18 @@ def api_sync_push():
             if pushed_at > (existing['updated_at'] or ''):
                 grid_json = json.dumps(p['grid_data']) if isinstance(p.get('grid_data'), list) else p.get('grid_data', '[]')
                 legend_json = json.dumps(p['legend_data']) if isinstance(p.get('legend_data'), list) else p.get('legend_data', '[]')
-                ps_json, bs_json, kn_json = _serialize_stitch_layers(p)
+                ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
                 progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
                 cursor.execute(
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,
                               grid_data=?, legend_data=?, thumbnail=?, updated_at=?,
                               progress_data=?, project_status=?,
-                              part_stitches_data=?, backstitches_data=?, knots_data=?, brand=?
+                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?
                        WHERE id=? AND user_id=?""",
                     (p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'), p.get('color_count', 0),
                      grid_json, legend_json, p.get('thumbnail'),
                      pushed_at, progress_json, p.get('project_status', 'not_started'),
-                     ps_json, bs_json, kn_json, p.get('brand', 'DMC'),
+                     ps_json, bs_json, kn_json, bd_json, p.get('brand', 'DMC'),
                      existing['id'], uid))
                 stats['patterns_updated'] += 1
             else:
@@ -2986,18 +2997,18 @@ def api_sync_push():
             # New pattern — insert
             grid_json = json.dumps(p['grid_data']) if isinstance(p.get('grid_data'), list) else p.get('grid_data', '[]')
             legend_json = json.dumps(p['legend_data']) if isinstance(p.get('legend_data'), list) else p.get('legend_data', '[]')
-            ps_json, bs_json, kn_json = _serialize_stitch_layers(p)
+            ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
             progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
             cursor.execute(
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, created_at, updated_at, progress_data, project_status,
-                        part_stitches_data, backstitches_data, knots_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, uid, p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'),
                  p.get('color_count', 0), grid_json, legend_json, p.get('thumbnail'),
                  p.get('created_at', pushed_at), pushed_at, progress_json,
-                 p.get('project_status', 'not_started'), ps_json, bs_json, kn_json,
+                 p.get('project_status', 'not_started'), ps_json, bs_json, kn_json, bd_json,
                  p.get('brand', 'DMC')))
             stats['patterns_created'] += 1
 

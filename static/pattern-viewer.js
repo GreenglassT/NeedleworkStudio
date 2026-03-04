@@ -319,6 +319,23 @@ function renderMain() {
         }
     }
 
+    // Beads — topmost layer (above knots)
+    if (patternData.beads && patternData.beads.length > 0) {
+        for (const b of patternData.beads) {
+            const info = lookup[b.dmc];
+            if (!info) continue;
+            const faded = !editMode && completedDmcs.has(String(b.dmc));
+            if (faded) ctx.globalAlpha = 0.42;
+            const pt = stitchCellCenterPx(b.x, b.y, gutX, gutY, cellPx);
+            if (viewMode === 'chart') {
+                drawChartBead(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol);
+            } else {
+                drawBead(ctx, pt.x, pt.y, info.hex, cellPx);
+            }
+            if (faded) ctx.globalAlpha = 1.0;
+        }
+    }
+
     // Clear overlay; re-apply highlight if one was active
     document.getElementById('overlay-canvas').getContext('2d')
         .clearRect(0, 0, W, H);
@@ -465,6 +482,17 @@ function _drawHighlight(dmc) {
         for (const k of patternData.knots) {
             if (String(k.dmc) !== String(dmc)) continue;
             const pt = stitchIntersectionPx(k.x, k.y, gutX, gutY, cellPx);
+            const r = Math.max(cellPx * 0.4, 4);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    // Beads
+    if (patternData.beads) {
+        for (const b of patternData.beads) {
+            if (String(b.dmc) !== String(dmc)) continue;
+            const pt = stitchCellCenterPx(b.x, b.y, gutX, gutY, cellPx);
             const r = Math.max(cellPx * 0.4, 4);
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
@@ -737,7 +765,7 @@ function _recountLegend() {
         counts[dmc] = (counts[dmc] || 0) + 1;
     }
     // Part stitches (half=0.5, quarter=0.25, three-quarter=0.75)
-    const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75 };
+    const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75, petite: 0.25 };
     for (const ps of (pd.part_stitches || [])) {
         counts[ps.dmc] = (counts[ps.dmc] || 0) + (partWeights[ps.type] || 0.5);
     }
@@ -748,6 +776,10 @@ function _recountLegend() {
     // French knots (1 each)
     for (const k of (pd.knots || [])) {
         counts[k.dmc] = (counts[k.dmc] || 0) + 1;
+    }
+    // Beads (1 each)
+    for (const b of (pd.beads || [])) {
+        counts[b.dmc] = (counts[b.dmc] || 0) + 1;
     }
     // Update legend entries
     for (const e of pd.legend) {
@@ -943,7 +975,8 @@ function _initEditor() {
         renderSingleCell: (col, row) => {
             // If backstitches/knots exist, fall back to full render (they cross cell boundaries)
             if ((patternData.backstitches && patternData.backstitches.length > 0) ||
-                (patternData.knots && patternData.knots.length > 0)) {
+                (patternData.knots && patternData.knots.length > 0) ||
+                (patternData.beads && patternData.beads.length > 0)) {
                 renderMain();
                 return;
             }
@@ -1046,6 +1079,7 @@ function toggleEditMode() {
             part_stitches: JSON.parse(JSON.stringify(patternData.part_stitches || [])),
             backstitches: JSON.parse(JSON.stringify(patternData.backstitches || [])),
             knots: JSON.parse(JSON.stringify(patternData.knots || [])),
+            beads: JSON.parse(JSON.stringify(patternData.beads || [])),
         };
         editMode = true;
         editor.activate();
@@ -1080,6 +1114,7 @@ async function cancelEdit() {
         patternData.part_stitches = _editSnapshot.part_stitches;
         patternData.backstitches = _editSnapshot.backstitches;
         patternData.knots = _editSnapshot.knots;
+        patternData.beads = _editSnapshot.beads;
     }
     editor.clearDirty();
     toggleEditMode();
@@ -1107,6 +1142,7 @@ async function confirmFork() {
                 part_stitches: patternData.part_stitches || [],
                 backstitches:  patternData.backstitches  || [],
                 knots:         patternData.knots         || [],
+                beads:         patternData.beads         || [],
             })
         });
         const data = await resp.json();
@@ -1165,6 +1201,7 @@ async function savePattern() {
                 part_stitches: patternData.part_stitches || [],
                 backstitches:  patternData.backstitches  || [],
                 knots:         patternData.knots         || [],
+                beads:         patternData.beads         || [],
                 thumbnail:     thumbnail,
             })
         });
@@ -1649,6 +1686,7 @@ async function init() {
             part_stitches: data.part_stitches || [],
             backstitches:  data.backstitches  || [],
             knots:         data.knots         || [],
+            beads:         data.beads         || [],
             brand:         patternBrand,
         };
 

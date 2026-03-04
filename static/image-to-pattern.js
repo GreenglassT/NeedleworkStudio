@@ -1008,6 +1008,20 @@ function renderCanvas(skipFit) {
         }
     }
 
+    /* Beads — topmost layer (above knots) */
+    if (patternData.beads && patternData.beads.length > 0) {
+        for (const b of patternData.beads) {
+            const info = lookup[b.dmc];
+            if (!info) continue;
+            const pt = stitchCellCenterPx(b.x, b.y, 0, 0, cellPx);
+            if (showStitch) {
+                drawBead(ctx, pt.x, pt.y, info.hex, cellPx);
+            } else {
+                drawChartBead(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol, { showSymbol: showSymbols });
+            }
+        }
+    }
+
     const totalSt = grid_w * grid_h;
     document.getElementById('canvas-info').textContent =
         `${grid_w} × ${grid_h} stitches · ${totalSt.toLocaleString()} total · ${legend.length} colors`;
@@ -1584,6 +1598,7 @@ async function confirmSave() {
                 part_stitches:        patternData.part_stitches || [],
                 backstitches:         patternData.backstitches || [],
                 knots:                patternData.knots || [],
+                beads:                patternData.beads || [],
                 thumbnail,
                 generation_settings:  genSettings,
                 image_source:         imageSource,
@@ -1727,6 +1742,7 @@ async function maybeLoadSavedPattern() {
                 part_stitches: saved.part_stitches || [],
                 backstitches:  saved.backstitches || [],
                 knots:         saved.knots || [],
+                beads:         saved.beads || [],
             };
             legendData = saved.legend_data.slice();
             _lookupDirty = true;

@@ -1203,7 +1203,7 @@
                     if (dmc === 'BG') continue;
                     counts[dmc] = (counts[dmc] || 0) + 1;
                 }
-                const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75 };
+                const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75, petite: 0.25 };
                 for (const ps of (data.part_stitches || [])) {
                     counts[ps.dmc] = (counts[ps.dmc] || 0) + (partWeights[ps.type] || 0.5);
                 }
@@ -1213,6 +1213,7 @@
                 for (const k of (data.knots || [])) {
                     counts[k.dmc] = (counts[k.dmc] || 0) + 0.3;
                 }
+                // Note: beads (data.beads) intentionally excluded — they don't consume thread
 
                 // Normalize to unified shape
                 patternData = (data.legend_data || [])

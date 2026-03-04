@@ -201,6 +201,7 @@ function createPatternEditor(config) {
             part_stitches: JSON.parse(JSON.stringify(pd.part_stitches || [])),
             backstitches:  JSON.parse(JSON.stringify(pd.backstitches  || [])),
             knots:         JSON.parse(JSON.stringify(pd.knots         || [])),
+            beads:         JSON.parse(JSON.stringify(pd.beads         || [])),
         };
     }
 
@@ -213,6 +214,7 @@ function createPatternEditor(config) {
         pd.part_stitches = snap.part_stitches || [];
         pd.backstitches  = snap.backstitches  || [];
         pd.knots         = snap.knots         || [];
+        pd.beads         = snap.beads         || [];
         _rebuildLookup();
         renderAll();
         renderLegend();
@@ -272,7 +274,7 @@ function createPatternEditor(config) {
             counts[dmc] = (counts[dmc] || 0) + 1;
         }
         // Part stitches (half=0.5, quarter=0.25, three-quarter=0.75)
-        const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75 };
+        const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75, petite: 0.25 };
         for (const ps of (pd.part_stitches || [])) {
             counts[ps.dmc] = (counts[ps.dmc] || 0) + (partWeights[ps.type] || 0.5);
         }
@@ -283,6 +285,10 @@ function createPatternEditor(config) {
         // French knots (1 each)
         for (const k of (pd.knots || [])) {
             counts[k.dmc] = (counts[k.dmc] || 0) + 1;
+        }
+        // Beads (1 each)
+        for (const b of (pd.beads || [])) {
+            counts[b.dmc] = (counts[b.dmc] || 0) + 1;
         }
         // Keep active color even if count is 0 (just added)
         pd.legend = pd.legend.filter(e =>
@@ -347,6 +353,12 @@ function createPatternEditor(config) {
             });
             if (pd.knots.length !== before) { changed = true; needFullRender = true; }
         }
+        // Remove beads at this cell
+        if (pd.beads) {
+            const before = pd.beads.length;
+            pd.beads = pd.beads.filter(b => !(b.x === col && b.y === row));
+            if (pd.beads.length !== before) { changed = true; needFullRender = true; }
+        }
         if (changed) {
             if (needFullRender) renderAll();
             else renderSingleCell(col, row);
@@ -398,6 +410,7 @@ function createPatternEditor(config) {
         let dir;
         if (type === 'half')               dir = extra.direction;
         else if (type === 'quarter')        dir = extra.corner;
+        else if (type === 'petite')         dir = extra.corner;
         else if (type === 'three_quarter')  dir = extra.halfDir + '_' + extra.shortCorner;
         const entry = { x: col, y: row, type, dmc: activeDmc, dir };
         // Remove any existing stitch that conflicts
@@ -405,6 +418,7 @@ function createPatternEditor(config) {
             if (s.x !== col || s.y !== row) return true;
             if (type === 'half' && s.type === 'half' && s.dir === dir) return false;
             if (type === 'quarter' && s.type === 'quarter' && s.dir === dir) return false;
+            if (type === 'petite' && s.type === 'petite' && s.dir === dir) return false;
             if (type === 'three_quarter' && s.type === 'three_quarter') return false;
             return true;
         });
@@ -434,6 +448,16 @@ function createPatternEditor(config) {
         // Replace existing at same position
         pd.knots = pd.knots.filter(k => !(k.x === ix && k.y === iy));
         pd.knots.push({ x: ix, y: iy, dmc: activeDmc });
+    }
+
+    /** Place a bead at a cell position. */
+    function _placeBead(col, row) {
+        if (!activeDmc) return;
+        const pd = getPatternData();
+        if (col < 0 || col >= pd.grid_w || row < 0 || row >= pd.grid_h) return;
+        if (!pd.beads) pd.beads = [];
+        pd.beads = pd.beads.filter(b => !(b.x === col && b.y === row));
+        pd.beads.push({ x: col, y: row, dmc: activeDmc });
     }
 
     /** Erase a backstitch near an intersection point. */
@@ -738,10 +762,89 @@ function createPatternEditor(config) {
             });
         }
 
+        // Translate and clip beads
+        if (pd.beads) {
+            pd.beads = pd.beads.filter(b => {
+                const nx = b.x + offsetCol, ny = b.y + offsetRow;
+                if (nx < 0 || nx >= newW || ny < 0 || ny >= newH) return false;
+                b.x = nx; b.y = ny;
+                return true;
+            });
+        }
+
         _recountStitches();
         renderAll();
         renderLegend();
         _markDirty();
+    }
+
+    function _outlineRegionAt(col, row) {
+        const pd = getPatternData();
+        const { grid, grid_w, grid_h } = pd;
+        const targetColor = grid[row * grid_w + col] || 'BG';
+        const outlineColor = targetColor === 'BG' ? activeDmc : targetColor;
+        if (targetColor === 'BG' && !activeDmc) return;
+
+        // BFS flood fill to find contiguous region
+        const regionSet = new Set();
+        const startIdx = row * grid_w + col;
+        const queue = [startIdx];
+        const visited = new Uint8Array(grid_w * grid_h);
+        visited[startIdx] = 1;
+        let head = 0;
+        while (head < queue.length) {
+            const i = queue[head++];
+            regionSet.add(i);
+            const c = i % grid_w;
+            const r = (i - c) / grid_w;
+            for (const [nc, nr] of [[c-1,r],[c+1,r],[c,r-1],[c,r+1]]) {
+                if (nc < 0 || nc >= grid_w || nr < 0 || nr >= grid_h) continue;
+                const ni = nr * grid_w + nc;
+                if (visited[ni]) continue;
+                if ((grid[ni] || 'BG') === targetColor) {
+                    visited[ni] = 1;
+                    queue.push(ni);
+                }
+            }
+        }
+
+        if (!pd.backstitches) pd.backstitches = [];
+        const existing = new Set();
+        for (const b of pd.backstitches) {
+            existing.add(b.x1 + ',' + b.y1 + ',' + b.x2 + ',' + b.y2);
+        }
+
+        pushUndo();
+        let added = 0;
+
+        for (const i of regionSet) {
+            const c = i % grid_w;
+            const r = (i - c) / grid_w;
+            // Top edge
+            if (r === 0 || !regionSet.has((r-1) * grid_w + c)) {
+                const key = c + ',' + r + ',' + (c+1) + ',' + r;
+                if (!existing.has(key)) { pd.backstitches.push({x1:c,y1:r,x2:c+1,y2:r,dmc:outlineColor}); existing.add(key); added++; }
+            }
+            // Bottom edge
+            if (r === grid_h-1 || !regionSet.has((r+1) * grid_w + c)) {
+                const key = c + ',' + (r+1) + ',' + (c+1) + ',' + (r+1);
+                if (!existing.has(key)) { pd.backstitches.push({x1:c,y1:r+1,x2:c+1,y2:r+1,dmc:outlineColor}); existing.add(key); added++; }
+            }
+            // Left edge
+            if (c === 0 || !regionSet.has(r * grid_w + (c-1))) {
+                const key = c + ',' + r + ',' + c + ',' + (r+1);
+                if (!existing.has(key)) { pd.backstitches.push({x1:c,y1:r,x2:c,y2:r+1,dmc:outlineColor}); existing.add(key); added++; }
+            }
+            // Right edge
+            if (c === grid_w-1 || !regionSet.has(r * grid_w + (c+1))) {
+                const key = (c+1) + ',' + r + ',' + (c+1) + ',' + (r+1);
+                if (!existing.has(key)) { pd.backstitches.push({x1:c+1,y1:r,x2:c+1,y2:r+1,dmc:outlineColor}); existing.add(key); added++; }
+            }
+        }
+
+        if (added > 0) {
+            _recountStitches(); renderAll(); renderLegend(); _markDirty();
+        }
     }
 
     function _showResizeModal() {
@@ -1126,7 +1229,7 @@ function createPatternEditor(config) {
        UI Helpers
        ═══════════════════════════════════════════ */
 
-    const _STITCH_MODES = { 'stitch-half': 'half', 'stitch-quarter': 'quarter', 'stitch-threequarter': 'three_quarter', 'stitch-back': 'backstitch', 'stitch-knot': 'knot' };
+    const _STITCH_MODES = { 'stitch-half': 'half', 'stitch-quarter': 'quarter', 'stitch-threequarter': 'three_quarter', 'stitch-petite': 'petite', 'stitch-back': 'backstitch', 'stitch-knot': 'knot', 'stitch-bead': 'bead' };
     const _STITCH_TOOLS = new Set(Object.keys(_STITCH_MODES));
 
     function _setTool(tool) {
@@ -1145,6 +1248,7 @@ function createPatternEditor(config) {
             _selOffset = { dc: 0, dr: 0 };
             _stopMarchingAnts();
         }
+        // auto-outline is now a persistent tool mode (falls through to activeTool = tool)
         // Map stitch sub-tools to activeTool='stitch' + activeStitchMode
         const isStitch = _STITCH_TOOLS.has(tool);
         if (isStitch) {
@@ -1544,7 +1648,7 @@ function createPatternEditor(config) {
         _closeReplaceDropdown();
         if (!allDmcThreads) {
             try {
-                const resp = await fetch('/api/threads');
+                const resp = await fetch('/api/threads?brand=' + encodeURIComponent(_brand));
                 allDmcThreads = await resp.json();
             } catch (err) { toast('Could not load thread list.', { type: 'error' }); return; }
         }
@@ -1731,6 +1835,11 @@ function createPatternEditor(config) {
                 if (String(k.dmc) === activeDmc) k.dmc = targetDmc;
             }
         }
+        if (pd.beads) {
+            for (const b of pd.beads) {
+                if (String(b.dmc) === activeDmc) b.dmc = targetDmc;
+            }
+        }
         _setActiveColor(targetDmc);
         _recountStitches();
         renderAll();
@@ -1764,6 +1873,9 @@ function createPatternEditor(config) {
                 _painting = true;
                 _lastPaintCell = `${col},${row}`;
                 _withMirror(col, row, eraserAt);
+                break;
+            case 'auto-outline':
+                _outlineRegionAt(col, row);
                 break;
             case 'fill':
                 if (_mirrorMode === 'off') {
@@ -1859,6 +1971,18 @@ function createPatternEditor(config) {
                         }
                         break;
                     }
+                    case 'petite': {
+                        const pq = _cellQuadrant(gc.gx, gc.gy);
+                        if (pq.col >= 0 && pq.col < pd.grid_w && pq.row >= 0 && pq.row < pd.grid_h) {
+                            pushUndo();
+                            for (const p of _mirrorCellPositions(pq.col, pq.row)) {
+                                const c = p.axis ? _mirrorCorner(pq.corner, p.axis) : pq.corner;
+                                _placePartStitch(p.col, p.row, 'petite', { corner: c });
+                            }
+                            _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                        }
+                        break;
+                    }
                     case 'backstitch': {
                         const inter = _nearestIntersection(gc.gx, gc.gy);
                         if (!_bsStart) {
@@ -1890,6 +2014,14 @@ function createPatternEditor(config) {
                         pushUndo();
                         for (const p of _mirrorIntersectionPositions(ki.ix, ki.iy)) {
                             _placeKnot(p.ix, p.iy);
+                        }
+                        _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                        break;
+                    }
+                    case 'bead': {
+                        pushUndo();
+                        for (const p of _mirrorCellPositions(col, row)) {
+                            _placeBead(p.col, p.row);
                         }
                         _recountStitches(); renderAll(); renderLegend(); _markDirty();
                         break;
@@ -2137,9 +2269,13 @@ function createPatternEditor(config) {
 
     /** @returns {boolean} true if the editor consumed the event */
     function handleKeyDown(e) {
-        // Modal inputs capture all keys — don't intercept when typing in resize or text inputs
-        if (_resizeModal && _resizeModal.contains(document.activeElement)) return false;
-        if (activeTool === 'text' && _textInput && _textInput === document.activeElement) return true;
+        // Don't intercept keystrokes when typing in any input/textarea outside the editor toolbar
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && (!_toolbar || !_toolbar.contains(ae))) {
+            if (activeTool === 'text' && _textInput && _textInput === ae) return true;
+            return false;
+        }
+        if (_resizeModal && _resizeModal.contains(ae)) return false;
         if (e.key === 'Escape') {
             if (_addColorDropdown && _addColorDropdown.classList.contains('open')) {
                 _closeAddColorDropdown();
@@ -2229,6 +2365,7 @@ function createPatternEditor(config) {
             if (e.key === 'y') { e.preventDefault(); redo(); return true; }
             if (e.key === 's' && onSave) { e.preventDefault(); onSave(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault(); _showResizeModal(); return true; }
+            if (e.shiftKey && e.key.toUpperCase() === 'O') { e.preventDefault(); _autoOutline(); return true; }
             return false;
         }
         const k = e.key.toLowerCase();
@@ -2246,7 +2383,7 @@ function createPatternEditor(config) {
         if (k === 'w') { _setTool('pencil');        return true; }
         if (k === 'm') { _cycleMirror();          return true; }
         // Stitch type shortcuts (1-5) — always available
-        const _stitchKeys = ['stitch-half', 'stitch-quarter', 'stitch-threequarter', 'stitch-back', 'stitch-knot'];
+        const _stitchKeys = ['stitch-half', 'stitch-quarter', 'stitch-threequarter', 'stitch-petite', 'stitch-back', 'stitch-knot', 'stitch-bead'];
         const _skIdx = parseInt(e.key) - 1;
         if (_skIdx >= 0 && _skIdx < _stitchKeys.length) { _setTool(_stitchKeys[_skIdx]); return true; }
         if (e.key === '`') { _toggleHalfDir(); return true; }
@@ -2327,12 +2464,14 @@ function createPatternEditor(config) {
             <button class="tool-btn" data-tool="select" title="Selection (S)"><i class="ti ti-marquee-2"></i><span class="tool-lbl">Select</span></button>
             <div class="tool-sep"></div>
             <div class="tool-group">
-                <button class="tool-btn" data-tool="pencil" title="Full Stitch (P)"><i class="ti ti-pencil"></i><span class="tool-lbl">Full</span></button>
-                <button class="tool-btn" data-tool="stitch-half" title="Half Stitch (1)"><i class="ti ti-line-dashed"></i><span class="tool-lbl">Half</span></button>
-                <button class="tool-btn" data-tool="stitch-quarter" title="Quarter Stitch (2)"><i class="ti ti-corner-down-right"></i><span class="tool-lbl">Qtr</span></button>
-                <button class="tool-btn" data-tool="stitch-threequarter" title="Three-Quarter Stitch (3)"><span style="font-size:1.1em;font-weight:700">¾</span><span class="tool-lbl">3/4</span></button>
-                <button class="tool-btn" data-tool="stitch-back" title="Backstitch (4)"><i class="ti ti-route"></i><span class="tool-lbl">Back</span></button>
-                <button class="tool-btn" data-tool="stitch-knot" title="French Knot (5)"><i class="ti ti-point-filled"></i><span class="tool-lbl">Knot</span></button>
+                <button class="tool-btn" data-tool="pencil" title="Full Stitch (P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg><span class="tool-lbl">Full</span></button>
+                <button class="tool-btn" data-tool="stitch-half" title="Half Stitch (1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="4"/></svg><span class="tool-lbl">Half</span></button>
+                <button class="tool-btn" data-tool="stitch-quarter" title="Quarter Stitch (2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="12" y2="12"/></svg><span class="tool-lbl">Qtr</span></button>
+                <button class="tool-btn" data-tool="stitch-threequarter" title="Three-Quarter Stitch (3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="4" x2="20" y2="20"/><line x1="4" y1="20" x2="12" y2="12"/></svg><span class="tool-lbl">3/4</span></button>
+                <button class="tool-btn" data-tool="stitch-petite" title="Petite Stitch (4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg><span class="tool-lbl">Petite</span></button>
+                <button class="tool-btn" data-tool="stitch-back" title="Backstitch (5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="3" y1="18" x2="21" y2="6"/><circle cx="3" cy="18" r="2" fill="currentColor"/><circle cx="21" cy="6" r="2" fill="currentColor"/></svg><span class="tool-lbl">Back</span></button>
+                <button class="tool-btn" data-tool="stitch-knot" title="French Knot (6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8 C14 6, 16 8, 14 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg><span class="tool-lbl">Knot</span></button>
+                <button class="tool-btn" data-tool="stitch-bead" title="Bead (7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/></svg><span class="tool-lbl">Bead</span></button>
                 <button class="tool-btn stitch-dir-toggle" title="Toggle direction (\`)" style="display:none"><span style="font-size:16px">/</span><span class="tool-lbl">Dir</span></button>
             </div>
             <div class="tool-sep"></div>
@@ -2341,6 +2480,7 @@ function createPatternEditor(config) {
             <div class="tool-sep"></div>
             <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
             <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
+            <button class="tool-btn" data-tool="auto-outline" title="Auto Outline (Ctrl+Shift+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="5" y="5" width="14" height="14" rx="1" stroke-dasharray="3 2"/></svg><span class="tool-lbl">Outline</span></button>
             <div class="tool-sep"></div>
             <div class="active-color-ind">
                 <div class="active-sw ed-active-swatch"></div>

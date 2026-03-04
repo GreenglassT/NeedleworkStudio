@@ -132,6 +132,18 @@ function generatePatternSVG(patternName, patternData, opts) {
             const mx = cx + CELL / 2, my = cy + CELL / 2;
             p.push('<line x1="'+qx+'" y1="'+qy+'" x2="'+mx+'" y2="'+my+'"');
             p.push(' stroke="'+info.hex+'" stroke-width="'+lw+'" stroke-linecap="round"/>');
+        } else if (s.type === 'petite') {
+            const half = CELL / 2;
+            const offsets = { TL: [0, 0], TR: [half, 0], BL: [0, half], BR: [half, half] };
+            const [ox, oy] = offsets[dir] || offsets.TL;
+            const pi = CELL * 0.08;
+            const x0 = cx + ox + pi, y0 = cy + oy + pi;
+            const x1 = cx + ox + half - pi, y1 = cy + oy + half - pi;
+            const plw = Math.max(0.5, CELL * 0.1);
+            p.push('<line x1="'+x0+'" y1="'+y1+'" x2="'+x1+'" y2="'+y0+'"');
+            p.push(' stroke="'+info.hex+'" stroke-width="'+plw+'" stroke-linecap="round"/>');
+            p.push('<line x1="'+x0+'" y1="'+y0+'" x2="'+x1+'" y2="'+y1+'"');
+            p.push(' stroke="'+info.hex+'" stroke-width="'+plw+'" stroke-linecap="round"/>');
         } else if (s.type === 'three_quarter') {
             const parts = dir.split('_');
             const halfDir = parts[0], shortCorner = parts[1];
@@ -211,6 +223,19 @@ function generatePatternSVG(patternName, patternData, opts) {
         const ky = gridTop + k.y * CELL;
         const kr = Math.max(1.5, CELL * 0.18);
         p.push('<circle cx="'+kx+'" cy="'+ky+'" r="'+kr+'"');
+        p.push(' fill="'+info.hex+'" stroke="'+darkenHex(info.hex,0.5)+'" stroke-width="0.5"/>');
+    }
+
+    // ── Beads ──
+    const beads = patternData.beads || [];
+    for (const b of beads) {
+        const info = lookup[b.dmc];
+        if (!info) continue;
+        const bx = RULER_W + b.x * CELL + CELL / 2;
+        const by = gridTop + b.y * CELL + CELL / 2;
+        const brx = Math.max(1.5, CELL * 0.18);
+        const bry = Math.max(2, CELL * 0.28);
+        p.push('<ellipse cx="'+bx+'" cy="'+by+'" rx="'+brx+'" ry="'+bry+'"');
         p.push(' fill="'+info.hex+'" stroke="'+darkenHex(info.hex,0.5)+'" stroke-width="0.5"/>');
     }
 

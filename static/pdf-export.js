@@ -124,7 +124,8 @@ async function generatePatternPDF(patternName, patternData, opts) {
             const tileCanvas = _pdfRenderGridTile(
                 sc, sr, tw, th, grid, grid_w, lookup,
                 ROW_LBL_PX, COL_LBL_PX, CELL_PX, skipBG, symbolScale,
-                patternData.part_stitches, patternData.backstitches, patternData.knots
+                patternData.part_stitches, patternData.backstitches, patternData.knots,
+                patternData.beads
             );
             pdf.addPage();
             pdf.addImage(tileCanvas.toDataURL('image/png'), 'PNG',
@@ -206,7 +207,7 @@ async function generatePatternPDF(patternName, patternData, opts) {
 
 function _pdfRenderGridTile(startCol, startRow, tileW, tileH, grid, grid_w, lookup,
                              ROW_LBL_PX, COL_LBL_PX, CELL_PX, skipBG, symbolScale,
-                             partStitches, backstitches, knots) {
+                             partStitches, backstitches, knots, beads) {
     const cW = ROW_LBL_PX + tileW * CELL_PX;
     const cH = COL_LBL_PX + tileH * CELL_PX;
     const cv = document.createElement('canvas');
@@ -321,6 +322,19 @@ function _pdfRenderGridTile(startCol, startRow, tileW, tileH, grid, grid_w, look
             const kpx = ROW_LBL_PX + (k.x - startCol) * CELL_PX;
             const kpy = COL_LBL_PX + (k.y - startRow) * CELL_PX;
             drawFrenchKnot(ctx, kpx, kpy, info.hex, CELL_PX);
+        }
+    }
+
+    // ── Beads in this tile ──
+    if (beads) {
+        for (const b of beads) {
+            if (b.x < startCol || b.x >= startCol + tileW ||
+                b.y < startRow || b.y >= startRow + tileH) continue;
+            const info = lookup[b.dmc];
+            if (!info) continue;
+            const bpx = ROW_LBL_PX + (b.x - startCol) * CELL_PX + CELL_PX / 2;
+            const bpy = COL_LBL_PX + (b.y - startRow) * CELL_PX + CELL_PX / 2;
+            drawChartBead(ctx, bpx, bpy, info.hex, CELL_PX, info.symbol);
         }
     }
 

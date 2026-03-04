@@ -87,7 +87,7 @@ function generatePatternOXS(patternName, patternData, opts) {
             if (s.type === 'half') {
                 if (dir === 'fwd') dirs = [2, 4]; // /
                 else dirs = [1, 3]; // \\
-            } else if (s.type === 'quarter') {
+            } else if (s.type === 'quarter' || s.type === 'petite') {
                 dirs = [qmap[dir] || 1];
             } else if (s.type === 'three_quarter') {
                 const parts = dir.split('_');
@@ -118,14 +118,20 @@ function generatePatternOXS(patternName, patternData, opts) {
         x.push('  <backstitches/>');
     }
 
-    // ── Knots / Ornaments ──
+    // ── Knots / Beads / Ornaments ──
     const knots = patternData.knots || [];
-    if (knots.length > 0) {
+    const beads = patternData.beads || [];
+    if (knots.length > 0 || beads.length > 0) {
         x.push('  <ornaments_inc_knots_and_beads>');
         for (const k of knots) {
             const pi = palMap.get(k.dmc);
             if (pi === undefined) continue;
             x.push('    <object x="' + k.x + '" y="' + k.y + '" palindex="' + pi + '" objecttype="knot"/>');
+        }
+        for (const b of beads) {
+            const pi = palMap.get(b.dmc);
+            if (pi === undefined) continue;
+            x.push('    <object x="' + b.x + '" y="' + b.y + '" palindex="' + pi + '" objecttype="bead"/>');
         }
         x.push('  </ornaments_inc_knots_and_beads>');
     } else {

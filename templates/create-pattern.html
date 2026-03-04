@@ -572,6 +572,7 @@
             part_stitches: [],
             backstitches:  [],
             knots:         [],
+            beads:         [],
         };
         lookup = {};
 
@@ -703,7 +704,7 @@
             }
         }
 
-        /* French knots — topmost layer */
+        /* French knots */
         if (patternData.knots && patternData.knots.length > 0) {
             for (const k of patternData.knots) {
                 const info = lookup[k.dmc];
@@ -713,6 +714,21 @@
                     drawChartFrenchKnot(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol);
                 } else {
                     drawFrenchKnot(ctx, pt.x, pt.y, info.hex, cellPx);
+                }
+            }
+        }
+
+        /* Beads — topmost layer */
+        if (patternData.beads && patternData.beads.length > 0) {
+            for (const b of patternData.beads) {
+                const info = lookup[b.dmc];
+                if (!info) continue;
+                const bx = b.x * cellPx + cellPx / 2;
+                const by = b.y * cellPx + cellPx / 2;
+                if (viewMode === 'chart') {
+                    drawChartBead(ctx, bx, by, info.hex, cellPx, info.symbol);
+                } else {
+                    drawBead(ctx, bx, by, info.hex, cellPx);
                 }
             }
         }
@@ -785,6 +801,20 @@
                 if ((col + 1) % 10 === 0) { ctx.beginPath(); ctx.moveTo(x + cp, y); ctx.lineTo(x + cp, y + cp); ctx.stroke(); }
                 if (row % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cp, y); ctx.stroke(); }
                 if ((row + 1) % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y + cp); ctx.lineTo(x + cp, y + cp); ctx.stroke(); }
+            }
+        }
+        /* Beads in this cell */
+        if (patternData.beads && patternData.beads.length > 0) {
+            for (const b of patternData.beads) {
+                if (b.x !== col || b.y !== row) continue;
+                const info = lookup[b.dmc];
+                if (!info) continue;
+                const bx = x + cp / 2, by = y + cp / 2;
+                if (viewMode === 'chart') {
+                    drawChartBead(ctx, bx, by, info.hex, cp, info.symbol);
+                } else {
+                    drawBead(ctx, bx, by, info.hex, cp);
+                }
             }
         }
     }
@@ -1085,6 +1115,7 @@
                     part_stitches: patternData.part_stitches || [],
                     backstitches:  patternData.backstitches  || [],
                     knots:         patternData.knots         || [],
+                    beads:         patternData.beads          || [],
                     thumbnail,
                     brand:         patternBrand,
                 }),

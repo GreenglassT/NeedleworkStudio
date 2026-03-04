@@ -103,6 +103,34 @@ function drawQuarterStitch(ctx, x, y, cp, hex, corner) {
     ctx.restore();
 }
 
+/* ── Petite stitch ────────────────────────────────────── */
+
+/**
+ * Draw a petite stitch (miniature X within one quadrant of a cell).
+ * @param {string} corner — 'TL' | 'TR' | 'BL' | 'BR'
+ */
+function drawPetiteStitch(ctx, x, y, cp, hex, corner) {
+    const lw = Math.max(0.8, cp * 0.18);
+    const half = cp / 2;
+    const inset = Math.max(cp * 0.08, lw / 2);
+    const offsets = { TL: [0, 0], TR: [half, 0], BL: [0, half], BR: [half, half] };
+    const [ox, oy] = offsets[corner] || offsets.TL;
+    const x0 = x + ox + inset, y0 = y + oy + inset;
+    const x1 = x + ox + half - inset, y1 = y + oy + half - inset;
+    ctx.save();
+    ctx.lineCap = 'round';
+    if (cp >= 12) {
+        _drawMatteFiber(ctx, x0, y1, x1, y0, hex, lw, cp); // fwd diagonal
+        _drawMatteFiber(ctx, x0, y0, x1, y1, hex, lw, cp); // bwd diagonal (on top)
+    } else {
+        ctx.strokeStyle = hex;
+        ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.moveTo(x0, y1); ctx.lineTo(x1, y0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+    ctx.restore();
+}
+
 /* ── Three-quarter stitch ──────────────────────────────── */
 
 /**
@@ -246,6 +274,73 @@ function drawChartFrenchKnot(ctx, ix, iy, hex, cp, symbol, opts) {
     ctx.restore();
 }
 
+/* ── Bead ─────────────────────────────────────────────── */
+
+/**
+ * Draw a bead at a cell center (thread-mode: glossy vertical oval).
+ * @param {number} cx,cy — pixel coords of the cell center
+ */
+function drawBead(ctx, cx, cy, hex, cp) {
+    const rX = Math.max(1.5, cp * 0.18);
+    const rY = Math.max(2, cp * 0.28);
+    ctx.save();
+    if (cp >= 8) {
+        // Dark outline
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2);
+        ctx.fillStyle = darkenHex(hex, 0.65);
+        ctx.fill();
+        // Glossy gradient fill
+        const rg = ctx.createRadialGradient(cx - rX * 0.2, cy - rY * 0.2, 0, cx, cy, rY);
+        rg.addColorStop(0, lightenHex(hex, 1.3));
+        rg.addColorStop(0.5, hex);
+        rg.addColorStop(1, darkenHex(hex, 0.7));
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rX * 0.88, rY * 0.88, 0, 0, Math.PI * 2);
+        ctx.fillStyle = rg;
+        ctx.fill();
+        // Highlight spot
+        if (cp >= 15) {
+            ctx.beginPath();
+            ctx.ellipse(cx - rX * 0.15, cy - rY * 0.25, rX * 0.25, rY * 0.15, -0.3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.fill();
+        }
+    } else {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2);
+        ctx.fillStyle = hex;
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+/**
+ * Chart-mode bead: colored vertical oval with symbol inside.
+ */
+function drawChartBead(ctx, cx, cy, hex, cp, symbol, opts) {
+    const rX = Math.max(2, cp * 0.2);
+    const rY = Math.max(3, cp * 0.3);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2);
+    ctx.fillStyle = hex;
+    ctx.fill();
+    ctx.strokeStyle = darkenHex(hex, 0.55);
+    ctx.lineWidth = Math.max(0.5, cp * 0.05);
+    ctx.stroke();
+    if ((opts?.showSymbol !== false) && symbol && rX >= 3.5) {
+        const fontSize = Math.max(5, Math.floor(rX * 1.2));
+        ctx.font = (opts?.symbolFont) ||
+            (fontSize + 'px "Segoe UI Symbol","Apple Symbols","Noto Sans Symbols","IBM Plex Mono",sans-serif');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = contrastColor(hex);
+        ctx.fillText(symbol, cx, cy);
+    }
+    ctx.restore();
+}
+
 /* ── Chart-mode rendering (FlossCross style) ─────────── */
 
 /** Quadrant corner offsets within a cell. */
@@ -294,6 +389,28 @@ function drawChartQuarterStitch(ctx, x, y, cp, hex, corner, symbol, opts) {
     drawChartQuadrant(ctx, x, y, cp, hex, corner, symbol, opts);
 }
 
+/** Chart-mode petite stitch: colored quadrant with tiny X overlay. */
+function drawChartPetiteStitch(ctx, x, y, cp, hex, corner, symbol, opts) {
+    drawChartQuadrant(ctx, x, y, cp, hex, corner, symbol, opts);
+    // Overlay tiny X marker to distinguish from quarter stitch
+    const gap = Math.max(1, Math.round(cp * 0.04));
+    const qw  = (cp - gap) / 2;
+    if (qw >= 8) {
+        const off = (_QUAD_OFFSETS[corner] || _QUAD_OFFSETS.TL)(cp, gap, qw);
+        const ins = qw * 0.22;
+        const qx = x + off.qx, qy = y + off.qy;
+        ctx.save();
+        ctx.strokeStyle = contrastColor(hex);
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = Math.max(0.5, qw * 0.07);
+        ctx.beginPath();
+        ctx.moveTo(qx + ins, qy + ins); ctx.lineTo(qx + qw - ins, qy + qw - ins);
+        ctx.moveTo(qx + qw - ins, qy + ins); ctx.lineTo(qx + ins, qy + qw - ins);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
 /** Chart-mode three-quarter stitch: three quadrant squares (or two + dot for on-diagonal). */
 function drawChartThreeQuarterStitch(ctx, x, y, cp, hex, halfDir, shortCorner, symbol, opts) {
     const halfCorners = _HALF_CORNERS[halfDir] || _HALF_CORNERS.fwd;
@@ -327,6 +444,7 @@ function _resolvePartFields(ps) {
     let dir;
     if (ps.type === 'half')          dir = ps.dir || ps.direction || 'fwd';
     else if (ps.type === 'quarter')  dir = ps.dir || ps.corner || 'TL';
+    else if (ps.type === 'petite')   dir = ps.dir || ps.corner || 'TL';
     else if (ps.type === 'three_quarter') {
         dir = ps.dir || (ps.halfDir && ps.shortCorner ? ps.halfDir + '_' + ps.shortCorner : 'fwd_TL');
     }
@@ -343,6 +461,8 @@ function drawChartPartStitch(ctx, x, y, cp, ps, hex, symbol, opts) {
         drawChartHalfStitch(ctx, x, y, cp, hex, dir, symbol, opts);
     } else if (ps.type === 'quarter') {
         drawChartQuarterStitch(ctx, x, y, cp, hex, dir, symbol, opts);
+    } else if (ps.type === 'petite') {
+        drawChartPetiteStitch(ctx, x, y, cp, hex, dir, symbol, opts);
     } else if (ps.type === 'three_quarter') {
         const parts = dir.split('_');
         drawChartThreeQuarterStitch(ctx, x, y, cp, hex, parts[0], parts[1], symbol, opts);
@@ -359,6 +479,8 @@ function drawThreadPartStitch(ctx, x, y, cp, ps, hex) {
         drawHalfStitch(ctx, x, y, cp, hex, dir);
     } else if (ps.type === 'quarter') {
         drawQuarterStitch(ctx, x, y, cp, hex, dir);
+    } else if (ps.type === 'petite') {
+        drawPetiteStitch(ctx, x, y, cp, hex, dir);
     } else if (ps.type === 'three_quarter') {
         const parts = dir.split('_');
         drawThreeQuarterStitch(ctx, x, y, cp, hex, parts[0], parts[1]);

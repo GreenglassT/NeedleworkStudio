@@ -323,8 +323,9 @@
             }
         }
 
-        // ── Knots / Ornaments ──
+        // ── Knots / Beads / Ornaments ──
         const knots = [];
+        const beads = [];
         let skippedOrnaments = 0;
         const ornEl = doc.querySelector('ornaments_inc_knots_and_beads');
         if (ornEl) {
@@ -334,9 +335,12 @@
                 const pi = parseInt(obj.getAttribute('palindex'));
                 const otype = (obj.getAttribute('objecttype') || '').toLowerCase();
                 if (pi === 0 || !paletteMap[pi]) continue;
+                const dmc = paletteMap[pi].dmc;
                 if (otype === 'knot') {
-                    const dmc = paletteMap[pi].dmc;
                     knots.push({ x: ox, y: oy, dmc });
+                    stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 1;
+                } else if (otype === 'bead') {
+                    beads.push({ x: ox, y: oy, dmc });
                     stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 1;
                 } else {
                     skippedOrnaments++;
@@ -376,8 +380,9 @@
         if (part_stitches.length > 0) warnings.push(part_stitches.length + ' part stitch' + (part_stitches.length > 1 ? 'es' : '') + ' imported');
         if (backstitches.length > 0) warnings.push(backstitches.length + ' backstitch' + (backstitches.length > 1 ? 'es' : '') + ' imported');
         if (knots.length > 0) warnings.push(knots.length + ' French knot' + (knots.length > 1 ? 's' : '') + ' imported');
+        if (beads.length > 0) warnings.push(beads.length + ' bead' + (beads.length > 1 ? 's' : '') + ' imported');
 
-        return { grid_w, grid_h, title, grid, legend, part_stitches, backstitches, knots, warnings, brand: detectedBrand };
+        return { grid_w, grid_h, title, grid, legend, part_stitches, backstitches, knots, beads, warnings, brand: detectedBrand };
     }
 
     /* ——— IMPORT ——— */
@@ -403,7 +408,7 @@
 
     /* ——— PREVIEW ——— */
     function renderPreview() {
-        const { grid_w, grid_h, grid, legend, title, warnings, part_stitches, backstitches, knots } = patternData;
+        const { grid_w, grid_h, grid, legend, title, warnings, part_stitches, backstitches, knots, beads } = patternData;
 
         document.getElementById('pattern-name').value = title || 'Imported Pattern';
 
@@ -411,10 +416,12 @@
         const partCount = (part_stitches || []).length;
         const bsCount = (backstitches || []).length;
         const knotCount = (knots || []).length;
+        const beadCount = (beads || []).length;
         let dimText = grid_w + ' \u00d7 ' + grid_h + ' stitches  \u00b7  ' + fullCount + ' full';
         if (partCount > 0) dimText += '  \u00b7  ' + partCount + ' part';
         if (bsCount > 0) dimText += '  \u00b7  ' + bsCount + ' back';
         if (knotCount > 0) dimText += '  \u00b7  ' + knotCount + ' knot' + (knotCount > 1 ? 's' : '');
+        if (beadCount > 0) dimText += '  \u00b7  ' + beadCount + ' bead' + (beadCount > 1 ? 's' : '');
         dimText += '  \u00b7  ' + legend.length + ' colors';
         document.getElementById('dim-line').textContent = dimText;
         document.getElementById('color-count').textContent = legend.length;
@@ -521,6 +528,7 @@
             part_stitches:    patternData.part_stitches || [],
             backstitches:     patternData.backstitches  || [],
             knots:            patternData.knots          || [],
+            beads:            patternData.beads           || [],
             thumbnail:        generateThumbnail(),
         };
 
