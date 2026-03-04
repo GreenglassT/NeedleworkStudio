@@ -19,10 +19,11 @@ gunicorn.ctl
 uploads/*
 !uploads/.gitkeep
 
-# Playwright MCP (dev tooling)
+# Playwright / E2E tests (dev tooling)
 .playwright-mcp/
 test-results/
-tests/.auth-state.json
+tests/
+playwright.config.js
 
 # IDE / tool config
 .claude/
