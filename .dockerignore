@@ -1,0 +1,17 @@
+venv/
+.git/
+electron/
+dist/
+build/
+*.db
+uploads/
+.secret_key
+__pycache__/
+.DS_Store
+.github/
+package-lock.json
+needlework.spec
+build_backend.sh
+*.pyc
+*.pyo
+*.dmg

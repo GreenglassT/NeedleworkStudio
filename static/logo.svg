@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80">
+  <!-- Thread spool icon -->
+  <g transform="translate(8, 8) scale(2)">
+    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="82" y="38" font-family="'Cormorant Garamond', 'Georgia', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+  <text x="82" y="64" font-family="'Cormorant Garamond', 'Georgia', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+</svg>

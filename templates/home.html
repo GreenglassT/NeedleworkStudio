@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Needlework Studio{% endblock %}
+{% block brand_eyebrow %}Thread Collection{% endblock %}
+
+{% block head %}
+    <style>
+        /* ——— MAIN LAYOUT ——— */
+        .main {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px 28px 80px;
+        }
+
+        /* ——— STATS ROW ——— */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 22px 24px;
+        }
+
+        .stat-value {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 36px;
+            font-weight: 500;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-value.v-owned { color: var(--owned); }
+        .stat-value.v-need  { color: var(--need);  }
+        .stat-value.v-skip  { color: var(--skip);  }
+
+        .stat-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* ——— SECTION HEADER ——— */
+        .section-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: .01em;
+        }
+
+        .section-link {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--gold);
+            text-decoration: none;
+            letter-spacing: .04em;
+            transition: color var(--t);
+            margin-left: auto;
+        }
+
+        .section-link:hover { color: var(--gold-hover); }
+
+        /* ——— RECENT PATTERNS ——— */
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+
+        .pattern-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color var(--t), background var(--t);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pattern-card:hover {
+            border-color: var(--border-2);
+            background: var(--surface-2);
+        }
+
+        .pattern-thumb {
+            width: 100%;
+            aspect-ratio: 1;
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pattern-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+
+        .pattern-thumb-empty {
+            color: var(--text-dim);
+            font-size: 28px;
+        }
+
+        .pattern-info {
+            padding: 12px 14px;
+            flex: 1;
+        }
+
+        .pattern-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pattern-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .03em;
+        }
+
+        .pattern-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .pattern-progress-bar {
+            flex: 1;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .pattern-progress-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .pattern-progress-fill.ppf-zero    { width: 0; }
+        .pattern-progress-fill.ppf-partial { background: var(--need); }
+        .pattern-progress-fill.ppf-done    { background: var(--owned); }
+
+        .pattern-progress-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--text-dim);
+            letter-spacing: .03em;
+            white-space: nowrap;
+        }
+
+        .pattern-progress-text.ppt-done { color: var(--owned); }
+
+        /* ——— EMPTY STATE ——— */
+        .empty-state {
+            grid-column: 1 / -1;
+            background: var(--surface);
+            border: 1px dashed var(--border-2);
+            border-radius: var(--r-lg);
+            padding: 48px 24px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-msg {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .empty-link {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--gold);
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid var(--gold-dim);
+            border-radius: var(--r);
+            transition: background var(--t), color var(--t);
+        }
+
+        .empty-link:hover {
+            background: var(--gold-dim);
+            color: var(--text);
+        }
+
+        /* ——— FEATURE CARDS ——— */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 320px));
+            gap: 14px;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 24px 20px;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color var(--t), background var(--t);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .feature-card:hover {
+            border-color: var(--gold-dim);
+            background: var(--surface-2);
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .feature-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: .01em;
+        }
+
+        .feature-desc {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .04em;
+            line-height: 1.5;
+        }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 900px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 560px) {
+            .section-header { gap: 8px; }
+            .brand-seg { order: 3; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <main class="main">
+        <!-- Stats -->
+        <div class="section-header">
+            <h2 class="section-title">Collection</h2>
+            <div class="brand-seg" id="brand-seg" data-active="0">
+                <div class="brand-seg-indicator"></div>
+                <button class="brand-seg-btn active" data-brand="DMC" onclick="setBrand('DMC')">DMC</button>
+                <button class="brand-seg-btn" data-brand="Anchor" onclick="setBrand('Anchor')">Anchor</button>
+                <button class="brand-seg-btn" data-brand="" onclick="setBrand('')">All</button>
+            </div>
+            <a href="/inventory" class="section-link">View Inventory <i class="ti ti-arrow-right"></i></a>
+        </div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <span class="stat-value v-owned" id="stat-owned">—</span>
+                <span class="stat-label">Owned</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value v-need" id="stat-need">—</span>
+                <span class="stat-label">Need</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value v-skip" id="stat-dont-own">—</span>
+                <span class="stat-label">Don't Own</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="stat-patterns" style="color: var(--gold);">—</span>
+                <span class="stat-label">Saved Patterns</span>
+            </div>
+        </div>
+
+        <!-- Recent Patterns -->
+        <div class="section-header">
+            <h2 class="section-title">Recent Patterns</h2>
+            <a href="/saved-patterns" class="section-link">View Patterns <i class="ti ti-arrow-right"></i></a>
+        </div>
+        <div class="patterns-grid" id="patterns-grid">
+            <!-- populated by JS -->
+        </div>
+
+        <!-- Feature Cards -->
+        <div class="section-header">
+            <h2 class="section-title">Tools</h2>
+        </div>
+        <div class="features-grid">
+            <a href="/image-to-pattern" class="feature-card">
+                <div class="feature-icon"><i class="ti ti-photo"></i></div>
+                <div class="feature-name">Convert Image</div>
+                <div class="feature-desc">Turn any image into a cross-stitch pattern with DMC colors</div>
+            </a>
+            <a href="/pdf-to-pattern" class="feature-card">
+                <div class="feature-icon"><i class="ti ti-file-text"></i></div>
+                <div class="feature-name">Import PDF</div>
+                <div class="feature-desc">Import a cross-stitch PDF chart into your pattern library</div>
+            </a>
+            <a href="/pattern-calculator" class="feature-card">
+                <div class="feature-icon"><i class="ti ti-calculator"></i></div>
+                <div class="feature-name">Project Materials Calculator</div>
+                <div class="feature-desc">Calculate thread needs, estimate skeins, or determine fabric size</div>
+            </a>
+        </div>
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='brand-toggle.js') }}"></script>
+    <script>
+        /* ——— BRAND STATE ——— */
+        let currentBrand = localStorage.getItem('inventoryBrand') ?? 'DMC';
+
+        function setBrand(brand) {
+            currentBrand = brand;
+            localStorage.setItem('inventoryBrand', brand);
+            const seg = document.getElementById('brand-seg');
+            seg.querySelectorAll('.brand-seg-btn').forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
+            _positionIndicator(seg);
+            loadStats();
+        }
+
+        /* ——— STATS ——— */
+        async function loadStats() {
+            try {
+                const params = new URLSearchParams();
+                if (currentBrand) params.append('brand', currentBrand);
+                const resp = await fetch('/api/stats?' + params);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                document.getElementById('stat-owned').textContent    = data.owned    ?? '—';
+                document.getElementById('stat-need').textContent     = data.need     ?? '—';
+                document.getElementById('stat-dont-own').textContent = data.dont_own ?? '—';
+            } catch (e) {
+                toast('Could not load stats.', { type: 'error' });
+            }
+        }
+
+        /* ——— RECENT PATTERNS ——— */
+        async function loadRecentPatterns() {
+            const grid = document.getElementById('patterns-grid');
+            try {
+                const resp = await fetch('/api/saved-patterns');
+                if (!resp.ok) throw new Error();
+                const patterns = await resp.json();
+                document.getElementById('stat-patterns').textContent = patterns.length;
+                const recent = patterns.slice(0, 4);
+
+                if (recent.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="ti ti-photo"></i></div>
+                            <p class="empty-msg">No saved patterns yet</p>
+                            <a href="/image-to-pattern" class="empty-link">Create your first pattern <i class="ti ti-arrow-right"></i></a>
+                        </div>`;
+                    return;
+                }
+
+                grid.innerHTML = recent.map(p => {
+                    const thumbHtml = p.thumbnail
+                        ? `<img src="${escHtml(p.thumbnail)}" alt="${escHtml(p.name)}">`
+                        : `<span class="pattern-thumb-empty"><i class="ti ti-needle"></i></span>`;
+                    const meta = `${p.grid_w} × ${p.grid_h} · ${p.color_count} color${p.color_count === 1 ? '' : 's'}`;
+                    const st = p.project_status || 'not_started';
+                    const total = p.color_count || 0;
+                    const done = st === 'completed' ? total : (p.completed_count || 0);
+                    const pct = total ? Math.round(done / total * 100) : 0;
+                    const fillCls = done === 0 ? 'ppf-zero' : (done >= total ? 'ppf-done' : 'ppf-partial');
+                    const textCls = done >= total && total > 0 ? 'ppt-done' : '';
+                    const progressHtml = total > 0 ? `
+                                <div class="pattern-progress">
+                                    <div class="pattern-progress-bar"><div class="pattern-progress-fill ${fillCls}" style="width:${pct}%"></div></div>
+                                    <span class="pattern-progress-text ${textCls}">${done}/${total}</span>
+                                </div>` : '';
+                    return `
+                        <a href="/view/${p.slug}" class="pattern-card">
+                            <div class="pattern-thumb">${thumbHtml}</div>
+                            <div class="pattern-info">
+                                <div class="pattern-name">${escHtml(p.name)}</div>
+                                <div class="pattern-meta">${escHtml(meta)}</div>${progressHtml}
+                            </div>
+                        </a>`;
+                }).join('');
+            } catch (e) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="ti ti-alert-triangle"></i></div>
+                        <p class="empty-msg">Could not load patterns</p>
+                    </div>`;
+            }
+        }
+
+
+        // Restore saved brand and init
+        setBrand(currentBrand);
+        initBrandToggle(document.getElementById('brand-seg'));
+        loadRecentPatterns();
+    </script>
+{% endblock %}

@@ -1,0 +1,1517 @@
+{% extends "base.html" %}
+
+{% block title %}Project Materials Calculator — Needlework Studio{% endblock %}
+{% block brand_name %}Project Materials Calculator{% endblock %}
+
+{% block head %}
+    <style>
+        /* ——— MAIN ——— */
+        .main-wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        /* ——— CARDS ——— */
+        .calc-card, .results-card, .settings-bar, .summary-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+            letter-spacing: .02em;
+        }
+
+        .card-desc {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* ——— UPLOAD ZONE ——— */
+        .upload-zone {
+            --uz-pad: 48px 32px;
+            --uz-hover-border: var(--gold-dim);
+            --uz-icon-size: 36px;
+            --uz-icon-mb: 12px;
+            --uz-icon-opacity: .5;
+            --uz-hint-size: 11px;
+            --uz-hint-color: var(--text-dim);
+        }
+
+        .upload-hint { letter-spacing: .04em; }
+
+        .upload-btn {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 9px 22px;
+            border: 1px solid var(--gold-dim);
+            border-radius: var(--r);
+            color: var(--gold);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            letter-spacing: .08em;
+            background: transparent;
+            cursor: pointer;
+            transition: all var(--t);
+            pointer-events: none;
+        }
+
+        .upload-zone:hover .upload-btn {
+            background: var(--gold-dim);
+            color: var(--text);
+        }
+
+        /* ——— OR DIVIDER ——— */
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 24px 0 16px;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .or-divider span {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        /* ——— SPINNER ——— */
+        .spinner-wrap {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 24px 0 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            letter-spacing: .06em;
+        }
+
+        .spinner-wrap.visible { display: flex; justify-content: center; }
+
+        .spinner { --sp-size: 18px; }
+
+        /* ——— ERROR ——— */
+        .load-error {
+            display: none;
+            margin-top: 16px;
+            padding: 14px 18px;
+            background: rgba(158, 74, 74, 0.12);
+            border: 1px solid var(--skip);
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: #d07070;
+            letter-spacing: .03em;
+        }
+
+        .load-error.visible { display: block; }
+
+        /* ——— SETTINGS BAR ——— */
+        .settings-bar { display: none; }
+        .settings-bar.visible { display: block; }
+
+        .settings-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .settings-field {
+            flex: 1;
+            min-width: 130px;
+        }
+
+        .settings-field label {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .ctrl-input {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            transition: border-color var(--t);
+        }
+
+        .ctrl-input:focus { outline: none; border-color: var(--gold-dim); }
+
+        /* ——— EFFICIENCY TOGGLE ——— */
+        .efficiency-toggle {
+            display: flex;
+            background: var(--surface-3);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 2px;
+        }
+
+        .efficiency-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 10px;
+            border-radius: calc(var(--r) - 2px);
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+
+        .efficiency-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,.5);
+        }
+
+        /* ——— SUMMARY BAR ——— */
+        .summary-bar { display: none; }
+        .summary-bar.visible {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .summary-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .view-pattern-link {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--gold);
+            text-decoration: none;
+            letter-spacing: .04em;
+            margin-left: 12px;
+            transition: color var(--t);
+        }
+        .view-pattern-link:hover { color: var(--gold-hover); }
+
+        .summary-stats {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 18px;
+            color: var(--gold);
+            display: block;
+        }
+
+        .stat-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--gold-dim);
+            color: var(--gold);
+            padding: 9px 18px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+
+        .action-btn:hover {
+            background: var(--gold-dim);
+            color: var(--text);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        /* ——— VIEW TOGGLE ——— */
+        .view-bar {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .view-bar.visible { display: flex; }
+
+        .view-btn {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            cursor: pointer;
+            transition: all var(--t);
+        }
+
+        .view-btn.active {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+            background: var(--surface-2);
+        }
+
+        .view-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        /* ——— RESULTS TABLE ——— */
+        .results-card { display: none; }
+        .results-card.visible { display: block; }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table th {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .results-table th:hover { color: var(--text-muted); }
+        .results-table th.sorted { color: var(--gold); }
+
+        .results-table td {
+            padding: 11px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .results-table tr:last-child td { border-bottom: none; }
+        .results-table tbody tr:hover td { background: var(--surface-2); }
+        .results-table tbody tr.dim td { opacity: 0.45; }
+
+        .color-swatch {
+            width: 22px;
+            height: 22px;
+            border-radius: 3px;
+            border: 1px solid var(--border-2);
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .dmc-num {
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .thread-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .purchase-qty {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            color: var(--owned);
+            font-weight: 500;
+        }
+
+        .purchase-zero { color: var(--text-dim); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+        }
+
+        .status-own       { background: rgba(77,158,122,.15); color: var(--owned); }
+        .status-need      { background: rgba(201,120,48,.15); color: var(--need); }
+        .status-dont_own  { background: var(--surface-3); color: var(--text-dim); }
+        .status-not_found { background: var(--surface-3); color: var(--text-dim); }
+
+        .qty-input {
+            width: 54px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 6px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            text-align: center;
+            transition: border-color var(--t);
+        }
+
+        .qty-input:focus { border-color: var(--gold-dim); outline: none; }
+
+        .no-results {
+            padding: 40px 20px;
+            text-align: center;
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            color: var(--text-dim);
+            font-size: 17px;
+        }
+
+        /* ——— MODE TOGGLE ——— */
+        .mode-toggle {
+            display: flex;
+            background: var(--surface-3);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 2px;
+            margin-bottom: 16px;
+            max-width: 540px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: calc(var(--r) - 2px);
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            letter-spacing: .04em;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+
+        .mode-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,.5);
+        }
+
+        /* ——— MODE VISIBILITY ——— */
+        [data-mode="stitch"]:not(.mode-btn) { display: none; }
+        [data-mode="fabric"]:not(.mode-btn) { display: none; }
+        .main-wrap.mode-stitch [data-mode="pattern"]:not(.mode-btn) { display: none !important; }
+        .main-wrap.mode-stitch [data-mode="fabric"]:not(.mode-btn) { display: none !important; }
+        .main-wrap.mode-stitch [data-mode="stitch"] { display: block; }
+        .main-wrap.mode-stitch .q-results-card { display: block; }
+        .main-wrap.mode-fabric [data-mode="pattern"]:not(.mode-btn) { display: none !important; }
+        .main-wrap.mode-fabric [data-mode="stitch"]:not(.mode-btn) { display: none !important; }
+        .main-wrap.mode-fabric [data-mode="fabric"] { display: block; }
+        .main-wrap.mode-fabric .f-results-card { display: block; }
+
+        /* ——— STITCH COUNT MODE (ported from skein-calculator) ——— */
+        .input-group { margin-bottom: 20px; }
+
+        .input-group-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .input-field label {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .input-field input {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            transition: border-color var(--t);
+        }
+
+        .input-field input::placeholder { color: var(--text-dim); }
+        .input-field input:focus { outline: none; border-color: var(--gold-dim); }
+
+        .q-results-card { display: none; }
+
+        .info-card {
+            background: var(--surface-2);
+            border-left: 3px solid var(--gold-dim);
+            border-radius: var(--r);
+            padding: 16px 20px;
+            margin-bottom: 16px;
+        }
+
+        .info-card h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .info-card ul { margin-left: 18px; }
+
+        .info-card li {
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--text-muted);
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 2px;
+        }
+
+        .fabric-type {
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--gold);
+        }
+
+        .fabric-subtype {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-left: 6px;
+        }
+
+        .size-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 17px;
+            color: var(--text-muted);
+        }
+
+        .suggested-value {
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--owned);
+        }
+
+        /* ——— FABRIC SIZE MODE ——— */
+        .f-unit-toggle {
+            display: flex;
+            background: var(--surface-3);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 2px;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+
+        .f-unit-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px 18px;
+            border-radius: calc(var(--r) - 2px);
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            transition: all var(--t);
+        }
+
+        .f-unit-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,.5);
+        }
+
+        .f-original-count-field { display: none; }
+        .f-original-count-field.visible { display: block; }
+
+        .f-results-card { display: none; }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 700px) {
+            .main-wrap { padding: 16px; }
+            .settings-row { flex-direction: column; }
+            .settings-field { width: 100%; }
+            .input-row { flex-direction: column; }
+            .input-field { width: 100%; }
+            .results-table th,
+            .results-table td { padding: 9px 10px; font-size: 11px; }
+            .summary-bar.visible { flex-direction: column; align-items: flex-start; }
+            .view-actions { margin-left: 0; }
+            .qty-input { width: 46px; }
+            .upload-zone { padding: 32px 20px; }
+            .mode-btn { padding: 10px 10px; font-size: 11px; min-width: 0; }
+        }
+
+        /* ——— PRINT ——— */
+        @media print {
+            .site-header, .calc-card, .settings-bar, .view-bar,
+            .action-btn, .qty-input, .mode-toggle, .info-card { display: none !important; }
+            .summary-bar.visible { border: none; padding: 0 0 12px; }
+            .summary-name { font-size: 18px; }
+            .results-card.visible { border: none; padding: 0; }
+            .main-wrap { padding: 0; max-width: 100%; }
+            .results-table th, .results-table td { font-size: 10px; padding: 4px 8px; }
+            .results-table tbody tr.dim td { opacity: 1; }
+            .color-swatch {
+                print-color-adjust: exact; -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <main class="main-wrap">
+
+        <!-- Mode toggle -->
+        <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="pattern" onclick="setMode('pattern')">By Pattern</button>
+            <button class="mode-btn" data-mode="stitch" onclick="setMode('stitch')">By Stitch Count</button>
+            <button class="mode-btn" data-mode="fabric" onclick="setMode('fabric')">By Fabric Size</button>
+        </div>
+
+        <!-- ========== BY PATTERN MODE ========== -->
+
+        <!-- 1. Input card: upload PDF or select saved pattern -->
+        <div class="calc-card" data-mode="pattern" id="pattern-upload-card">
+            <h2 class="card-title">Load a Pattern</h2>
+            <p class="card-desc">Upload a cross-stitch PDF or select a saved pattern to calculate floss requirements</p>
+
+            <div class="upload-zone" id="upload-zone">
+                <input type="file" id="pdf-input" accept=".pdf" onchange="handleFile(this.files[0])">
+                <div class="upload-icon"><i class="ti ti-file-upload"></i></div>
+                <span class="upload-label">Drag &amp; drop a PDF here</span>
+                <span class="upload-hint">or click to browse</span>
+                <span class="upload-btn">Choose PDF</span>
+            </div>
+
+            <div class="or-divider"><span>or load a saved pattern</span></div>
+
+            <select id="pattern-select" class="ctrl-select" onchange="loadSavedPattern()">
+                <option value="">— Select a saved pattern —</option>
+            </select>
+
+            <div class="spinner-wrap" id="spinner">
+                <div class="spinner"></div>
+                <span>Loading pattern...</span>
+            </div>
+
+            <div class="load-error" id="load-error"></div>
+        </div>
+
+        <!-- 2. Settings bar -->
+        <div class="settings-bar" id="settings-bar" data-mode="pattern">
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label for="fabric-count">Fabric Count</label>
+                    <select id="fabric-count" class="ctrl-select" onchange="recalculate()">
+                        <option value="11">11 Count</option>
+                        <option value="14" selected>14 Count</option>
+                        <option value="16">16 Count</option>
+                        <option value="18">18 Count</option>
+                        <option value="20">20 Count</option>
+                        <option value="22">22 Count</option>
+                        <option value="25">25 Count</option>
+                        <option value="28">28 Count</option>
+                        <option value="32">32 Count</option>
+                    </select>
+                </div>
+                <div class="settings-field">
+                    <label for="strands">Strands</label>
+                    <select id="strands" class="ctrl-select" onchange="recalculate()">
+                        <option value="1">1 strand</option>
+                        <option value="2" selected>2 strands</option>
+                        <option value="3">3 strands</option>
+                        <option value="4">4 strands</option>
+                    </select>
+                </div>
+                <div class="settings-field" style="flex: 2; min-width: 260px;">
+                    <label>Stitching Efficiency</label>
+                    <div class="efficiency-toggle">
+                        <button class="efficiency-btn" data-eff="inefficient" onclick="setEfficiency('inefficient')">Inefficient</button>
+                        <button class="efficiency-btn active" data-eff="average" onclick="setEfficiency('average')">Average</button>
+                        <button class="efficiency-btn" data-eff="efficient" onclick="setEfficiency('efficient')">Efficient</button>
+                    </div>
+                </div>
+                <div class="settings-field" style="max-width: 160px;">
+                    <label for="skein-length">Skein Length (yd)</label>
+                    <input type="number" id="skein-length" class="ctrl-input" value="8.7" min="0.1" step="0.1" oninput="recalculate()">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Summary bar -->
+        <div class="summary-bar" id="summary-bar" data-mode="pattern">
+            <div class="summary-name">
+                <span id="pattern-name"></span>
+                <a class="view-pattern-link" id="view-pattern-link" style="display:none">View Pattern <i class="ti ti-arrow-right"></i></a>
+            </div>
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="stat-colors">—</span>
+                    <span class="stat-label">Colors</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="stat-stitches">—</span>
+                    <span class="stat-label">Stitches</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="stat-have">—</span>
+                    <span class="stat-label">Have Enough</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="stat-buy">—</span>
+                    <span class="stat-label">Need to Buy</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="stat-skeins">—</span>
+                    <span class="stat-label">Skeins to Buy</span>
+                </div>
+            </div>
+            <button class="action-btn" id="mark-need-btn" onclick="markAllNeed()">
+                Mark unowned as Need
+            </button>
+        </div>
+
+        <!-- 4. View toggle + export -->
+        <div class="view-bar" id="view-bar" data-mode="pattern">
+            <button class="view-btn active" data-view="all" onclick="setView('all')">All Colors</button>
+            <button class="view-btn" data-view="buy" onclick="setView('buy')">Shopping List</button>
+            <button class="view-btn" data-view="have" onclick="setView('have')">Have Enough</button>
+            <div class="view-actions">
+                <button class="action-btn" onclick="printShoppingList()">Print List</button>
+                <button class="action-btn" onclick="downloadCSV()">Download CSV</button>
+            </div>
+        </div>
+
+        <!-- 5. Results table -->
+        <div class="results-card" id="results-card" data-mode="pattern">
+            <div id="results-table-wrap">
+                <div class="no-results">Upload a PDF or select a saved pattern to see floss requirements</div>
+            </div>
+        </div>
+
+        <!-- ========== BY STITCH COUNT MODE ========== -->
+
+        <div class="calc-card" data-mode="stitch">
+            <h2 class="card-title">Thread Requirements</h2>
+            <p class="card-desc">Estimate how many skeins of thread you need for a color</p>
+
+            <div class="input-group">
+                <div class="input-row">
+                    <div class="input-field">
+                        <label for="q-stitch-count">Stitch Count</label>
+                        <input type="number" id="q-stitch-count" min="1" placeholder="e.g. 1000" oninput="calculateQuickEstimate()">
+                    </div>
+                    <div class="input-field">
+                        <label for="q-strands">Strands</label>
+                        <select id="q-strands" class="ctrl-select" onchange="calculateQuickEstimate()">
+                            <option value="1">1 strand</option>
+                            <option value="2" selected>2 strands</option>
+                            <option value="3">3 strands</option>
+                            <option value="4">4 strands</option>
+                        </select>
+                    </div>
+                    <div class="input-field">
+                        <label for="q-skein-length">Skein Length (yards)</label>
+                        <input type="number" id="q-skein-length" min="0.1" step="0.1" value="8.7" oninput="calculateQuickEstimate()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <span class="input-group-label">Stitching Efficiency</span>
+                <div class="efficiency-toggle">
+                    <button class="efficiency-btn q-eff-btn" data-qeff="inefficient" onclick="setQuickEfficiency('inefficient')">Inefficient</button>
+                    <button class="efficiency-btn q-eff-btn active" data-qeff="average" onclick="setQuickEfficiency('average')">Average</button>
+                    <button class="efficiency-btn q-eff-btn" data-qeff="efficient" onclick="setQuickEfficiency('efficient')">Efficient</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-card q-results-card" data-mode="stitch">
+            <h2 class="card-title">Results</h2>
+            <div id="q-skein-results">
+                <div class="no-results">Enter stitch count above to estimate skeins needed</div>
+            </div>
+        </div>
+
+        <div class="info-card" data-mode="stitch">
+            <h3>About the estimate</h3>
+            <ul>
+                <li><strong>Efficiency</strong> accounts for thread waste from tails, mistakes, and back stitching style</li>
+                <li>Higher fabric counts use less thread per stitch (smaller squares)</li>
+                <li>Standard skeins (DMC, Anchor) are 8.7 yards (8 meters)</li>
+                <li>Always buy at least one extra skein for safety</li>
+            </ul>
+        </div>
+
+        <!-- ========== BY FABRIC SIZE MODE ========== -->
+
+        <div class="calc-card" data-mode="fabric">
+            <h2 class="card-title">Pattern Dimensions</h2>
+            <p class="card-desc">Enter your pattern size to see how much fabric you need for each count</p>
+
+            <div class="f-unit-toggle">
+                <button class="f-unit-btn active" data-funit="stitches" onclick="setFabricUnit('stitches')">Stitches</button>
+                <button class="f-unit-btn" data-funit="inches" onclick="setFabricUnit('inches')">Inches</button>
+            </div>
+
+            <div class="input-group">
+                <div class="input-row">
+                    <div class="input-field">
+                        <label for="f-width">Width</label>
+                        <input type="number" id="f-width" min="1" placeholder="e.g. 100" oninput="calculateFabricSize()">
+                    </div>
+                    <div class="input-field">
+                        <label for="f-height">Height</label>
+                        <input type="number" id="f-height" min="1" placeholder="e.g. 100" oninput="calculateFabricSize()">
+                    </div>
+                    <div class="input-field f-original-count-field" id="f-original-count-container">
+                        <label for="f-original-count">Original Fabric Count</label>
+                        <select id="f-original-count" class="ctrl-select" onchange="calculateFabricSize()">
+                            <option value="11">11 Count</option>
+                            <option value="14" selected>14 Count</option>
+                            <option value="16">16 Count</option>
+                            <option value="18">18 Count</option>
+                            <option value="20">20 Count</option>
+                            <option value="22">22 Count</option>
+                            <option value="25">25 Count</option>
+                            <option value="28">28 Count</option>
+                            <option value="32">32 Count</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-card f-results-card" data-mode="fabric">
+            <h2 class="card-title">Results</h2>
+            <div id="f-fabric-results">
+                <div class="no-results">Enter pattern dimensions above to see fabric sizes</div>
+            </div>
+        </div>
+
+        <div class="info-card" data-mode="fabric">
+            <h3>How it works</h3>
+            <ul>
+                <li><strong>Fabric count</strong> = stitches per inch (e.g., 14-count Aida has 14 stitches per inch)</li>
+                <li><strong>Design size</strong> = stitch count &divide; fabric count</li>
+                <li><strong>Suggested fabric size</strong> = design size + 6&Prime; (3&Prime; margin on each side for framing)</li>
+            </ul>
+        </div>
+
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        /* ——— STATE ——— */
+        let patternData = [];       // unified: [{dmc, name, hex, stitches, status, skein_qty, thread_id}]
+        let patternName = '';
+        let patternId = null;       // non-null when loaded from saved pattern
+        let patternBrand = 'DMC';   // 'DMC' | 'Anchor'
+        let currentEfficiency = 'average';
+        let currentView = 'all';
+        let sortKey = 'toBuy';
+        let sortDir = -1;
+        let allRows = [];
+        let currentMode = 'pattern';   // 'pattern' | 'stitch' | 'fabric'
+        let quickEfficiency = 'average';
+        let fabricUnit = 'stitches';   // 'stitches' | 'inches'
+
+        const efficiencyFactors = { inefficient: 1.3, average: 1.15, efficient: 1.0 };
+
+        const fabricCounts = [
+            { count: 11, name: '11 Count', type: 'Aida' },
+            { count: 14, name: '14 Count', type: 'Aida' },
+            { count: 16, name: '16 Count', type: 'Aida' },
+            { count: 18, name: '18 Count', type: 'Aida' },
+            { count: 20, name: '20 Count', type: 'Aida' },
+            { count: 22, name: '22 Count', type: 'Hardanger' },
+            { count: 25, name: '25 Count', type: 'Evenweave/Linen' },
+            { count: 28, name: '28 Count', type: 'Evenweave/Linen' },
+            { count: 32, name: '32 Count', type: 'Evenweave/Linen' }
+        ];
+
+        /* ——— MODE SWITCHER ——— */
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            const main = document.querySelector('.main-wrap');
+            main.classList.remove('mode-stitch', 'mode-fabric');
+            if (mode === 'stitch') main.classList.add('mode-stitch');
+            else if (mode === 'fabric') main.classList.add('mode-fabric');
+            // Update URL
+            const url = new URL(location);
+            if (mode === 'stitch' || mode === 'fabric') {
+                url.searchParams.set('mode', mode);
+                url.searchParams.delete('pattern');
+            } else {
+                url.searchParams.delete('mode');
+            }
+            history.replaceState(null, '', url);
+        }
+
+        /* ——— STITCH COUNT MODE ——— */
+        function setQuickEfficiency(eff) {
+            quickEfficiency = eff;
+            document.querySelectorAll('.q-eff-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.qeff === eff);
+            });
+            calculateQuickEstimate();
+        }
+
+        function toFraction(decimal) {
+            const fractions = [
+                { frac: 0, display: '' },
+                { frac: 0.125, display: '\u215b' },
+                { frac: 0.25, display: '\u00bc' },
+                { frac: 0.375, display: '\u215c' },
+                { frac: 0.5, display: '\u00bd' },
+                { frac: 0.625, display: '\u215d' },
+                { frac: 0.75, display: '\u00be' },
+                { frac: 0.875, display: '\u215e' }
+            ];
+            const whole = Math.floor(decimal);
+            const remainder = decimal - whole;
+            let closest = fractions[0];
+            let minDiff = Math.abs(remainder - fractions[0].frac);
+            for (const f of fractions) {
+                const diff = Math.abs(remainder - f.frac);
+                if (diff < minDiff) { minDiff = diff; closest = f; }
+            }
+            if (closest.frac === 0 && remainder > 0.9375) return String(whole + 1);
+            if (whole === 0 && closest.display) return closest.display;
+            if (whole === 0) return '0';
+            if (closest.display) return whole + ' ' + closest.display;
+            return String(whole);
+        }
+
+        function calculateQuickEstimate() {
+            const stitchCount = parseFloat(document.getElementById('q-stitch-count').value);
+            const strands = parseInt(document.getElementById('q-strands').value);
+            const skeinLength = parseFloat(document.getElementById('q-skein-length').value);
+            const resultsDiv = document.getElementById('q-skein-results');
+
+            if (!stitchCount || stitchCount <= 0 || !skeinLength || skeinLength <= 0) {
+                resultsDiv.innerHTML = '<div class="no-results">Enter stitch count above to estimate skeins needed</div>';
+                return;
+            }
+
+            let html = '<table class="results-table"><thead><tr>'
+                + '<th>Fabric</th><th>Skeins</th><th>Decimal</th><th>Purchase</th>'
+                + '</tr></thead><tbody>';
+
+            fabricCounts.forEach(fabric => {
+                const skeinsNeeded = calcSkeins(stitchCount, fabric.count, strands, quickEfficiency, skeinLength);
+                const purchase = Math.ceil(skeinsNeeded);
+                html += '<tr>'
+                    + '<td><span class="fabric-type">' + fabric.name + '</span>'
+                    + '<span class="fabric-subtype">' + fabric.type + '</span></td>'
+                    + '<td><span class="size-value">' + toFraction(skeinsNeeded) + '</span></td>'
+                    + '<td>' + skeinsNeeded.toFixed(2) + '</td>'
+                    + '<td><span class="suggested-value">' + purchase + '</span></td>'
+                    + '</tr>';
+            });
+
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+        }
+
+        /* ——— FABRIC SIZE MODE ——— */
+        function setFabricUnit(unit) {
+            fabricUnit = unit;
+            document.querySelectorAll('.f-unit-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.funit === unit);
+            });
+            document.getElementById('f-original-count-container').classList.toggle('visible', unit === 'inches');
+            const w = document.getElementById('f-width');
+            const h = document.getElementById('f-height');
+            if (unit === 'stitches') { w.placeholder = 'e.g. 100'; h.placeholder = 'e.g. 100'; }
+            else { w.placeholder = 'e.g. 7'; h.placeholder = 'e.g. 7'; }
+            calculateFabricSize();
+        }
+
+        function formatSize(inches) {
+            return inches.toFixed(2) + '"';
+        }
+
+        function calculateFabricSize() {
+            const widthInput = parseFloat(document.getElementById('f-width').value);
+            const heightInput = parseFloat(document.getElementById('f-height').value);
+            const originalCount = parseInt(document.getElementById('f-original-count').value);
+            const resultsDiv = document.getElementById('f-fabric-results');
+
+            if (!widthInput || !heightInput || widthInput <= 0 || heightInput <= 0) {
+                resultsDiv.innerHTML = '<div class="no-results">Enter pattern dimensions above to see fabric sizes</div>';
+                return;
+            }
+
+            let widthStitches, heightStitches;
+            if (fabricUnit === 'inches') {
+                widthStitches = widthInput * originalCount;
+                heightStitches = heightInput * originalCount;
+            } else {
+                widthStitches = widthInput;
+                heightStitches = heightInput;
+            }
+
+            let html = '<table class="results-table"><thead><tr>'
+                + '<th>Fabric</th><th>Design Size</th><th>Suggested Fabric</th>'
+                + '</tr></thead><tbody>';
+
+            fabricCounts.forEach(fabric => {
+                const designWidth = widthStitches / fabric.count;
+                const designHeight = heightStitches / fabric.count;
+                const suggestedWidth = designWidth + 6;
+                const suggestedHeight = designHeight + 6;
+
+                html += '<tr>'
+                    + '<td><span class="fabric-type">' + fabric.name + '</span>'
+                    + '<span class="fabric-subtype">' + fabric.type + '</span></td>'
+                    + '<td><span class="size-value">' + formatSize(designWidth) + ' &times; ' + formatSize(designHeight) + '</span></td>'
+                    + '<td><span class="suggested-value">' + formatSize(suggestedWidth) + ' &times; ' + formatSize(suggestedHeight) + '</span></td>'
+                    + '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            if (fabricUnit === 'inches') {
+                html += '<p style="margin-top:16px;font-family:\'Cormorant Garamond\',serif;color:var(--text-dim);font-size:15px;font-style:italic">'
+                    + 'Pattern size: ' + Math.round(widthStitches) + ' &times; ' + Math.round(heightStitches)
+                    + ' stitches (based on ' + originalCount + '-count fabric)</p>';
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        /* ——— INIT ——— */
+        async function init() {
+            // Populate saved patterns dropdown
+            try {
+                const resp = await fetch('/api/saved-patterns');
+                if (!resp.ok) throw new Error('Could not load patterns');
+                const patterns = await resp.json();
+
+                const sel = document.getElementById('pattern-select');
+                for (const p of patterns) {
+                    const opt = document.createElement('option');
+                    opt.value = p.slug;
+                    opt.textContent = p.name + '  (' + p.grid_w + '\u00d7' + p.grid_h + ', ' + p.color_count + ' colors)';
+                    sel.appendChild(opt);
+                }
+
+                // Check URL params
+                const params = new URLSearchParams(location.search);
+                const urlMode = params.get('mode');
+                const urlId = params.get('pattern');
+
+                if (urlId && urlMode === 'fabric') {
+                    // Pattern + fabric mode: auto-populate fabric dimensions from pattern
+                    const match = patterns.find(p => p.slug === urlId);
+                    if (match) {
+                        document.getElementById('f-width').value = match.grid_w;
+                        document.getElementById('f-height').value = match.grid_h;
+                        setMode('fabric');
+                        calculateFabricSize();
+                    } else {
+                        setMode('fabric');
+                    }
+                } else if (urlId) {
+                    // Pattern mode: auto-load full pattern data
+                    setMode('pattern');
+                    sel.value = urlId;
+                    loadSavedPattern();
+                } else if (urlMode === 'stitch' || urlMode === 'fabric') {
+                    setMode(urlMode);
+                } else {
+                    setMode('pattern');
+                }
+            } catch (err) {
+                toast('Could not load saved patterns.', { type: 'error' });
+            }
+
+            // Set up drag-and-drop on upload zone
+            const zone = document.getElementById('upload-zone');
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+        }
+
+        /* ——— PDF UPLOAD ——— */
+        async function handleFile(file) {
+            if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+                showError('Please select a PDF file.');
+                return;
+            }
+
+            // Clear saved-pattern selection
+            document.getElementById('pattern-select').value = '';
+            patternId = null;
+
+            patternName = file.name.replace(/\.pdf$/i, '');
+            clearError();
+            showSpinner(true);
+            hideResults();
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            try {
+                const resp = await fetch('/api/pattern/parse', { method: 'POST', body: formData });
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) {
+                    showError(data.error || 'Failed to parse PDF.');
+                    showSpinner(false);
+                    return;
+                }
+
+                // Normalize to unified shape
+                patternData = (data.colors || []).map(c => ({
+                    dmc: c.dmc,
+                    name: c.name || '',
+                    hex: c.hex_color || '#555',
+                    stitches: c.effective_stitches || 0,
+                    status: c.inventory_status || 'dont_own',
+                    skein_qty: c.skein_qty || 0,
+                    thread_id: c.thread_id || null,
+                }));
+
+                // Apply detected settings from PDF
+                if (data.detected.fabric_count) {
+                    document.getElementById('fabric-count').value = data.detected.fabric_count;
+                }
+                if (data.detected.strands) {
+                    document.getElementById('strands').value = data.detected.strands;
+                }
+
+                showSpinner(false);
+                showResults();
+                recalculate();
+            } catch (err) {
+                showError('Network error: ' + err.message);
+                showSpinner(false);
+            }
+        }
+
+        /* ——— LOAD SAVED PATTERN ——— */
+        async function loadSavedPattern() {
+            const id = document.getElementById('pattern-select').value;
+            if (!id) { hideResults(); return; }
+
+            // Clear file input
+            document.getElementById('pdf-input').value = '';
+
+            clearError();
+            showSpinner(true);
+            hideResults();
+
+            try {
+                const resp = await fetch('/api/saved-patterns/' + id);
+                if (!resp.ok) throw new Error('Could not load pattern');
+                const data = await resp.json();
+
+                patternName = data.name;
+                patternId = data.slug;
+                patternBrand = data.brand || 'DMC';
+
+                // Recount stitches from raw data (includes part stitches, backstitches, knots)
+                const counts = {};
+                for (const dmc of (data.grid_data || [])) {
+                    if (dmc === 'BG') continue;
+                    counts[dmc] = (counts[dmc] || 0) + 1;
+                }
+                const partWeights = { half: 0.5, quarter: 0.25, three_quarter: 0.75 };
+                for (const ps of (data.part_stitches || [])) {
+                    counts[ps.dmc] = (counts[ps.dmc] || 0) + (partWeights[ps.type] || 0.5);
+                }
+                for (const bs of (data.backstitches || [])) {
+                    counts[bs.dmc] = (counts[bs.dmc] || 0) + 0.3;
+                }
+                for (const k of (data.knots || [])) {
+                    counts[k.dmc] = (counts[k.dmc] || 0) + 0.3;
+                }
+
+                // Normalize to unified shape
+                patternData = (data.legend_data || [])
+                    .filter(e => e.dmc && e.dmc !== 'BG')
+                    .map(e => ({
+                        dmc: e.dmc,
+                        name: e.name || '',
+                        hex: e.hex || '#555',
+                        stitches: counts[e.dmc] || e.stitches || 0,
+                        status: e.status || 'dont_own',
+                        skein_qty: e.skein_qty || 0,
+                        thread_id: e.thread_id || null,
+                    }));
+
+                showSpinner(false);
+                showResults();
+                recalculate();
+            } catch (err) {
+                showSpinner(false);
+                showError(err.message);
+            }
+        }
+
+        /* ——— EFFICIENCY ——— */
+        function setEfficiency(eff) {
+            currentEfficiency = eff;
+            document.querySelectorAll('.efficiency-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.eff === eff);
+            });
+            recalculate();
+        }
+
+        /* ——— CALCULATION ——— */
+        function calcSkeins(stitches, fabricCount, strands, efficiency, skeinLength) {
+            const threadPerStitch = (3.8 / fabricCount) * (strands / 2) * efficiencyFactors[efficiency];
+            return stitches * threadPerStitch / 36 / skeinLength;
+        }
+
+        function recalculate() {
+            if (!patternData.length) return;
+
+            const fabricCount = parseInt(document.getElementById('fabric-count').value);
+            const strands = parseInt(document.getElementById('strands').value);
+            const skeinLength = parseFloat(document.getElementById('skein-length').value) || 8.7;
+
+            allRows = patternData.map(c => {
+                const skeinsNeeded = calcSkeins(c.stitches, fabricCount, strands, currentEfficiency, skeinLength);
+                const owned = c.skein_qty || 0;
+                const deficit = skeinsNeeded - owned;
+                const toBuy = Math.max(0, Math.ceil(deficit));
+                const buyStatus = owned >= skeinsNeeded ? 'enough'
+                    : owned > 0 ? 'partial'
+                    : 'none';
+                return { ...c, skeinsNeeded, owned, toBuy, buyStatus };
+            });
+
+            let filtered = allRows;
+            if (currentView === 'buy') filtered = allRows.filter(r => r.toBuy > 0);
+            if (currentView === 'have') filtered = allRows.filter(r => r.toBuy === 0);
+
+            filtered.sort((a, b) => {
+                let av = a[sortKey], bv = b[sortKey];
+                if (sortKey === 'dmc') {
+                    const na = parseInt(av, 10), nb = parseInt(bv, 10);
+                    if (!isNaN(na) && !isNaN(nb)) return sortDir * (na - nb);
+                    if (!isNaN(na)) return -sortDir;
+                    if (!isNaN(nb)) return sortDir;
+                }
+                if (typeof av === 'string') av = av.toLowerCase();
+                if (typeof bv === 'string') bv = bv.toLowerCase();
+                return av < bv ? -sortDir : av > bv ? sortDir : 0;
+            });
+
+            renderTable(filtered);
+            renderSummary(allRows);
+        }
+
+        /* ——— RENDER TABLE ——— */
+        function renderTable(rows) {
+            const wrap = document.getElementById('results-table-wrap');
+
+            if (!rows.length) {
+                const msg = currentView === 'buy'
+                    ? 'You have enough of every color!'
+                    : currentView === 'have'
+                    ? 'No colors fully covered yet'
+                    : 'No colors in this pattern';
+                wrap.innerHTML = '<div class="no-results">' + escHtml(msg) + '</div>';
+                return;
+            }
+
+            const statusLabel = { own: 'Owned', need: 'Need', dont_own: "Don't Own", not_found: 'Not Found' };
+            const statusClass = { own: 'status-own', need: 'status-need', dont_own: 'status-dont_own', not_found: 'status-not_found' };
+
+            const si = (key) => {
+                if (sortKey !== key) return '';
+                return sortDir === -1 ? ' \u2193' : ' \u2191';
+            };
+
+            let html = '<table class="results-table"><thead><tr>'
+                + '<th style="width:36px"></th>'
+                + '<th class="' + (sortKey === 'dmc' ? 'sorted' : '') + '" onclick="setSortKey(\'dmc\')">' + escHtml(patternBrand) + si('dmc') + '</th>'
+                + '<th class="' + (sortKey === 'name' ? 'sorted' : '') + '" onclick="setSortKey(\'name\')">Name' + si('name') + '</th>'
+                + '<th class="' + (sortKey === 'stitches' ? 'sorted' : '') + '" onclick="setSortKey(\'stitches\')">Stitches' + si('stitches') + '</th>'
+                + '<th class="' + (sortKey === 'skeinsNeeded' ? 'sorted' : '') + '" onclick="setSortKey(\'skeinsNeeded\')">Skeins' + si('skeinsNeeded') + '</th>'
+                + '<th class="' + (sortKey === 'owned' ? 'sorted' : '') + '" onclick="setSortKey(\'owned\')">Owned' + si('owned') + '</th>'
+                + '<th class="' + (sortKey === 'toBuy' ? 'sorted' : '') + '" onclick="setSortKey(\'toBuy\')">To Buy' + si('toBuy') + '</th>'
+                + '<th>Status</th>'
+                + '</tr></thead><tbody>';
+
+            for (const r of rows) {
+                const swatch = safeHex(r.hex);
+                const dim = r.toBuy === 0 ? ' dim' : '';
+                const buyClass = r.toBuy === 0 ? 'purchase-zero' : 'purchase-qty';
+                const tid = r.thread_id || '';
+
+                html += '<tr class="' + dim + '">'
+                    + '<td><span class="color-swatch" style="background:' + swatch + '"></span></td>'
+                    + '<td><span class="dmc-num">' + escHtml(r.dmc) + '</span></td>'
+                    + '<td><span class="thread-name">' + escHtml(r.name || '\u2014') + '</span></td>'
+                    + '<td>' + fmtStitches(r.stitches) + '</td>'
+                    + '<td>' + r.skeinsNeeded.toFixed(2) + '</td>'
+                    + '<td><input type="number" class="qty-input" value="' + r.owned + '" min="0" step="0.5"'
+                    + ' data-dmc="' + escHtml(r.dmc) + '" data-tid="' + tid + '"'
+                    + ' onchange="updateOwned(this)"' + (tid ? '' : ' disabled title="Not in inventory"') + '></td>'
+                    + '<td><span class="' + buyClass + '">' + r.toBuy + '</span></td>'
+                    + '<td><span class="status-badge ' + (statusClass[r.status] || 'status-dont_own') + '">' + (statusLabel[r.status] || r.status || "Don't Own") + '</span></td>'
+                    + '</tr>';
+            }
+
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+        }
+
+        /* ——— RENDER SUMMARY ——— */
+        function renderSummary(rows) {
+            document.getElementById('pattern-name').textContent = patternName;
+
+            // Show "View Pattern →" link only for saved patterns
+            const vpLink = document.getElementById('view-pattern-link');
+            if (patternId) {
+                vpLink.href = '/view/' + patternId;
+                vpLink.style.display = 'inline';
+            } else {
+                vpLink.style.display = 'none';
+            }
+
+            const totalStitches = rows.reduce((s, r) => s + r.stitches, 0);
+            const haveEnough = rows.filter(r => r.toBuy === 0).length;
+            const needToBuy = rows.filter(r => r.toBuy > 0).length;
+            const totalSkeinsToBuy = rows.reduce((s, r) => s + r.toBuy, 0);
+
+            document.getElementById('stat-colors').textContent = rows.length;
+            document.getElementById('stat-stitches').textContent = fmtStitches(Math.round(totalStitches));
+            document.getElementById('stat-have').textContent = haveEnough;
+            document.getElementById('stat-buy').textContent = needToBuy;
+            document.getElementById('stat-skeins').textContent = totalSkeinsToBuy;
+
+            const hasUnowned = rows.some(r => r.status === 'dont_own');
+            document.getElementById('mark-need-btn').disabled = !hasUnowned;
+        }
+
+        /* ——— INLINE OWNED UPDATE ——— */
+        async function updateOwned(inputEl) {
+            const qty = Math.max(0, parseFloat(inputEl.value) || 0);
+            const dmc = inputEl.dataset.dmc;
+            const tid = inputEl.dataset.tid;
+            if (!tid) return;
+
+            inputEl.value = qty;
+
+            try {
+                await fetch('/api/threads/' + tid, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skein_qty: qty })
+                });
+
+                const entry = patternData.find(e => e.dmc === dmc);
+                if (entry) entry.skein_qty = qty;
+                recalculate();
+            } catch (err) {
+                toast('Could not update skein count.', { type: 'error' });
+            }
+        }
+
+        /* ——— VIEW TOGGLE ——— */
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            recalculate();
+        }
+
+        /* ——— SORT ——— */
+        function setSortKey(key) {
+            if (sortKey === key) {
+                sortDir *= -1;
+            } else {
+                sortKey = key;
+                sortDir = -1;
+            }
+            recalculate();
+        }
+
+        /* ——— MARK ALL NEED ——— */
+        async function markAllNeed() {
+            const unowned = patternData
+                .filter(c => c.status === 'dont_own')
+                .map(c => c.dmc);
+
+            if (!unowned.length) return;
+
+            const btn = document.getElementById('mark-need-btn');
+            btn.disabled = true;
+            btn.textContent = 'Updating\u2026';
+
+            try {
+                const resp = await fetch('/api/pattern/mark-need', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ thread_numbers: unowned })
+                });
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    btn.textContent = 'Error';
+                    setTimeout(() => { btn.textContent = 'Mark unowned as Need'; btn.disabled = false; }, 2000);
+                    return;
+                }
+
+                patternData.forEach(c => {
+                    if (c.status === 'dont_own' && unowned.includes(c.dmc)) {
+                        c.status = 'need';
+                    }
+                });
+
+                btn.textContent = 'Marked ' + data.updated + ' as Need';
+                recalculate();
+                setTimeout(() => { btn.textContent = 'Mark unowned as Need'; }, 2500);
+            } catch (err) {
+                btn.textContent = 'Network error';
+                setTimeout(() => { btn.textContent = 'Mark unowned as Need'; btn.disabled = false; }, 2000);
+            }
+        }
+
+        /* ——— PRINT ——— */
+        function printShoppingList() {
+            const prev = currentView;
+            setView('buy');
+            setTimeout(() => { window.print(); setView(prev); }, 100);
+        }
+
+        /* ——— CSV EXPORT ——— */
+        function downloadCSV() {
+            const buyRows = allRows.filter(r => r.toBuy > 0);
+            if (!buyRows.length) return;
+
+            let csv = patternBrand + ',Name,Stitches,Skeins Needed,Owned,To Buy\n';
+            for (const r of buyRows) {
+                csv += '"' + r.dmc + '","' + (r.name || '').replace(/"/g, '""') + '",'
+                    + r.stitches + ',' + r.skeinsNeeded.toFixed(2) + ','
+                    + r.owned + ',' + r.toBuy + '\n';
+            }
+
+            downloadBlob(csv, (patternName || 'floss') + '-shopping-list.csv', 'text/csv');
+        }
+
+        /* ——— UI HELPERS ——— */
+        function showSpinner(on) {
+            document.getElementById('spinner').classList.toggle('visible', on);
+        }
+
+        function showResults() {
+            document.getElementById('settings-bar').classList.add('visible');
+            document.getElementById('summary-bar').classList.add('visible');
+            document.getElementById('view-bar').classList.add('visible');
+            document.getElementById('results-card').classList.add('visible');
+        }
+
+        function hideResults() {
+            document.getElementById('settings-bar').classList.remove('visible');
+            document.getElementById('summary-bar').classList.remove('visible');
+            document.getElementById('view-bar').classList.remove('visible');
+            document.getElementById('results-card').classList.remove('visible');
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('load-error');
+            el.textContent = msg;
+            el.classList.add('visible');
+        }
+
+        function clearError() {
+            document.getElementById('load-error').classList.remove('visible');
+        }
+
+        Dropdown.initAll('select.ctrl-select', { variant: 'lg', fullWidth: true });
+        init();
+    </script>
+{% endblock %}

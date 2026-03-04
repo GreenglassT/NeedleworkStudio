@@ -1,0 +1,1479 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Patterns — Needlework Studio{% endblock %}
+{% block brand_name %}Saved Patterns{% endblock %}
+
+{% block head %}
+    <style>
+        /* (reset, header, and nav styles now in tokens.css) */
+
+        /* ——— PAGE ——— */
+        .patterns-page {
+            max-width: 1640px;
+            margin: 0 auto;
+            padding: 36px 28px;
+        }
+
+        .page-heading-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .page-heading-row h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .count-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-left: 12px;
+            letter-spacing: .04em;
+        }
+
+        .new-pattern-wrap {
+            position: relative;
+        }
+
+        .btn-new-pattern {
+            padding: 9px 18px;
+            background: transparent;
+            border: 1px solid var(--gold-dim);
+            border-radius: var(--r);
+            color: var(--gold);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .06em;
+            text-decoration: none;
+            transition: all var(--t);
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .btn-new-pattern:hover { background: var(--gold-dim); color: var(--text); }
+
+        .new-pattern-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            min-width: 160px;
+            z-index: 50;
+            box-shadow: 0 4px 16px rgba(0,0,0,.25);
+        }
+
+        .new-pattern-dropdown.open { display: block; }
+
+        .new-pattern-dropdown a {
+            display: block;
+            padding: 10px 16px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color var(--t), background var(--t);
+        }
+
+        .new-pattern-dropdown a:first-child { border-radius: var(--r) var(--r) 0 0; }
+        .new-pattern-dropdown a:last-child  { border-radius: 0 0 var(--r) var(--r); }
+        .new-pattern-dropdown a:hover { color: var(--text); background: var(--surface-2); }
+
+        /* ——— GALLERY GRID ——— */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        /* ——— CARD ——— */
+        .pattern-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            display: flex;
+            flex-direction: column;
+            transition: border-color var(--t);
+        }
+
+        .pattern-card:hover { border-color: var(--border-2); }
+
+        /* ——— SELECTION MODE ——— */
+        .pattern-card.selected {
+            outline: 2px solid var(--gold);
+            outline-offset: -2px;
+            background: rgba(200,145,58,.07);
+        }
+        .pattern-card { position: relative; }
+        .card-select-check {
+            position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.6); background: rgba(0,0,0,.4);
+            display: none; align-items: center; justify-content: center;
+            font-size: 13px; color: transparent; transition: all var(--t); pointer-events: none; z-index: 5;
+        }
+        body.selection-mode .card-select-check { display: flex; }
+        .pattern-card.selected .card-select-check { background: var(--gold); border-color: var(--gold); color: #000; }
+        body.selection-mode .pattern-card { cursor: pointer; }
+        body.selection-mode .card-actions { display: none; }
+        body.selection-mode .card-name { pointer-events: none; }
+        body.selection-mode .status-select,
+        body.selection-mode .dmc-dropdown { pointer-events: none; }
+
+        /* ——— SELECT-ALL BAR ——— */
+        .select-all-bar { background: var(--surface-2); border-bottom: 1px solid var(--border); display: none; }
+        .select-all-inner { max-width: 1640px; margin: 0 auto; padding: 7px 28px; display: flex; align-items: center; gap: 14px; }
+        .select-count-hint { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); }
+
+        /* ——— BULK BAR ——— */
+        .bulk-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 95;
+            background: var(--surface); border-top: 1px solid var(--border-2);
+            box-shadow: 0 -6px 24px rgba(0,0,0,.5); display: none;
+        }
+        .bulk-bar-inner { max-width: 1640px; margin: 0 auto; padding: 12px 28px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .bulk-count { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text); min-width: 90px; flex-shrink: 0; }
+        .bulk-actions { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+        .bulk-btn {
+            padding: 7px 16px; border: 1px solid var(--border-2); border-radius: var(--r);
+            background: var(--surface-2); color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .04em;
+            cursor: pointer; transition: all var(--t);
+        }
+        .bulk-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+        .bulk-btn.bulk-danger:hover { border-color: var(--skip); color: var(--skip); background: var(--skip-bg); }
+        .bulk-clear {
+            padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--r);
+            background: transparent; color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; cursor: pointer; transition: all var(--t); margin-left: auto;
+        }
+        .bulk-clear:hover { color: var(--text-muted); border-color: var(--border-2); }
+        /* status-specific bulk hover colors */
+        .bulk-btn.bulk-todo:hover     { border-color: var(--ps-todo, var(--text-dim)); color: var(--ps-todo, var(--text-dim)); }
+        .bulk-btn.bulk-progress:hover { border-color: var(--gold); color: var(--gold); }
+        .bulk-btn.bulk-done:hover     { border-color: var(--owned); color: var(--owned); }
+
+        .card-thumb {
+            background: var(--surface-2);
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: var(--r-lg) var(--r-lg) 0 0;
+        }
+
+        .thumb-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            transition: transform .25s cubic-bezier(.16,1,.3,1);
+        }
+
+        .card-thumb:hover .thumb-img { transform: scale(1.35); }
+
+        .thumb-placeholder { font-size: 40px; opacity: 0.2; }
+
+        .card-body {
+            padding: 14px 16px 10px;
+            flex: 1;
+        }
+
+        .card-name-wrap { margin-bottom: 8px; }
+
+        .card-name {
+            display: block;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: text;
+            border-bottom: 1px solid transparent;
+            transition: border-color var(--t);
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        .card-name:hover { border-bottom-color: var(--border-2); }
+
+        .card-name-input {
+            display: none;
+            width: 100%;
+            padding: 3px 6px;
+            background: var(--surface-2);
+            border: 1px solid var(--gold-dim);
+            border-radius: var(--r);
+            color: var(--text);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 17px;
+            outline: none;
+        }
+
+        .card-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .04em;
+            line-height: 1.7;
+        }
+
+        .card-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 0 16px 14px;
+        }
+
+        .card-btn-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .card-btn {
+            flex: 1;
+            padding: 7px 10px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--t);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+        /* ——— CARD DROPDOWN MENUS ——— */
+        .card-dropdown-wrap {
+            position: relative;
+            flex: 1;
+        }
+
+        .card-dropdown-btn {
+            width: 100%;
+            padding: 7px 10px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--t);
+        }
+
+        .card-dropdown-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+        .card-dropdown-btn.open { border-color: var(--gold-dim); color: var(--gold); }
+
+        .card-dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            z-index: 50;
+            box-shadow: 0 -4px 16px rgba(0,0,0,.25);
+            min-width: 140px;
+        }
+
+        .card-dropdown-menu.open { display: block; }
+
+        .card-dropdown-menu a,
+        .card-dropdown-menu button {
+            display: block;
+            width: 100%;
+            padding: 9px 14px;
+            background: none;
+            border: none;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+            text-decoration: none;
+            text-align: left;
+            cursor: pointer;
+            transition: color var(--t), background var(--t);
+        }
+
+        .card-dropdown-menu a:first-child,
+        .card-dropdown-menu button:first-child { border-radius: var(--r) var(--r) 0 0; }
+        .card-dropdown-menu > *:last-child { border-radius: 0 0 var(--r) var(--r); }
+
+        .card-dropdown-menu a:hover,
+        .card-dropdown-menu button:hover { color: var(--text); background: var(--surface-2); }
+
+        .card-dropdown-sep {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        .card-dropdown-menu .card-menu-danger:hover {
+            color: var(--skip);
+            background: var(--skip-bg);
+        }
+
+        /* ——— EMPTY STATE ——— */
+        .empty-state {
+            display: none;
+            text-align: center;
+            padding: 80px 40px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+        }
+
+        .empty-icon { font-size: 48px; opacity: 0.2; margin-bottom: 16px; }
+
+        .empty-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 20px;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        .empty-link {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--gold);
+            text-decoration: none;
+            letter-spacing: .06em;
+        }
+
+        .empty-link:hover { color: var(--gold-hover); }
+
+        /* ——— ERROR ——— */
+        .page-error {
+            display: none;
+            padding: 14px 18px;
+            background: var(--skip-bg);
+            border: 1px solid var(--skip);
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #d07070;
+            letter-spacing: .02em;
+        }
+
+        /* ——— SKELETON LOADING ——— */
+        @keyframes shimmer {
+            0%   { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+
+        .skeleton-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+        }
+
+        .skeleton-thumb {
+            height: 160px;
+            background: var(--surface-2);
+        }
+
+        .skeleton-body { padding: 14px 16px 14px; }
+
+        .skeleton-line {
+            height: 12px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.5s ease infinite;
+        }
+
+        .skeleton-line.sk-title { height: 16px; width: 70%; margin-bottom: 10px; }
+        .skeleton-line.sk-meta  { width: 50%; margin-bottom: 6px; }
+        .skeleton-line.sk-date  { width: 35%; }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 600px) {
+            .patterns-page { padding: 24px 16px; }
+            .header-inner { padding: 0 16px; }
+        }
+
+        /* page-specific tokens */
+        :root { --ps-todo: #8a8a8a; --ps-todo-bg: rgba(138,138,138,.12); --ps-todo-border: #4a4a4a; }
+        [data-theme="light"] { --ps-todo: #5a5a5a; --ps-todo-bg: rgba(90,90,90,.08); --ps-todo-border: #b0b0b0; }
+
+        /* ——— FILTER ROW ——— */
+        .toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+        .select-btn {
+            padding: 5px 14px; border: 1px solid var(--border-2); border-radius: var(--r);
+            background: transparent; color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .04em;
+            cursor: pointer; transition: all var(--t); white-space: nowrap;
+        }
+        .select-btn:hover { border-color: var(--gold-dim); color: var(--text-muted); }
+        .select-btn.active { border-color: var(--gold); color: var(--gold); }
+
+        .pattern-search {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            padding: 5px 10px;
+            border: 1px solid var(--border-2);
+            border-radius: 20px;
+            background: transparent;
+            color: var(--text);
+            width: 160px;
+            transition: border-color var(--t);
+        }
+        .pattern-search::placeholder { color: var(--text-dim); }
+        .pattern-search:focus { outline: none; border-color: var(--gold-dim); }
+
+        /* Sort dropdown pushed right */
+        .dmc-dropdown--pill { margin-left: auto; }
+
+        .filter-btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .06em;
+            padding: 5px 12px;
+            border: 1px solid var(--border-2);
+            border-radius: 20px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--t);
+        }
+
+        .filter-btn:hover { color: var(--text); border-color: var(--border-2); }
+        .filter-btn.active { background: var(--surface-2); color: var(--text); border-color: var(--border-2); }
+        .filter-btn.active.f-progress { background: var(--need-bg);  color: var(--need);  border-color: var(--need-border); }
+        .filter-btn.active.f-done     { background: var(--owned-bg); color: var(--owned); border-color: var(--owned-border); }
+        .filter-btn.active.f-todo     { background: var(--ps-todo-bg); color: var(--ps-todo); border-color: var(--ps-todo-border); }
+
+        /* Status dropdown spacing */
+        .card-body .dmc-dropdown--status { margin-top: 8px; }
+
+        /* ——— PROGRESS BADGE ——— */
+        .progress-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width .3s ease;
+        }
+
+        .progress-fill.pf-zero    { width: 0; background: var(--border-2); }
+        .progress-fill.pf-partial { background: var(--need); }
+        .progress-fill.pf-done    { background: var(--owned); }
+
+        .progress-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            letter-spacing: .04em;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .progress-text.pt-done { color: var(--owned); }
+
+        /* ——— CARD BORDER BY STATUS ——— */
+        .pattern-card[data-status="in_progress"] { border-color: var(--need-border); }
+        .pattern-card[data-status="completed"]   { border-color: var(--owned-border); }
+
+        /* ——— SHOPPING MODAL ——— */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.72);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; backdrop-filter: blur(5px); padding: 20px;
+        }
+        .modal-box {
+            background: var(--surface); border: 1px solid var(--border-2);
+            border-radius: var(--r-lg); width: 100%; max-width: 520px; max-height: 85vh;
+            display: flex; flex-direction: column; box-shadow: 0 28px 70px rgba(0,0,0,.7);
+            animation: modalIn .22s cubic-bezier(.16,1,.3,1);
+        }
+        @keyframes modalIn { from { opacity:0; transform:scale(.96) translateY(6px); } to { opacity:1; transform:none; } }
+        .modal-hd { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border); }
+        .modal-title { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:600; color:var(--text); }
+        .modal-close {
+            background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted);
+            width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+            cursor:pointer; font-size:16px; transition:all var(--t); line-height:1;
+        }
+        .modal-close:hover { background:var(--skip-bg); border-color:var(--skip); color:#d07070; }
+        .modal-body { overflow-y:auto; padding:10px 20px; flex:1; }
+        .modal-ft { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .state-msg { display:flex; flex-direction:column; align-items:center; gap:10px; padding:40px 20px; color:var(--text-muted); }
+        .shop-section-hd {
+            font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase;
+            letter-spacing:.12em; color:var(--text-dim); padding:10px 0 5px;
+            border-bottom:1px solid var(--border); margin-bottom:4px;
+        }
+        .shop-section-hd:not(:first-child) { margin-top:12px; }
+        .shop-item { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
+        .shop-item:last-of-type { border-bottom:none; }
+        .shop-swatch { width:36px; height:36px; border-radius:6px; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+        .shop-info { flex:1; min-width:0; }
+        .shop-dmc { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-muted); }
+        .shop-name { font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .shop-badge { font-family:'IBM Plex Mono',monospace; font-size:9px; padding:2px 6px; border-radius:3px; letter-spacing:.05em; flex-shrink:0; }
+        .shop-badge.need  { background:var(--need-bg);  color:var(--need);  border:1px solid var(--need-border); }
+        .shop-badge.skip  { background:var(--skip-bg);  color:var(--skip);  border:1px solid var(--skip-border); }
+        .shop-badge.owned { background:var(--owned-bg); color:var(--owned); border:1px solid var(--owned-border); }
+        .modal-btn {
+            padding:8px 16px; border-radius:var(--r); font-family:'IBM Plex Mono',monospace;
+            font-size:11px; letter-spacing:.04em; cursor:pointer; transition:all var(--t);
+            border:1px solid var(--border-2); background:transparent; color:var(--text-muted);
+        }
+        .modal-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
+        .modal-btn:disabled { opacity:.5; cursor:default; }
+        .modal-btn-primary { background:var(--need-bg); border-color:var(--need-border); color:var(--need); }
+        .modal-btn-primary:hover { border-color:var(--need); }
+        .modal-all-owned { text-align:center; padding:30px 20px; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:18px; color:var(--text-dim); }
+    </style>
+    <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='pdf-export.js') }}"></script>
+    <script src="{{ url_for('static', filename='svg-export.js') }}"></script>
+    <script src="{{ url_for('static', filename='oxs-export.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="patterns-page">
+        <div class="page-heading-row">
+            <div>
+                <h1>Saved Patterns<span class="count-badge" id="count-badge"></span></h1>
+            </div>
+            <div class="new-pattern-wrap">
+                <button class="btn-new-pattern" onclick="toggleNewMenu(event)">+ New Pattern</button>
+                <div class="new-pattern-dropdown" id="new-pattern-menu">
+                    <a href="/image-to-pattern">Convert Image</a>
+                    <a href="/pdf-to-pattern">Import PDF</a>
+                    <a href="/json-to-pattern">Import JSON</a>
+                    <a href="/create-pattern">Blank Canvas</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="toolbar-row">
+            <div class="filter-row" id="filter-row">
+                <button class="filter-btn active" data-filter="">All</button>
+                <button class="filter-btn f-todo"     data-filter="not_started">Not Started</button>
+                <button class="filter-btn f-progress" data-filter="in_progress">In Progress</button>
+                <button class="filter-btn f-done"     data-filter="completed">Completed</button>
+            </div>
+            <div class="toolbar-sep"></div>
+            <input type="text" class="pattern-search" id="pattern-search" placeholder="Search name…" maxlength="100">
+            <select class="sort-select" id="sort-select">
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="name-az">Name A–Z</option>
+                <option value="name-za">Name Z–A</option>
+            </select>
+            <button class="select-btn" id="select-btn" onclick="toggleSelectionMode()">Select</button>
+        </div>
+
+        <div class="select-all-bar" id="select-all-bar">
+            <div class="select-all-inner">
+                <button class="select-btn" onclick="selectAllVisible()">Select all visible</button>
+                <span id="select-count-hint" class="select-count-hint"></span>
+            </div>
+        </div>
+
+        <div class="page-error" id="page-error"></div>
+        <div class="empty-state" id="empty-state">
+            <div class="empty-icon"><i class="ti ti-needle"></i></div>
+            <div class="empty-text">No saved patterns yet.</div>
+            <a href="/image-to-pattern" class="empty-link">Generate your first pattern <i class="ti ti-arrow-right"></i></a>
+        </div>
+        <div class="gallery" id="gallery"></div>
+    </div>
+
+    <div class="bulk-bar" id="bulk-bar">
+        <div class="bulk-bar-inner">
+            <span class="bulk-count" id="bulk-count"></span>
+            <div class="bulk-actions">
+                <button class="bulk-btn bulk-danger" onclick="bulkDelete()"><i class="ti ti-trash"></i> Delete</button>
+                <button class="bulk-btn bulk-todo"     onclick="bulkSetStatus('not_started')">Not Started</button>
+                <button class="bulk-btn bulk-progress" onclick="bulkSetStatus('in_progress')">In Progress</button>
+                <button class="bulk-btn bulk-done"     onclick="bulkSetStatus('completed')">Completed</button>
+                <div class="card-dropdown-wrap" style="flex:none">
+                    <button class="bulk-btn" id="bulk-export-btn" onclick="toggleCardMenu(event, 'bulk-export')"><i class="ti ti-download"></i> Export <span style="font-size:9px">▾</span></button>
+                    <div class="card-dropdown-menu" data-menu="bulk-export">
+                        <button onclick="bulkExport('pdf')">PDF</button>
+                        <button onclick="bulkExport('svg')">SVG</button>
+                        <button onclick="bulkExport('oxs')">OXS</button>
+                        <button onclick="bulkExport('json')">JSON</button>
+                    </div>
+                </div>
+            </div>
+            <button class="bulk-clear" onclick="clearSelection()">Clear</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="shopping-modal" style="display:none">
+        <div class="modal-box">
+            <div class="modal-hd">
+                <div class="modal-title" id="shopping-modal-title">Shopping List</div>
+                <button class="modal-close" onclick="closeShoppingModal()" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" id="shopping-modal-body">
+                <div class="state-msg"><div class="spinner"></div></div>
+            </div>
+            <div class="modal-ft" id="shopping-modal-footer"></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        /* ——— NEW PATTERN DROPDOWN ——— */
+        function toggleNewMenu(e) {
+            e.stopPropagation();
+            document.getElementById('new-pattern-menu').classList.toggle('open');
+        }
+
+        /* ——— CARD DROPDOWN MENUS ——— */
+        function toggleCardMenu(e, menuType) {
+            e.stopPropagation();
+            const wrap = e.currentTarget.closest('.card-dropdown-wrap');
+            const menu = wrap.querySelector('.card-dropdown-menu');
+            const btn = e.currentTarget;
+            const wasOpen = menu.classList.contains('open');
+
+            // Close all card menus first
+            closeAllCardMenus();
+
+            if (!wasOpen) {
+                menu.classList.add('open');
+                btn.classList.add('open');
+            }
+        }
+
+        function closeAllCardMenus() {
+            document.querySelectorAll('.card-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+            document.querySelectorAll('.card-dropdown-btn.open').forEach(b => b.classList.remove('open'));
+        }
+
+        document.addEventListener('click', () => {
+            document.getElementById('new-pattern-menu').classList.remove('open');
+            closeAllCardMenus();
+        });
+
+        /* ——— GALLERY ——— */
+        let allPatterns  = [];
+        let activeFilter = '';
+        let selectionMode = false;
+        let selectedIds   = new Set();
+
+        function _showSkeletons() {
+            const gallery = document.getElementById('gallery');
+            const sk = `<div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-body">
+                    <div class="skeleton-line sk-title"></div>
+                    <div class="skeleton-line sk-meta"></div>
+                    <div class="skeleton-line sk-date"></div>
+                </div>
+            </div>`;
+            gallery.innerHTML = sk.repeat(6);
+        }
+
+        async function loadGallery() {
+            _showSkeletons();
+            try {
+                const resp = await fetch('/api/saved-patterns');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                allPatterns = await resp.json();
+                _applyFilter();
+            } catch (err) {
+                document.getElementById('gallery').innerHTML = '';
+                const errEl = document.getElementById('page-error');
+                errEl.textContent = 'Could not load patterns: ' + err.message;
+                errEl.style.display = 'block';
+            }
+        }
+
+        function _applyFilter() {
+            const gallery = document.getElementById('gallery');
+            const empty   = document.getElementById('empty-state');
+            const badge   = document.getElementById('count-badge');
+            const query   = (document.getElementById('pattern-search').value || '').trim().toLowerCase();
+
+            let filtered = activeFilter
+                ? allPatterns.filter(p => (p.project_status || 'not_started') === activeFilter)
+                : allPatterns.slice();
+
+            if (query) {
+                filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(query));
+            }
+
+            // Sort
+            const sort = document.getElementById('sort-select').value;
+            filtered.sort((a, b) => {
+                if (sort === 'oldest')  return (a.updated_at || '').localeCompare(b.updated_at || '');
+                if (sort === 'name-az') return (a.name || '').localeCompare(b.name || '');
+                if (sort === 'name-za') return (b.name || '').localeCompare(a.name || '');
+                return (b.updated_at || '').localeCompare(a.updated_at || ''); // newest (default)
+            });
+
+            badge.textContent = filtered.length ? `(${filtered.length})` : '';
+
+            if (!filtered.length) {
+                gallery.innerHTML = allPatterns.length && (activeFilter || query)
+                    ? `<div class="card-meta" style="padding:40px 0">No matching patterns.</div>`
+                    : '';
+                empty.style.display = !allPatterns.length ? 'block' : 'none';
+                return;
+            }
+            empty.style.display = 'none';
+            gallery.innerHTML = filtered.map(renderCard).join('');
+            _upgradeStatusSelects();
+        }
+
+        function _upgradeStatusSelects() {
+            document.querySelectorAll('select.status-select').forEach(function (sel) {
+                if (sel._dmcDropdown) return;
+                Dropdown.init(sel, {
+                    variant: 'status',
+                    fullWidth: true,
+                    onClassUpdate: function (wrapper, value) {
+                        wrapper.classList.remove('ps-not_started', 'ps-in_progress', 'ps-completed');
+                        wrapper.classList.add('ps-' + value);
+                    }
+                });
+            });
+        }
+
+        function renderCard(p) {
+            const thumbHtml = p.thumbnail
+                ? `<img class="thumb-img" src="${escHtml(p.thumbnail)}" alt="">`
+                : `<div class="thumb-placeholder">🧵</div>`;
+            const dateStr = p.updated_at ? p.updated_at.slice(0, 10) : (p.created_at ? p.created_at.slice(0, 10) : '');
+            const st = p.project_status || 'not_started';
+            const sel = (v) => st === v ? ' selected' : '';
+            const total = p.color_count || 0;
+            const done = st === 'completed' ? total : (p.completed_count || 0);
+            const pct = total ? Math.round(done / total * 100) : 0;
+            const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
+            const textClass = done >= total && total > 0 ? 'pt-done' : '';
+            const progressHtml = total > 0 ? `
+                        <div class="progress-badge">
+                            <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+                            <span class="progress-text ${textClass}">${done}/${total}</span>
+                        </div>` : '';
+            return `
+                <div class="pattern-card${selectedIds.has(p.slug) ? ' selected' : ''}" data-id="${p.slug}" data-status="${st}"
+                     onclick="cardClick(event, this, '${p.slug}')">
+                    <span class="card-select-check"><i class="ti ti-check"></i></span>
+                    <div class="card-thumb">${thumbHtml}</div>
+                    <div class="card-body">
+                        <div class="card-name-wrap">
+                            <span class="card-name" onclick="startRename(this, '${p.slug}')">${escHtml(p.name)}</span>
+                            <input class="card-name-input" type="text"
+                                   value="${escHtml(p.name)}" maxlength="120"
+                                   onblur="finishRename(this, '${p.slug}')"
+                                   onkeydown="nameInputKey(event, this, '${p.slug}')">
+                        </div>
+                        <div class="card-meta">${p.grid_w} × ${p.grid_h} &middot; ${p.color_count} colors</div>
+                        <div class="card-meta">${dateStr}</div>${progressHtml}
+                        <select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
+                            <option value="not_started"${sel('not_started')}>Not Started</option>
+                            <option value="in_progress"${sel('in_progress')}>In Progress</option>
+                            <option value="completed"${sel('completed')}>Completed</option>
+                        </select>
+                    </div>
+                    <div class="card-actions">
+                        <div class="card-btn-row">
+                            <a href="/view/${p.slug}" class="card-btn">View</a>
+                            <a href="/image-to-pattern?load=${p.slug}" class="card-btn">Edit</a>
+                        </div>
+                        <div class="card-btn-row">
+                            <div class="card-dropdown-wrap">
+                                <button class="card-dropdown-btn" onclick="toggleCardMenu(event, 'tools')">Tools \u25be</button>
+                                <div class="card-dropdown-menu" data-menu="tools">
+                                    <button data-pid="${p.slug}" data-pname="${escHtml(p.name)}" onclick="openShoppingModal(this.dataset.pid, this.dataset.pname)">Shopping List</button>
+                                    <a href="/pattern-calculator?pattern=${p.slug}">Project Materials Calculator</a>
+                                    <button onclick="duplicatePattern('${p.slug}', this)">Duplicate</button>
+                                    <div class="card-dropdown-sep"></div>
+                                    <button class="card-menu-danger" onclick="deletePattern('${p.slug}', this)">Delete</button>
+                                </div>
+                            </div>
+                            <div class="card-dropdown-wrap">
+                                <button class="card-dropdown-btn" onclick="toggleCardMenu(event, 'export')">Export \u25be</button>
+                                <div class="card-dropdown-menu" data-menu="export">
+                                    <button onclick="exportPDF('${p.slug}', this)">PDF</button>
+                                    <button onclick="exportSVG('${p.slug}', this)">SVG</button>
+                                    <button onclick="exportOXS('${p.slug}', this)">OXS</button>
+                                    <button onclick="exportJSON('${p.slug}', this)">JSON</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* ——— PROJECT STATUS ——— */
+        function setProjectStatus(slug, selectEl) {
+            const newStatus = selectEl.value;
+            const p = allPatterns.find(x => x.slug === slug);
+            if (p) p.project_status = newStatus;
+
+            const card = selectEl.closest('.pattern-card');
+            if (card) {
+                card.dataset.status = newStatus;
+                selectEl.className = `status-select ps-${newStatus}`;
+
+                // Update progress bar to reflect new status
+                const badge = card.querySelector('.progress-badge');
+                if (badge && p) {
+                    const total = p.color_count || 0;
+                    const done = newStatus === 'completed' ? total : (p.completed_count || 0);
+                    const pct = total ? Math.round(done / total * 100) : 0;
+                    const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
+                    const textClass = done >= total && total > 0 ? 'pt-done' : '';
+                    const fill = badge.querySelector('.progress-fill');
+                    fill.className = `progress-fill ${fillClass}`;
+                    fill.style.width = pct + '%';
+                    const txt = badge.querySelector('.progress-text');
+                    txt.className = `progress-text ${textClass}`;
+                    txt.textContent = `${done}/${total}`;
+                }
+
+                if (activeFilter && newStatus !== activeFilter) {
+                    card.style.opacity = '0';
+                    card.style.transition = 'opacity 200ms';
+                    setTimeout(() => _applyFilter(), 210);
+                }
+            }
+
+            fetch('/api/saved-patterns/' + slug, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_status: newStatus }),
+            }).then(function(r) {
+                if (r.ok) {
+                    if (p) {
+                        p.updated_at = new Date().toISOString();
+                        allPatterns.splice(allPatterns.indexOf(p), 1);
+                        allPatterns.unshift(p);
+                    }
+                    _applyFilter();
+                    toast('Status updated.', { type: 'success' });
+                }
+            });
+        }
+
+        /* ——— INLINE RENAME ——— */
+        function startRename(spanEl, patternId) {
+            const input = spanEl.nextElementSibling;
+            input.value = spanEl.textContent;
+            spanEl.style.display = 'none';
+            input.style.display = 'block';
+            input.select();
+        }
+
+        function nameInputKey(e, inputEl, patternId) {
+            if (e.key === 'Enter')  { e.preventDefault(); finishRename(inputEl, patternId); }
+            if (e.key === 'Escape') {
+                const span = inputEl.previousElementSibling;
+                inputEl.style.display = 'none';
+                span.style.display = 'block';
+            }
+        }
+
+        async function finishRename(inputEl, patternId) {
+            if (inputEl._renaming) return;
+            inputEl._renaming = true;
+
+            const newName = inputEl.value.trim() || 'Untitled';
+            const span = inputEl.previousElementSibling;
+
+            inputEl.style.display = 'none';
+            span.style.display = 'block';
+
+            if (newName === span.textContent) { inputEl._renaming = false; return; }
+
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName }),
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    const p = allPatterns.find(x => x.slug === patternId);
+                    if (p) {
+                        p.name = data.name;
+                        p.updated_at = new Date().toISOString();
+                        allPatterns.splice(allPatterns.indexOf(p), 1);
+                        allPatterns.unshift(p);
+                    }
+                    _applyFilter();
+                    toast('Pattern renamed.', { type: 'success' });
+                }
+            } catch (_) { toast('Rename failed.', { type: 'error' }); }
+            inputEl._renaming = false;
+        }
+
+        /* ——— DELETE ——— */
+        async function deletePattern(patternId, btn) {
+            const ok = await confirmDialog('Delete this pattern? This cannot be undone.', {
+                confirmText: 'Delete', danger: true
+            });
+            if (!ok) return;
+
+            btn.disabled = true;
+            btn.textContent = '…';
+
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId, { method: 'DELETE' });
+                if (resp.ok || resp.status === 204) {
+                    const card = btn.closest('.pattern-card');
+                    card.style.opacity = '0';
+                    card.style.transition = 'opacity 200ms';
+                    setTimeout(() => {
+                        allPatterns = allPatterns.filter(p => p.slug !== patternId);
+                        _applyFilter();
+                        toast('Pattern deleted.', { type: 'success' });
+                    }, 200);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Delete';
+                }
+            } catch (_) {
+                btn.disabled = false;
+                btn.textContent = 'Delete';
+                toast('Delete failed.', { type: 'error' });
+            }
+        }
+
+        /* ——— PDF EXPORT ——— */
+        async function exportPDF(patternId, btn) {
+            if (typeof window.jspdf === 'undefined') {
+                await alertDialog('jsPDF not loaded — refresh and try again.', { type: 'error' });
+                return;
+            }
+            // Show progress on the visible "Export ▾" parent button, not the hidden dropdown item
+            const exportBtn = btn.closest('.card-dropdown-wrap')?.querySelector('.card-dropdown-btn');
+            const target = exportBtn || btn;
+            const origHTML = target.innerHTML;
+            target.disabled = true;
+            target.innerHTML = '<i class="ti ti-loader-2 spin"></i> Loading\u2026';
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const p = await resp.json();
+                await generatePatternPDF(p.name, {
+                    grid: p.grid_data,
+                    grid_w: p.grid_w,
+                    grid_h: p.grid_h,
+                    legend: p.legend_data,
+                    brand: p.brand || 'DMC',
+                    part_stitches: p.part_stitches || [],
+                    backstitches: p.backstitches || [],
+                    knots: p.knots || [],
+                }, {
+                    onProgress(done, total) {
+                        target.innerHTML = '<i class="ti ti-loader-2 spin"></i> ' + done + '/' + total;
+                    }
+                });
+            } catch (err) {
+                toast('Could not export PDF: ' + err.message, { type: 'error' });
+            } finally {
+                target.disabled = false;
+                target.innerHTML = origHTML;
+            }
+        }
+
+        /* ——— JSON EXPORT ——— */
+        async function exportJSON(patternId, btn) {
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '…';
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const p = await resp.json();
+
+                const legend = p.legend_data.map(function (e) {
+                    return {
+                        dmc: e.dmc, hex: e.hex, name: e.name,
+                        symbol: e.symbol, stitches: e.stitches, category: e.category,
+                    };
+                });
+
+                const payload = {
+                    format: 'needlework-studio',
+                    version: 1,
+                    exported_at: new Date().toISOString(),
+                    name: p.name,
+                    brand: p.brand || 'DMC',
+                    grid_w: p.grid_w,
+                    grid_h: p.grid_h,
+                    grid_data: p.grid_data,
+                    legend_data: legend,
+                    part_stitches: p.part_stitches || [],
+                    backstitches: p.backstitches || [],
+                    knots: p.knots || [],
+                };
+
+                const filename = patternSlug(p.name) + '_' + p.grid_w + 'x' + p.grid_h + '.json';
+
+                downloadBlob(JSON.stringify(payload, null, 2), filename, 'application/json');
+
+                toast('JSON exported.', { type: 'success' });
+            } catch (err) {
+                toast('Could not export JSON: ' + err.message, { type: 'error' });
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        }
+
+        /* ——— SVG EXPORT ——— */
+        async function exportSVG(patternId, btn) {
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '…';
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const p = await resp.json();
+                generatePatternSVG(p.name, {
+                    grid: p.grid_data, grid_w: p.grid_w,
+                    grid_h: p.grid_h, legend: p.legend_data,
+                    brand: p.brand || 'DMC',
+                    part_stitches: p.part_stitches || [],
+                    backstitches: p.backstitches || [],
+                    knots: p.knots || [],
+                });
+                toast('SVG exported.', { type: 'success' });
+            } catch (err) {
+                toast('Could not export SVG: ' + err.message, { type: 'error' });
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        }
+
+        /* ——— OXS EXPORT ——— */
+        async function exportOXS(patternId, btn) {
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '…';
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const p = await resp.json();
+                generatePatternOXS(p.name, {
+                    grid: p.grid_data, grid_w: p.grid_w,
+                    grid_h: p.grid_h, legend: p.legend_data,
+                    brand: p.brand || 'DMC',
+                    part_stitches: p.part_stitches || [],
+                    backstitches: p.backstitches || [],
+                    knots: p.knots || [],
+                });
+                toast('OXS exported.', { type: 'success' });
+            } catch (err) {
+                toast('Could not export OXS: ' + err.message, { type: 'error' });
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        }
+
+        /* ——— SHOPPING MODAL ——— */
+        let _shopPatternSlug = null, _shopPatternName = null;
+        let _shopUnowned = [], _shopNeed = [];
+
+        let _shopBrand = 'DMC';
+        async function openShoppingModal(patternSlug, patternName) {
+            _shopPatternSlug = patternSlug; _shopPatternName = patternName;
+            _shopUnowned = []; _shopNeed = [];
+            const modal = document.getElementById('shopping-modal');
+            document.getElementById('shopping-modal-title').textContent = 'Shopping List — ' + patternName;
+            document.getElementById('shopping-modal-body').innerHTML = '<div class="state-msg"><div class="spinner"></div></div>';
+            document.getElementById('shopping-modal-footer').innerHTML = '';
+            modal.style.display = 'flex';
+            try {
+                const patRes = await fetch('/api/saved-patterns/' + patternSlug);
+                if (!patRes.ok) throw new Error('Could not load pattern');
+                const pattern = await patRes.json();
+                _shopBrand = pattern.brand || 'DMC';
+                const invRes = await fetch('/api/threads?brand=' + encodeURIComponent(_shopBrand));
+                if (!invRes.ok) throw new Error('Could not load data');
+                const inv     = await invRes.json();
+                const statusMap = {};
+                for (const t of inv) statusMap[String(t.number)] = t.status;
+                const owned = [], need = [], unowned = [];
+                for (const e of (pattern.legend_data || [])) {
+                    const live = statusMap[String(e.dmc)] || 'dont_own';
+                    const entry = { ...e, live };
+                    if (live === 'own')  owned.push(entry);
+                    else if (live === 'need') need.push(entry);
+                    else unowned.push(entry);
+                }
+                _shopUnowned = unowned; _shopNeed = need;
+                if (!unowned.length && !need.length) {
+                    document.getElementById('shopping-modal-body').innerHTML =
+                        '<div class="modal-all-owned">You own all threads for this pattern.</div>';
+                    return;
+                }
+                let html = '';
+                if (unowned.length) { html += '<div class="shop-section-hd">Need to Buy</div>' + unowned.map(t => _shopItem(t, 'skip')).join(''); }
+                if (need.length)    { html += '<div class="shop-section-hd">On Your List</div>' + need.map(t => _shopItem(t, 'need')).join(''); }
+                if (owned.length)   { html += '<div class="shop-section-hd">Already Own</div>' + owned.map(t => _shopItem(t, 'owned')).join(''); }
+                document.getElementById('shopping-modal-body').innerHTML = html;
+                let ftHtml = '';
+                if (unowned.length) ftHtml += `<button class="modal-btn modal-btn-primary" id="shop-mark-btn" onclick="markPatternNeed()">Mark ${unowned.length} as Need</button>`;
+                if (unowned.length + need.length > 0) ftHtml += `<button class="modal-btn" onclick="downloadShoppingCSV()">Download CSV (${unowned.length + need.length})</button>`;
+                document.getElementById('shopping-modal-footer').innerHTML = ftHtml;
+            } catch(err) {
+                document.getElementById('shopping-modal-body').innerHTML =
+                    `<div class="state-msg"><div style="color:var(--skip)">${escHtml(err.message)}</div></div>`;
+            }
+        }
+
+        function _shopItem(t, badgeClass) {
+            const label = badgeClass === 'skip' ? "Don't Own" : badgeClass === 'need' ? 'On List' : 'Owned';
+            return `<div class="shop-item">
+                <div class="shop-swatch" style="background:${escHtml(t.hex||'#888')}"></div>
+                <div class="shop-info">
+                    <div class="shop-dmc">${escHtml(_shopBrand)} ${escHtml(String(t.dmc))}</div>
+                    <div class="shop-name" title="${escHtml(t.name||'')}">${escHtml(t.name||'—')}</div>
+                </div>
+                <span class="shop-badge ${badgeClass}">${label}</span>
+            </div>`;
+        }
+
+        async function markPatternNeed() {
+            if (!_shopUnowned.length) return;
+            const btn = document.getElementById('shop-mark-btn');
+            if (btn) { btn.disabled = true; btn.textContent = '…'; }
+            try {
+                const res = await fetch('/api/pattern/mark-need', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ thread_numbers: _shopUnowned.map(t => String(t.dmc)), brand: _shopBrand })
+                });
+                if (!res.ok) throw new Error('Request failed');
+                closeShoppingModal();
+                await openShoppingModal(_shopPatternSlug, _shopPatternName);
+            } catch(err) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Mark as Need'; }
+                toast('Could not mark threads: ' + err.message, { type: 'error' });
+            }
+        }
+
+        function downloadShoppingCSV() {
+            const toExport = [..._shopUnowned, ..._shopNeed];
+            if (!toExport.length) return;
+            const rows = [['Number','Name','Status']];
+            for (const t of toExport) rows.push([
+                `"${String(t.dmc).replace(/"/g,'""')}"`,
+                `"${String(t.name||'').replace(/"/g,'""')}"`,
+                `"${t.live === 'need' ? 'On List' : "Don't Own"}"`
+            ]);
+            const csv  = rows.map(r => r.join(',')).join('\r\n');
+            const fname = (_shopPatternName||'pattern').replace(/[^a-z0-9_\-]/gi,'_') + '-shopping-list.csv';
+            downloadBlob(csv, fname, 'text/csv;charset=utf-8;');
+        }
+
+        function closeShoppingModal() {
+            document.getElementById('shopping-modal').style.display = 'none';
+        }
+
+        document.getElementById('shopping-modal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeShoppingModal();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeShoppingModal();
+                if (selectionMode) toggleSelectionMode();
+            }
+        });
+
+        document.getElementById('filter-row').addEventListener('click', e => {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+            activeFilter = btn.dataset.filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _applyFilter();
+        });
+
+        document.getElementById('pattern-search').addEventListener('input', () => _applyFilter());
+        document.getElementById('sort-select').addEventListener('change', () => {
+            localStorage.setItem('dmc-pat-sort', document.getElementById('sort-select').value);
+            _applyFilter();
+        });
+
+        /* ——— DUPLICATE ——— */
+        async function duplicatePattern(patternId, btn) {
+            btn.disabled = true;
+            btn.textContent = '…';
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const src = await resp.json();
+
+                const body = {
+                    name: src.name + ' (copy)',
+                    grid_w: src.grid_w,
+                    grid_h: src.grid_h,
+                    color_count: src.color_count,
+                    grid_data: src.grid_data,
+                    legend_data: src.legend_data,
+                    thumbnail: src.thumbnail || null,
+                    part_stitches: src.part_stitches || [],
+                    backstitches: src.backstitches || [],
+                    knots: src.knots || [],
+                };
+
+                const saveResp = await fetch('/api/saved-patterns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (!saveResp.ok) throw new Error('HTTP ' + saveResp.status);
+                const saved = await saveResp.json();
+
+                // Add to cache and re-render
+                allPatterns.unshift({
+                    slug: saved.slug,
+                    name: body.name,
+                    grid_w: body.grid_w,
+                    grid_h: body.grid_h,
+                    color_count: body.color_count,
+                    thumbnail: body.thumbnail,
+                    project_status: 'not_started',
+                    completed_count: 0,
+                    updated_at: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                });
+                _applyFilter();
+                toast('Pattern duplicated.', { type: 'success' });
+            } catch (err) {
+                toast('Could not duplicate: ' + err.message, { type: 'error' });
+            }
+            btn.disabled = false;
+            btn.textContent = 'Dupe';
+        }
+
+        /* ——— SELECTION MODE ——— */
+        function cardClick(event, el, id) {
+            if (!selectionMode) return;
+            // Don't intercept clicks on interactive elements
+            if (event.target.closest('a, button, input, select, textarea')) return;
+            event.preventDefault();
+            togglePatternSelection(id);
+            el.classList.toggle('selected', selectedIds.has(id));
+        }
+
+        function toggleSelectionMode() {
+            selectionMode = !selectionMode;
+            selectedIds.clear();
+            const btn = document.getElementById('select-btn');
+            btn.textContent = selectionMode ? 'Done' : 'Select';
+            btn.classList.toggle('active', selectionMode);
+            document.body.classList.toggle('selection-mode', selectionMode);
+            document.getElementById('select-all-bar').style.display = selectionMode ? 'block' : 'none';
+            document.getElementById('bulk-bar').style.display = 'none';
+            document.getElementById('select-count-hint').textContent = '';
+            _applyFilter();
+        }
+
+        function togglePatternSelection(id) {
+            if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+            _updateSelectionUI();
+        }
+
+        function selectAllVisible() {
+            const gallery = document.getElementById('gallery');
+            gallery.querySelectorAll('.pattern-card[data-id]').forEach(el => {
+                selectedIds.add(el.dataset.id);
+                el.classList.add('selected');
+            });
+            _updateSelectionUI();
+        }
+
+        function clearSelection() {
+            selectedIds.clear();
+            _updateSelectionUI();
+            _applyFilter();
+        }
+
+        function _updateSelectionUI() {
+            const n = selectedIds.size;
+            const show = selectionMode && n > 0;
+            document.getElementById('bulk-bar').style.display = show ? 'block' : 'none';
+            document.getElementById('bulk-count').textContent = n + ' selected';
+            const hint = document.getElementById('select-count-hint');
+            if (hint) hint.textContent = n > 0 ? `${n} selected` : '';
+        }
+
+        async function bulkDelete() {
+            if (!selectedIds.size) return;
+            const n = selectedIds.size;
+            const ok = await confirmDialog(`Delete ${n} pattern${n > 1 ? 's' : ''}? This cannot be undone.`, {
+                confirmText: 'Delete ' + n, danger: true
+            });
+            if (!ok) return;
+            const deleteBtn = document.querySelector('.bulk-btn.bulk-danger');
+            if (deleteBtn) { deleteBtn.disabled = true; deleteBtn.innerHTML = '<i class="ti ti-loader-2 spin"></i> Deleting\u2026'; }
+            try {
+                const resp = await fetch('/api/saved-patterns/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', slugs: Array.from(selectedIds) }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const result = await resp.json();
+                allPatterns = allPatterns.filter(p => !selectedIds.has(p.slug));
+                selectedIds.clear();
+                _updateSelectionUI();
+                _applyFilter();
+                toast(`${result.deleted} pattern${result.deleted !== 1 ? 's' : ''} deleted.`, { type: 'success' });
+            } catch (err) {
+                toast('Could not delete: ' + err.message, { type: 'error' });
+            } finally {
+                if (deleteBtn) { deleteBtn.disabled = false; deleteBtn.innerHTML = '<i class="ti ti-trash"></i> Delete'; }
+            }
+        }
+
+        async function bulkSetStatus(status) {
+            if (!selectedIds.size) return;
+            try {
+                const resp = await fetch('/api/saved-patterns/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'status', slugs: Array.from(selectedIds), status }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                // Update local data
+                for (const p of allPatterns) {
+                    if (selectedIds.has(p.slug)) p.project_status = status;
+                }
+                selectedIds.clear();
+                _updateSelectionUI();
+                _applyFilter();
+                toast('Status updated.', { type: 'success' });
+            } catch (err) {
+                toast('Could not update status: ' + err.message, { type: 'error' });
+            }
+        }
+
+        async function bulkExport(format) {
+            if (!selectedIds.size) return;
+            if (format === 'pdf' && typeof window.jspdf === 'undefined') {
+                await alertDialog('jsPDF not loaded — refresh and try again.', { type: 'error' });
+                return;
+            }
+            closeAllCardMenus();
+            const ids = Array.from(selectedIds);
+            const bulkBtn = document.getElementById('bulk-export-btn');
+            const origHTML = bulkBtn ? bulkBtn.innerHTML : '';
+            if (bulkBtn) { bulkBtn.disabled = true; bulkBtn.innerHTML = '<i class="ti ti-loader-2 spin"></i> Exporting…'; }
+            try {
+                const patterns = await Promise.all(ids.map(async id => {
+                    const resp = await fetch('/api/saved-patterns/' + id);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    return resp.json();
+                }));
+
+                if (format === 'json') {
+                    const payload = {
+                        format: 'needlework-studio-batch', version: 1,
+                        exported_at: new Date().toISOString(), count: patterns.length,
+                        patterns: patterns.map(p => ({
+                            name: p.name, brand: p.brand || 'DMC', grid_w: p.grid_w, grid_h: p.grid_h,
+                            grid_data: p.grid_data,
+                            legend_data: (p.legend_data || []).map(e => ({
+                                dmc: e.dmc, hex: e.hex, name: e.name,
+                                symbol: e.symbol, stitches: e.stitches, category: e.category,
+                            })),
+                            part_stitches: p.part_stitches || [],
+                            backstitches: p.backstitches || [],
+                            knots: p.knots || [],
+                        })),
+                    };
+                    downloadBlob(JSON.stringify(payload, null, 2), 'patterns-batch-' + ids.length + '.json', 'application/json');
+                } else {
+                    // Export each pattern individually for PDF/SVG/OXS
+                    for (let i = 0; i < patterns.length; i++) {
+                        const p = patterns[i];
+                        if (bulkBtn) bulkBtn.innerHTML = '<i class="ti ti-loader-2 spin"></i> ' + (i + 1) + '/' + patterns.length;
+                        const data = {
+                            grid: p.grid_data, grid_w: p.grid_w, grid_h: p.grid_h,
+                            legend: p.legend_data, brand: p.brand || 'DMC',
+                            part_stitches: p.part_stitches || [],
+                            backstitches: p.backstitches || [],
+                            knots: p.knots || [],
+                        };
+                        if (format === 'pdf') await generatePatternPDF(p.name, data);
+                        else if (format === 'svg') generatePatternSVG(p.name, data);
+                        else if (format === 'oxs') generatePatternOXS(p.name, data);
+                    }
+                }
+                const label = format.toUpperCase();
+                toast(`${patterns.length} pattern${patterns.length !== 1 ? 's' : ''} exported as ${label}.`, { type: 'success' });
+            } catch (err) {
+                toast('Could not export: ' + err.message, { type: 'error' });
+            } finally {
+                if (bulkBtn) { bulkBtn.disabled = false; bulkBtn.innerHTML = origHTML; }
+            }
+        }
+
+        // Init sort dropdown and restore saved preference
+        Dropdown.init(document.getElementById('sort-select'), { variant: 'pill' });
+        const savedPatSort = localStorage.getItem('dmc-pat-sort');
+        if (savedPatSort) document.getElementById('sort-select').value = savedPatSort;
+
+        loadGallery();
+    </script>
+{% endblock %}

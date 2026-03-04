@@ -1,0 +1,1418 @@
+{% extends "base.html" %}
+
+{% block title %}Thread Inventory — Needlework Studio{% endblock %}
+
+{% block brand_eyebrow %}<span id="brand-eyebrow-text">Thread Collection</span>{% endblock %}
+{% block brand_name %}Thread Inventory{% endblock %}
+
+{% block head %}
+    <style>
+        /* solid --skip-bg override for card backgrounds */
+        :root { --skip-bg: #2c1010; }
+
+        .brand-seg { flex-shrink: 0; }
+        .brand-badge {
+            display: inline-block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 8px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: var(--border);
+            color: var(--text-dim);
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        /* ——— STATS STRIP ——— */
+        .stats-strip {
+            display: flex;
+            gap: 0;
+            align-items: center;
+            padding-bottom: 18px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sstat {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+            padding: 0 24px 0 0;
+            margin-right: 24px;
+            border-right: 1px solid var(--border);
+        }
+
+        .sstat:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+
+        .sstat-val {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .sstat-val.v-owned { color: var(--owned); }
+        .sstat-val.v-need  { color: var(--need);  }
+        .sstat-val.v-skip  { color: var(--skip);  }
+
+        .sstat-lbl {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+        }
+
+        /* ——— CONTROLS ——— */
+        .controls-bar {
+            position: sticky;
+            top: 60px;
+            z-index: 90;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 28px;
+        }
+
+        .controls-inner {
+            max-width: 1640px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .ctrl-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-row + .ctrl-row {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 180px;
+            max-width: 320px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 15px;
+            pointer-events: none;
+            font-style: normal;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 10px 8px 30px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            transition: border-color var(--t);
+        }
+
+        .search-input::placeholder { color: var(--text-dim); }
+        .search-input:focus { outline: none; border-color: var(--gold-dim); }
+
+        .ctrl-group {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .ctrl-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .view-toggle {
+            display: flex;
+            margin-left: auto;
+            background: var(--surface-3);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 2px;
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px 13px;
+            border-radius: calc(var(--r) - 2px);
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            transition: all var(--t);
+        }
+
+        .view-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,.5);
+        }
+
+        /* ——— MAIN ——— */
+        .main-wrap {
+            max-width: 1640px;
+            margin: 0 auto;
+            padding: 22px 28px 40px;
+        }
+        body.bulk-active .main-wrap { padding-bottom: 90px; }
+
+        /* States */
+        .state-msg {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 80px 20px;
+            color: var(--text-muted);
+        }
+
+        .state-msg-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 22px;
+            color: var(--text-muted);
+        }
+
+        .state-msg-sub {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* ——— ZOOM CONTROL ——— */
+        .zoom-slider {
+            width: 72px;
+            accent-color: var(--gold-dim);
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .zoom-val {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            min-width: 32px;
+            text-align: right;
+        }
+
+        /* ——— GRID VIEW ——— */
+        .thread-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(calc(190px * var(--zoom, 1)), 1fr));
+            gap: 10px;
+        }
+
+        .thread-grid.active { display: grid; }
+
+        .thread-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            transition: transform var(--t), box-shadow var(--t), border-color var(--t);
+            animation: fadeUp .3s ease both;
+        }
+
+        .thread-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--border-2);
+            box-shadow: 0 10px 28px rgba(0,0,0,.5);
+        }
+
+        .thread-card.s-own  { border-color: var(--owned-border); }
+        .thread-card.s-need { border-color: var(--need-border);  }
+        .thread-card.s-skip { border-color: var(--skip-border);  }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-swatch {
+            height: calc(90px * var(--zoom, 1));
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding: 8px 10px;
+        }
+
+        .card-swatch::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 30%, rgba(0,0,0,.38) 100%);
+            pointer-events: none;
+        }
+
+        .card-body { padding: 11px; }
+
+        .card-name-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin-bottom: 1px;
+        }
+        .card-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+        .card-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-dim);
+            white-space: nowrap;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .card-cat {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 9px;
+        }
+
+        .card-btns {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 7px;
+        }
+
+        .sbtn {
+            flex: 1;
+            padding: 5px 3px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all var(--t);
+            text-align: center;
+        }
+
+        .sbtn:hover { border-color: var(--border-2); color: var(--text); }
+
+        .sbtn.s-own  { background: var(--owned-bg); border-color: var(--owned); color: var(--owned); }
+        .sbtn.s-need { background: var(--need-bg);  border-color: var(--need);  color: var(--need);  }
+        .sbtn.s-skip { background: var(--skip-bg);  border-color: var(--skip);  color: var(--skip);  }
+
+        .sim-btn {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            transition: all var(--t);
+            margin-bottom: 7px;
+        }
+
+        .sim-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+        .notes-ta {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 13px;
+            resize: none;
+            line-height: 1.4;
+            transition: border-color var(--t);
+        }
+
+        .notes-ta::placeholder { color: var(--text-dim); font-style: italic; }
+        .notes-ta:focus { outline: none; border-color: var(--gold-dim); }
+
+        /* ——— LIST VIEW ——— */
+        .thread-list { display: none; }
+        .thread-list.active { display: block; }
+
+        .list-row {
+            display: grid;
+            grid-template-columns: calc(52px * var(--zoom, 1)) calc(68px * var(--zoom, 1)) 1fr auto calc(52px * var(--zoom, 1)) calc(180px * var(--zoom, 1));
+            align-items: center;
+            gap: 0 calc(14px * var(--zoom, 1));
+            padding: calc(9px * var(--zoom, 1)) 0;
+            border-bottom: 1px solid var(--border);
+            animation: fadeIn .2s ease both;
+        }
+
+        .list-row:last-child { border-bottom: none; }
+        .list-row:hover { background: var(--surface); }
+        .list-row:hover .list-notes-input { border-color: var(--border); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .list-swatch {
+            width: calc(44px * var(--zoom, 1));
+            height: calc(32px * var(--zoom, 1));
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: calc(10px * var(--zoom, 1));
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,.4);
+            flex-shrink: 0;
+        }
+
+        .list-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: calc(12px * var(--zoom, 1));
+            color: var(--text-muted);
+        }
+
+        .list-name-wrap { min-width: 0; }
+
+        .list-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: calc(16px * var(--zoom, 1));
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .list-cat {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: calc(9px * var(--zoom, 1));
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .07em;
+        }
+
+        .list-btns {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .lbtn {
+            padding: calc(4px * var(--zoom, 1)) calc(9px * var(--zoom, 1));
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: calc(10px * var(--zoom, 1));
+            cursor: pointer;
+            transition: background var(--t), border-color var(--t), color var(--t);
+            white-space: nowrap;
+        }
+
+        .lbtn:hover { border-color: var(--border-2); color: var(--text); }
+
+        .lbtn.s-own  { background: var(--owned-bg); border-color: var(--owned); color: var(--owned); }
+        .lbtn.s-need { background: var(--need-bg);  border-color: var(--need);  color: var(--need);  }
+        .lbtn.s-skip { background: var(--skip-bg);  border-color: var(--skip);  color: var(--skip);  }
+
+        .lbtn-sim {
+            padding: calc(4px * var(--zoom, 1)) calc(9px * var(--zoom, 1));
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: calc(10px * var(--zoom, 1));
+            cursor: pointer;
+            transition: border-color var(--t), color var(--t);
+        }
+
+        .lbtn-sim:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+        .list-notes-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text);
+            padding: calc(5px * var(--zoom, 1)) calc(8px * var(--zoom, 1));
+            border-radius: 4px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: calc(14px * var(--zoom, 1));
+            transition: border-color var(--t), background var(--t);
+        }
+
+        .list-notes-input::placeholder { color: var(--text-dim); font-style: italic; }
+
+        .list-notes-input:focus {
+            outline: none;
+            border-color: var(--gold-dim);
+            background: var(--surface-2);
+        }
+
+        /* ——— MODAL ——— */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-lg);
+            width: 100%;
+            max-width: 540px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 28px 70px rgba(0,0,0,.7);
+            animation: modalIn .22s cubic-bezier(.16,1,.3,1);
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(.96) translateY(6px); }
+            to   { opacity: 1; transform: scale(1)   translateY(0);   }
+        }
+
+        .modal-hd {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .modal-title-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            color: var(--gold);
+        }
+
+        .modal-close {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all var(--t);
+            line-height: 1;
+        }
+
+        .modal-close:hover { background: var(--skip-bg); border-color: var(--skip); color: #d07070; }
+
+        .modal-filter {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+
+        .modal-body {
+            overflow-y: auto;
+            padding: 10px 20px;
+            flex: 1;
+        }
+
+        .sim-item {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 11px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sim-item:last-child { border-bottom: none; }
+
+        .sim-swatch {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,.45);
+        }
+
+        .sim-info { flex: 1; min-width: 0; }
+
+        .sim-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 1px;
+        }
+
+        .sim-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            letter-spacing: .05em;
+        }
+
+        .sim-badge.owned { background: var(--owned-bg); color: var(--owned); border: 1px solid var(--owned-border); }
+        .sim-badge.need  { background: var(--need-bg);  color: var(--need);  border: 1px solid var(--need-border);  }
+
+        .sim-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .sim-delta { text-align: right; flex-shrink: 0; }
+
+        .delta-val {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 22px;
+            color: var(--gold);
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .delta-lbl {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+        }
+
+        [data-theme="light"] { --skip-bg: #f5e8e8; }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 900px) {
+            .header-inner, .controls-bar, .main-wrap { padding-left: 16px; padding-right: 16px; }
+        }
+
+        @media (max-width: 640px) {
+            .header-inner { gap: 16px; }
+            .search-wrap { max-width: 100%; flex: 0 0 100%; order: -1; }
+            .ctrl-row { flex-wrap: wrap; }
+            .view-toggle { margin-left: 0; }
+            .stats-strip { flex-wrap: wrap; gap: 4px 0; }
+            .sstat { padding: 2px 16px 2px 0; margin-right: 16px; font-size: 13px; }
+            .thread-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+            .list-row { grid-template-columns: 44px 1fr auto; }
+            .list-row .list-num,
+            .list-row .list-notes-input { display: none; }
+            .brand-seg-btn { padding: 7px 14px; font-size: 11px; }
+        }
+
+        /* ——— GHOST BUTTONS + EXPORT DROPDOWN ——— */
+        .ctrl-btn-ghost {
+            padding: 7px 14px; background: transparent; border: 1px solid var(--border-2);
+            border-radius: var(--r); color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .04em;
+            cursor: pointer; transition: all var(--t); white-space: nowrap; flex-shrink: 0;
+        }
+        .ctrl-btn-ghost:hover { border-color: var(--gold-dim); color: var(--gold); }
+        #select-btn.active { background: var(--gold-dim); border-color: var(--gold-dim); color: var(--text); }
+
+        .export-dropdown { position: relative; display: inline-block; flex-shrink: 0; }
+        .export-dropdown-menu {
+            display: none; position: absolute; top: calc(100% + 4px); right: 0;
+            background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--r);
+            box-shadow: 0 6px 24px rgba(0,0,0,.35); padding: 4px 0; z-index: 50; min-width: 170px;
+        }
+        .export-dropdown.open .export-dropdown-menu { display: block; }
+        .export-dropdown.open .ctrl-btn-ghost { border-color: var(--gold-dim); color: var(--gold); }
+        .export-dropdown-menu button {
+            display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+            padding: 7px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+            color: var(--text-muted); transition: color var(--t), background var(--t); letter-spacing: .03em;
+        }
+        .export-dropdown-menu button:hover { color: var(--text); background: var(--surface-2); }
+
+        /* ——— SELECTION ——— */
+        .thread-card.selected, .list-row.selected {
+            outline: 2px solid var(--gold); outline-offset: -2px; background: rgba(200,145,58,.07);
+        }
+        .thread-card { position: relative; }
+        .card-select-check {
+            position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.6); background: rgba(0,0,0,.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: transparent; transition: all var(--t); pointer-events: none;
+        }
+        .thread-card.selected .card-select-check { background: var(--gold); border-color: var(--gold); color: #000; }
+        .list-select-check {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid var(--border-2); background: var(--surface-2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: transparent; flex-shrink: 0; transition: all var(--t);
+        }
+        .list-row.selected .list-select-check { background: var(--gold); border-color: var(--gold); color: #000; }
+
+        /* ——— SELECT-ALL BAR ——— */
+        .select-all-bar { background: var(--surface-2); border-bottom: 1px solid var(--border); }
+        .select-all-inner { max-width: 1640px; margin: 0 auto; padding: 7px 28px; display: flex; align-items: center; gap: 14px; }
+        .select-count-hint { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); }
+
+        /* ——— BULK BAR ——— */
+        .bulk-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 95; background: var(--surface); border-top: 1px solid var(--border-2); box-shadow: 0 -6px 24px rgba(0,0,0,.5); }
+        .bulk-bar-inner { max-width: 1640px; margin: 0 auto; padding: 12px 28px; display: flex; align-items: center; gap: 14px; }
+        .bulk-count { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text); min-width: 90px; flex-shrink: 0; }
+        .bulk-actions { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+        .bulk-btn {
+            padding: 7px 16px; border: 1px solid var(--border-2); border-radius: var(--r);
+            background: var(--surface-2); color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .04em;
+            cursor: pointer; transition: all var(--t);
+        }
+        .bulk-btn.bulk-own:hover  { background: var(--owned-bg); border-color: var(--owned-border); color: var(--owned); }
+        .bulk-btn.bulk-need:hover { background: var(--need-bg);  border-color: var(--need-border);  color: var(--need); }
+        .bulk-btn.bulk-skip:hover { background: var(--skip-bg);  border-color: var(--skip-border);  color: var(--skip); }
+        .bulk-clear {
+            padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--r);
+            background: transparent; color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; cursor: pointer; transition: all var(--t); margin-left: auto;
+        }
+        .bulk-clear:hover { color: var(--text-muted); border-color: var(--border-2); }
+
+        /* ——— SKEIN QUANTITY ——— */
+        .card-skein { display:flex; align-items:center; gap:8px; margin-top:6px; }
+        .skein-label { font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase;
+                       letter-spacing:.08em; color:var(--text-dim); }
+        .skein-input, .list-skein-input {
+            width:calc(52px * var(--zoom, 1)); background:var(--surface-2); border:1px solid var(--border);
+            color:var(--text); padding:calc(4px * var(--zoom, 1)) calc(6px * var(--zoom, 1)); border-radius:4px;
+            font-family:'IBM Plex Mono',monospace; font-size:calc(11px * var(--zoom, 1)); text-align:center;
+            transition:border-color var(--t);
+        }
+        .skein-input:focus, .list-skein-input:focus { outline:none; border-color:var(--gold-dim); }
+        .skein-input::-webkit-inner-spin-button,
+        .list-skein-input::-webkit-inner-spin-button { opacity:1; }
+
+        /* ——— PRINT (hidden on screen) ——— */
+        .print-header, #print-table { display: none; }
+
+        @media print {
+            .site-header, .controls-bar, .stats-strip, .select-all-bar, .bulk-bar,
+            .thread-grid, .thread-list, #similar-modal { display: none !important; }
+
+            .print-header { display: block !important; padding: 0 0 12px; margin-bottom: 0; }
+            .print-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; }
+            .print-meta { font-size: 11px; color: #666; margin-top: 2px; }
+
+            #print-table { display: block !important; }
+
+            body { background: #fff !important; color: #000 !important; padding: 0; }
+            .main-wrap { padding: 0 !important; max-width: 100% !important; }
+
+            .print-tbl { width: 100%; border-collapse: collapse; }
+            .print-tbl th {
+                font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 400;
+                text-transform: uppercase; letter-spacing: .1em; color: #888;
+                padding: 8px 10px; text-align: left; border-bottom: 1px solid #ccc;
+            }
+            .print-tbl td {
+                padding: 8px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+                color: #222; border-bottom: 1px solid #eee; text-align: left;
+            }
+            .print-tbl tr:last-child td { border-bottom: none; }
+            .print-swatch {
+                width: 20px; height: 20px; border-radius: 3px;
+                border: 1px solid #ddd; display: inline-block; vertical-align: middle;
+                print-color-adjust: exact; -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<!-- ——— CONTROLS ——— -->
+<div class="controls-bar">
+    <div class="controls-inner">
+        <div class="ctrl-row">
+            <div class="brand-seg" id="brand-seg" data-active="0">
+                <div class="brand-seg-indicator"></div>
+                <button class="brand-seg-btn active" data-brand="DMC" onclick="setBrand('DMC')">DMC</button>
+                <button class="brand-seg-btn" data-brand="Anchor" onclick="setBrand('Anchor')">Anchor</button>
+                <button class="brand-seg-btn" data-brand="" onclick="setBrand('')">All</button>
+            </div>
+            <div class="search-wrap">
+                <i class="search-icon ti ti-search"></i>
+                <input type="text" class="search-input" id="search" placeholder="Search number or name…" maxlength="100">
+            </div>
+            <div class="ctrl-group">
+                <span class="ctrl-label">Category</span>
+                <select class="ctrl-select" id="category-filter">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="ctrl-group">
+                <span class="ctrl-label">Status</span>
+                <select class="ctrl-select" id="status-filter">
+                    <option value="">All</option>
+                    <option value="own">Owned</option>
+                    <option value="need">Need</option>
+                    <option value="dont_own">Don't Own</option>
+                </select>
+            </div>
+            <div class="ctrl-group">
+                <span class="ctrl-label">Sort</span>
+                <select class="ctrl-select" id="sort-filter">
+                    <option value="number">Number</option>
+                    <option value="name">Name</option>
+                    <option value="status">Status</option>
+                    <option value="skeins">Skeins</option>
+                </select>
+            </div>
+        </div>
+        <div class="ctrl-row">
+            <div class="ctrl-group">
+                <span class="ctrl-label">Zoom</span>
+                <input type="range" class="zoom-slider" id="zoom-slider" min="60" max="150" step="10" value="100">
+                <span class="zoom-val" id="zoom-val">100%</span>
+            </div>
+            <div class="export-dropdown" id="export-dropdown">
+                <button class="ctrl-btn-ghost" onclick="toggleExportMenu(event)">Export <i class="ti ti-chevron-down" style="font-size:12px;vertical-align:middle"></i></button>
+                <div class="export-dropdown-menu">
+                    <button onclick="printShoppingList(); closeExportMenu()">Print Shopping List</button>
+                    <button onclick="downloadShoppingList(); closeExportMenu()">Shopping List CSV</button>
+                    <button onclick="downloadFullInventory(); closeExportMenu()">Full Inventory CSV</button>
+                </div>
+            </div>
+            <button class="ctrl-btn-ghost" id="select-btn" onclick="toggleSelectionMode()">Select</button>
+            <div class="view-toggle">
+                <button class="view-btn" data-view="grid">Grid</button>
+                <button class="view-btn active" data-view="list">List</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="select-all-bar" id="select-all-bar" style="display:none">
+    <div class="select-all-inner">
+        <button class="ctrl-btn-ghost" onclick="selectAllVisible()">Select all visible</button>
+        <span id="select-count-hint" class="select-count-hint"></span>
+    </div>
+</div>
+
+<div class="bulk-bar" id="bulk-bar" style="display:none">
+    <div class="bulk-bar-inner">
+        <span class="bulk-count" id="bulk-count"></span>
+        <div class="bulk-actions">
+            <button class="bulk-btn bulk-own"  onclick="bulkSetStatus('own')">Own</button>
+            <button class="bulk-btn bulk-need" onclick="bulkSetStatus('need')">Need</button>
+            <button class="bulk-btn bulk-skip" onclick="bulkSetStatus('dont_own')">Don't Own</button>
+        </div>
+        <button class="bulk-clear" onclick="clearSelection()">Clear</button>
+    </div>
+</div>
+
+<!-- ——— MAIN ——— -->
+<main class="main-wrap">
+    <div class="stats-strip">
+        <div class="sstat">
+            <span class="sstat-val" id="stat-total">—</span>
+            <span class="sstat-lbl">Colors</span>
+        </div>
+        <div class="sstat">
+            <span class="sstat-val v-owned" id="stat-owned">—</span>
+            <span class="sstat-lbl">Owned</span>
+        </div>
+        <div class="sstat">
+            <span class="sstat-val v-need" id="stat-need">—</span>
+            <span class="sstat-lbl">Need</span>
+        </div>
+        <div class="sstat">
+            <span class="sstat-val v-skip" id="stat-dont-own">—</span>
+            <span class="sstat-lbl">Don't Own</span>
+        </div>
+    </div>
+    <div class="print-header">
+        <div class="print-title">Shopping List</div>
+        <div class="print-meta"><span class="print-date"></span> · <span class="print-count"></span></div>
+    </div>
+    <div id="print-table"></div>
+    <div class="thread-grid" id="thread-grid"></div>
+    <div class="thread-list active" id="thread-list"></div>
+</main>
+
+<!-- ——— MODAL ——— -->
+<div class="modal-overlay" id="similar-modal" style="display:none">
+    <div class="modal-box">
+        <div class="modal-hd">
+            <div class="modal-title">Similar Colors — <span class="modal-title-num" id="modal-reference-thread"></span></div>
+            <button class="modal-close" onclick="closeSimilarModal()" aria-label="Close">×</button>
+        </div>
+        <div class="modal-filter">
+            <span class="ctrl-label">Show</span>
+            <select class="ctrl-select" id="similar-category-filter" onchange="refreshSimilar()">
+                <option value="all">All Types</option>
+                <option value="standard">Standard Only</option>
+                <option value="specialty">Specialty Only</option>
+            </select>
+        </div>
+        <div class="modal-body" id="similar-results">
+            <div class="state-msg"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='brand-toggle.js') }}"></script>
+<script>
+    let threads = [];
+    let currentView = 'list';
+    let debounceTimer;
+    let selectionMode = false;
+    let selectedIds   = new Set();
+    let currentZoom   = parseInt(localStorage.getItem('dmc-zoom') || '100');
+    let currentBrand  = localStorage.getItem('inventoryBrand') ?? 'DMC';
+
+    function _brandParam(params) {
+        if (currentBrand) params.append('brand', currentBrand);
+    }
+
+    function setBrand(brand) {
+        currentBrand = brand;
+        localStorage.setItem('inventoryBrand', brand);
+        const seg = document.getElementById('brand-seg');
+        const btns = seg.querySelectorAll('.brand-seg-btn');
+        btns.forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
+        _positionIndicator(seg);
+        // Update eyebrow text
+        const eyebrow = document.getElementById('brand-eyebrow-text');
+        if (eyebrow) eyebrow.textContent = brand === 'DMC' ? 'DMC Collection'
+            : brand === 'Anchor' ? 'Anchor Collection' : 'All Threads';
+        // Reset category filter (brands have different categories)
+        const catSel = document.getElementById('category-filter');
+        catSel.innerHTML = '<option value="">All</option>';
+        loadCategories();
+        loadStats();
+        loadThreads();
+    }
+
+    function applyZoom(z) {
+        currentZoom = z;
+        document.documentElement.style.setProperty('--zoom', z / 100);
+        document.getElementById('zoom-val').textContent = z + '%';
+        document.getElementById('zoom-slider').value = z;
+        localStorage.setItem('dmc-zoom', z);
+    }
+
+    document.getElementById('zoom-slider').addEventListener('input', e => applyZoom(parseInt(e.target.value)));
+
+    function statusCls(s) {
+        if (s === 'own')      return 's-own';
+        if (s === 'need')     return 's-need';
+        if (s === 'dont_own') return 's-skip';
+        return '';
+    }
+
+    async function loadCategories() {
+        const params = new URLSearchParams();
+        _brandParam(params);
+        const res = await fetch('/api/categories?' + params);
+        const cats = await res.json();
+        const sel = document.getElementById('category-filter');
+        cats.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c; o.textContent = c;
+            sel.appendChild(o);
+        });
+    }
+
+    async function loadStats() {
+        const params = new URLSearchParams();
+        _brandParam(params);
+        const res = await fetch('/api/stats?' + params);
+        const s = await res.json();
+        document.getElementById('stat-total').textContent    = s.total;
+        document.getElementById('stat-owned').textContent    = s.owned;
+        document.getElementById('stat-need').textContent     = s.need;
+        document.getElementById('stat-dont-own').textContent = s.dont_own;
+    }
+
+    async function loadThreads() {
+        const search   = document.getElementById('search').value;
+        const category = document.getElementById('category-filter').value;
+        const status   = document.getElementById('status-filter').value;
+        const params   = new URLSearchParams();
+        if (search)   params.append('search', search);
+        if (category) params.append('category', category);
+        if (status)   params.append('status', status);
+        _brandParam(params);
+        const res = await fetch('/api/threads?' + params);
+        threads = await res.json();
+        renderThreads();
+    }
+
+    function _sortThreads() {
+        const sort = document.getElementById('sort-filter').value;
+        if (sort === 'name') {
+            threads.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        } else if (sort === 'status') {
+            const ord = { own: 0, need: 1, dont_own: 2, '': 3 };
+            threads.sort((a, b) => (ord[a.status] ?? 3) - (ord[b.status] ?? 3)
+                || (a.number || '').localeCompare(b.number || '', undefined, { numeric: true }));
+        } else if (sort === 'skeins') {
+            threads.sort((a, b) => (b.skein_qty || 0) - (a.skein_qty || 0)
+                || (a.number || '').localeCompare(b.number || '', undefined, { numeric: true }));
+        }
+        // 'number' — keep API default order (already sorted by number)
+    }
+
+    function renderThreads() {
+        _sortThreads();
+        if (currentView === 'grid') renderGrid();
+        else renderList();
+    }
+
+    function emptyMsg(col) {
+        return `<div class="state-msg" ${col ? 'style="grid-column:1/-1"' : ''}>
+            <div class="state-msg-title">No threads found</div>
+            <div class="state-msg-sub">Try adjusting your search or filters</div>
+        </div>`;
+    }
+
+    function renderGrid() {
+        const el = document.getElementById('thread-grid');
+        if (!threads.length) { el.innerHTML = emptyMsg(true); return; }
+        el.innerHTML = threads.map((t, i) => `
+            <div class="thread-card ${statusCls(t.status)}${selectedIds.has(t.id)?' selected':''}"
+                 data-id="${t.id}" style="animation-delay:${Math.min(i*15,350)}ms"
+                 onclick="cardClick(event,this,${t.id})">
+                <div class="card-swatch" style="background:${safeHex(t.hex_color)}">
+                    <span class="card-select-check"><i class="ti ti-check"></i></span>
+                </div>
+                <div class="card-body">
+                    <div class="card-name-row">
+                        <div class="card-name" title="${escHtml(t.name)}">${escHtml(t.name)}</div>
+                        <span class="card-number">${escHtml(t.number)}</span>
+                    </div>
+                    <div class="card-cat">${escHtml(t.category)}${!currentBrand ? '<span class="brand-badge">'+escHtml(t.brand)+'</span>' : ''}</div>
+                    ${selectionMode ? '' : `
+                    <div class="card-btns">
+                        <button class="sbtn ${t.status==='own'?'s-own':''}"       onclick="setStatus(${t.id},'own')">Own</button>
+                        <button class="sbtn ${t.status==='need'?'s-need':''}"     onclick="setStatus(${t.id},'need')">Need</button>
+                        <button class="sbtn ${t.status==='dont_own'?'s-skip':''}" onclick="setStatus(${t.id},'dont_own')">Don't Own</button>
+                    </div>
+                    <button class="sim-btn" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Find Similar</button>
+                    <textarea class="notes-ta" rows="2" placeholder="Notes…" maxlength="500"
+                              onchange="updateNotes(${t.id},this.value)">${escHtml(t.notes||'')}</textarea>
+                    <div class="card-skein">
+                        <span class="skein-label">Skeins</span>
+                        <input type="number" class="skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
+                               onclick="event.stopPropagation()"
+                               onchange="updateSkeinQty(${t.id},this.value)">
+                    </div>
+                    `}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderList() {
+        const el = document.getElementById('thread-list');
+        if (!threads.length) { el.innerHTML = emptyMsg(false); return; }
+        el.innerHTML = threads.map((t, i) => `
+            <div class="list-row${selectedIds.has(t.id)?' selected':''}" data-id="${t.id}"
+                 style="animation-delay:${Math.min(i*8,280)}ms"
+                 onclick="cardClick(event,this,${t.id})">
+                <div class="list-swatch" style="background:${safeHex(t.hex_color)}"></div>
+                <div class="list-num">${escHtml(t.number)}</div>
+                <div class="list-name-wrap">
+                    <div class="list-name">${escHtml(t.name)}${!currentBrand ? '<span class="brand-badge">'+escHtml(t.brand)+'</span>' : ''}</div>
+                    <div class="list-cat">${escHtml(t.category)}</div>
+                </div>
+                ${selectionMode
+                    ? `<div class="list-select-check"><i class="ti ti-check"></i></div>`
+                    : `<div class="list-btns">
+                        <button class="lbtn ${t.status==='own'?'s-own':''}"       onclick="setStatus(${t.id},'own')">Own</button>
+                        <button class="lbtn ${t.status==='need'?'s-need':''}"     onclick="setStatus(${t.id},'need')">Need</button>
+                        <button class="lbtn ${t.status==='dont_own'?'s-skip':''}" onclick="setStatus(${t.id},'dont_own')">Don't Own</button>
+                        <button class="lbtn-sim"                                   onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Similar</button>
+                       </div>`
+                }
+                <input type="number" class="list-skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
+                       title="Skeins owned"
+                       onclick="event.stopPropagation()"
+                       onchange="updateSkeinQty(${t.id},this.value)">
+                <input type="text" class="list-notes-input" placeholder="Notes…" maxlength="500"
+                       value="${escHtml(t.notes||'')}"
+                       onclick="event.stopPropagation()"
+                       onchange="updateNotes(${t.id},this.value)">
+            </div>
+        `).join('');
+    }
+
+    async function setStatus(id, status) {
+        // Optimistic: update in-memory array and patch just the changed DOM elements.
+        const thread = threads.find(t => t.id === id);
+        if (thread) thread.status = status;
+        _patchStatusInDOM(id, status);
+        // Wait for PATCH to complete before refreshing stats.
+        await fetch(`/api/threads/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({status})
+        });
+        loadStats();
+    }
+
+    function _patchStatusInDOM(id, status) {
+        const sc = statusCls(status);
+        // Grid card: update border colour + sbtn active states
+        const card = document.querySelector(`.thread-card[data-id="${id}"]`);
+        if (card) {
+            card.classList.remove('s-own', 's-need', 's-skip');
+            if (sc) card.classList.add(sc);
+            const btns = card.querySelectorAll('.sbtn');
+            if (btns[0]) btns[0].className = `sbtn${status === 'own'      ? ' s-own'  : ''}`;
+            if (btns[1]) btns[1].className = `sbtn${status === 'need'     ? ' s-need' : ''}`;
+            if (btns[2]) btns[2].className = `sbtn${status === 'dont_own' ? ' s-skip' : ''}`;
+        }
+        // List row: update lbtn active states
+        const row = document.querySelector(`.list-row[data-id="${id}"]`);
+        if (row) {
+            const btns = row.querySelectorAll('.lbtn');
+            if (btns[0]) btns[0].className = `lbtn${status === 'own'      ? ' s-own'  : ''}`;
+            if (btns[1]) btns[1].className = `lbtn${status === 'need'     ? ' s-need' : ''}`;
+            if (btns[2]) btns[2].className = `lbtn${status === 'dont_own' ? ' s-skip' : ''}`;
+        }
+    }
+
+    async function updateNotes(id, notes) {
+        const thread = threads.find(t => t.id === id);
+        if (thread) thread.notes = notes;
+        await fetch(`/api/threads/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({notes})
+        });
+    }
+
+    function updateSkeinQty(id, qty) {
+        qty = Math.round(Math.max(0, parseFloat(qty) || 0) * 100) / 100;
+        const thread = threads.find(t => t.id === id);
+        if (thread) thread.skein_qty = qty;
+        fetch(`/api/threads/${id}`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({skein_qty: qty})
+        });
+    }
+
+    async function printShoppingList() {
+        const params = new URLSearchParams({ status: 'need' });
+        _brandParam(params);
+        const res = await fetch('/api/threads?' + params);
+        const list = await res.json();
+        if (!list.length) { toast('No threads on your shopping list.', { type: 'info' }); return; }
+
+        const showBrandCol = !currentBrand;  // show Brand column when viewing "All"
+        document.querySelector('.print-header .print-date').textContent =
+            new Date().toLocaleDateString();
+        document.querySelector('.print-header .print-count').textContent =
+            list.length + ' thread' + (list.length !== 1 ? 's' : '');
+
+        let html = '<table class="print-tbl"><thead><tr>'
+            + '<th></th>' + (showBrandCol ? '<th>Brand</th>' : '') + '<th>Number</th><th>Name</th><th>Category</th><th>Skeins</th><th>Notes</th>'
+            + '</tr></thead><tbody>';
+        for (const t of list) {
+            html += '<tr>'
+                + '<td><span class="print-swatch" style="background:' + safeHex(t.hex_color) + '"></span></td>'
+                + (showBrandCol ? '<td>' + escHtml(t.brand || '') + '</td>' : '')
+                + '<td>' + escHtml(t.number) + '</td>'
+                + '<td>' + escHtml(t.name) + '</td>'
+                + '<td>' + escHtml(t.category) + '</td>'
+                + '<td>' + (t.skein_qty || 0) + '</td>'
+                + '<td>' + escHtml(t.notes || '') + '</td>'
+                + '</tr>';
+        }
+        html += '</tbody></table>';
+        document.getElementById('print-table').innerHTML = html;
+
+        setTimeout(() => { window.print(); }, 100);
+    }
+
+    function toggleExportMenu(e) {
+        e.stopPropagation();
+        document.getElementById('export-dropdown').classList.toggle('open');
+    }
+    function closeExportMenu() {
+        document.getElementById('export-dropdown').classList.remove('open');
+    }
+    document.addEventListener('click', closeExportMenu);
+
+    async function downloadShoppingList() {
+        const params = new URLSearchParams({ status: 'need' });
+        _brandParam(params);
+        const res = await fetch('/api/threads?' + params);
+        const list = await res.json();
+        if (!list.length) { toast('No threads on your shopping list.', { type: 'info' }); return; }
+        const header = currentBrand ? ['Number','Name','Category','Skeins Owned','Notes']
+                                    : ['Brand','Number','Name','Category','Skeins Owned','Notes'];
+        const rows = [header];
+        for (const t of list) {
+            const row = [];
+            if (!currentBrand) row.push(`"${String(t.brand||'').replace(/"/g,'""')}"`);
+            row.push(
+                `"${String(t.number).replace(/"/g,'""')}"`,
+                `"${String(t.name).replace(/"/g,'""')}"`,
+                `"${String(t.category).replace(/"/g,'""')}"`,
+                t.skein_qty || 0,
+                `"${String(t.notes||'').replace(/"/g,'""')}"`
+            );
+            rows.push(row);
+        }
+        const csv  = rows.map(r => r.join(',')).join('\r\n');
+        const prefix = currentBrand ? currentBrand.toLowerCase() : 'all';
+        downloadBlob(csv, prefix + '-shopping-list.csv', 'text/csv;charset=utf-8;');
+    }
+
+    async function downloadFullInventory() {
+        const params = new URLSearchParams();
+        _brandParam(params);
+        const res = await fetch('/api/threads?' + params);
+        const list = await res.json();
+        if (!list.length) { toast('No threads found.', { type: 'info' }); return; }
+        const header = currentBrand ? ['Number','Name','Category','Status','Skeins','Notes']
+                                    : ['Brand','Number','Name','Category','Status','Skeins','Notes'];
+        const rows = [header];
+        for (const t of list) {
+            const row = [];
+            if (!currentBrand) row.push(`"${String(t.brand||'').replace(/"/g,'""')}"`);
+            row.push(
+                `"${String(t.number).replace(/"/g,'""')}"`,
+                `"${String(t.name).replace(/"/g,'""')}"`,
+                `"${String(t.category).replace(/"/g,'""')}"`,
+                `"${({own:'Owned',need:'Need',dont_own:"Don't Own"})[t.status]||t.status}"`,
+                t.skein_qty || 0,
+                `"${String(t.notes||'').replace(/"/g,'""')}"`
+            );
+            rows.push(row);
+        }
+        const csv  = rows.map(r => r.join(',')).join('\r\n');
+        const prefix = currentBrand ? currentBrand.toLowerCase() : 'all';
+        downloadBlob(csv, prefix + '-full-inventory.csv', 'text/csv;charset=utf-8;');
+    }
+
+    function switchView(view) {
+        currentView = view;
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+        document.getElementById('thread-grid').classList.toggle('active', view === 'grid');
+        document.getElementById('thread-list').classList.toggle('active', view === 'list');
+        renderThreads();
+    }
+
+    function debounceSearch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(loadThreads, 300);
+    }
+
+    document.getElementById('search').addEventListener('input', debounceSearch);
+    document.getElementById('category-filter').addEventListener('change', loadThreads);
+    document.getElementById('status-filter').addEventListener('change', loadThreads);
+    document.getElementById('sort-filter').addEventListener('change', () => {
+        localStorage.setItem('dmc-inv-sort', document.getElementById('sort-filter').value);
+        renderThreads();
+    });
+    document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+    // ——— SIMILAR MODAL ———
+    let currentSimilarThreadId   = null;
+    let currentSimilarThreadNumber = null;
+
+    async function findSimilar(threadId, threadNumber) {
+        currentSimilarThreadId     = threadId;
+        currentSimilarThreadNumber = threadNumber;
+        const modal     = document.getElementById('similar-modal');
+        const results   = document.getElementById('similar-results');
+        const catFilter = document.getElementById('similar-category-filter').value;
+        document.getElementById('modal-reference-thread').textContent = threadNumber;
+        results.innerHTML = '<div class="state-msg"><div class="spinner"></div></div>';
+        modal.style.display = 'flex';
+
+        try {
+            const res = await fetch(`/api/threads/${threadId}/similar?limit=8&category=${catFilter}`);
+            if (!res.ok) throw new Error('Failed to fetch');
+            const similar = await res.json();
+
+            if (!similar.length) {
+                results.innerHTML = '<div class="state-msg"><div class="state-msg-title">No similar threads found</div></div>';
+                return;
+            }
+
+            results.innerHTML = similar.map(t => {
+                const badge = t.status === 'own'  ? '<span class="sim-badge owned">owned</span>' :
+                              t.status === 'need' ? '<span class="sim-badge need">need</span>'   : '';
+                return `
+                    <div class="sim-item">
+                        <div class="sim-swatch" style="background:${safeHex(t.hex_color)};color:${contrastColor(safeHex(t.hex_color))}">${escHtml(t.number)}</div>
+                        <div class="sim-info">
+                            <div class="sim-name">${escHtml(t.name)}${badge}</div>
+                            <div class="sim-meta">${escHtml(t.number)} · ${escHtml(t.category)}</div>
+                        </div>
+                        <div class="sim-delta">
+                            <span class="delta-val">${t.delta_e}</span>
+                            <span class="delta-lbl">ΔE</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch(e) {
+            results.innerHTML = `<div class="state-msg"><div class="state-msg-title">Error</div><div class="state-msg-sub">${e.message}</div></div>`;
+        }
+    }
+
+    function refreshSimilar() {
+        if (currentSimilarThreadId !== null)
+            findSimilar(currentSimilarThreadId, currentSimilarThreadNumber);
+    }
+
+    function closeSimilarModal() {
+        document.getElementById('similar-modal').style.display = 'none';
+    }
+
+    document.getElementById('similar-modal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeSimilarModal();
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            if (document.getElementById('similar-modal').style.display !== 'none') {
+                closeSimilarModal();
+                return;
+            }
+            if (selectionMode) toggleSelectionMode();
+        }
+    });
+
+    // ——— SELECTION MODE ———
+    function cardClick(event, el, id) {
+        if (!selectionMode) return;
+        toggleThreadSelection(id);
+        el.classList.toggle('selected', selectedIds.has(id));
+    }
+
+    function toggleSelectionMode() {
+        selectionMode = !selectionMode;
+        selectedIds.clear();
+        const btn = document.getElementById('select-btn');
+        btn.textContent = selectionMode ? 'Done' : 'Select';
+        btn.classList.toggle('active', selectionMode);
+        document.getElementById('select-all-bar').style.display = selectionMode ? 'block' : 'none';
+        document.getElementById('bulk-bar').style.display = 'none';
+        renderThreads();
+    }
+
+    function toggleThreadSelection(id) {
+        if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+        _updateSelectionUI();
+    }
+
+    function selectAllVisible() {
+        for (const t of threads) selectedIds.add(t.id);
+        _updateSelectionUI();
+        document.querySelectorAll('.thread-card[data-id],.list-row[data-id]').forEach(el =>
+            el.classList.toggle('selected', selectedIds.has(parseInt(el.dataset.id))));
+    }
+
+    function clearSelection() {
+        selectedIds.clear();
+        _updateSelectionUI();
+        document.querySelectorAll('.thread-card.selected,.list-row.selected')
+                 .forEach(el => el.classList.remove('selected'));
+    }
+
+    function _updateSelectionUI() {
+        const n = selectedIds.size;
+        const show = selectionMode && n > 0;
+        document.getElementById('bulk-bar').style.display = show ? 'block' : 'none';
+        document.body.classList.toggle('bulk-active', show);
+        document.getElementById('bulk-count').textContent = n + ' selected';
+        const hint = document.getElementById('select-count-hint');
+        if (hint) hint.textContent = n > 0 ? `${n} of ${threads.length} selected` : '';
+    }
+
+    async function bulkSetStatus(status) {
+        if (!selectedIds.size) return;
+        await Promise.all(Array.from(selectedIds).map(id =>
+            fetch(`/api/threads/${id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            })
+        ));
+        selectedIds.clear();
+        _updateSelectionUI();
+        await Promise.all([loadThreads(), loadStats()]);
+    }
+
+    applyZoom(currentZoom);
+    Dropdown.initAll('select.ctrl-select');
+    // Restore saved sort preference
+    const savedInvSort = localStorage.getItem('dmc-inv-sort');
+    if (savedInvSort) document.getElementById('sort-filter').value = savedInvSort;
+    // Restore saved brand and init UI
+    setBrand(currentBrand);
+    initBrandToggle(document.getElementById('brand-seg'));
+</script>
+{% endblock %}

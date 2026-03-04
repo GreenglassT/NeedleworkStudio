@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }} — Needlework Studio{% endblock %}
+{% block body_attrs %}style="display:flex;align-items:center;justify-content:center;min-height:100vh"{% endblock %}
+
+{% block header %}
+    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"
+            style="position:fixed;top:16px;right:20px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);border-radius:var(--r);padding:6px 10px;cursor:pointer;font-size:14px;line-height:1"></button>
+{% endblock %}
+
+{% block head %}
+<style>
+    .error-container { text-align: center; padding: 40px 20px; max-width: 480px; }
+    .error-code { font-size: 96px; font-weight: 600; color: var(--text-muted); line-height: 1; margin: 0 0 8px; font-family: var(--font-mono, 'IBM Plex Mono', monospace); }
+    .error-message { font-size: 24px; font-weight: 600; color: var(--text); margin: 0 0 12px; }
+    .error-detail { font-size: 15px; color: var(--text-muted); margin: 0 0 32px; line-height: 1.5; }
+    .error-home { display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); color: var(--text); text-decoration: none; font-size: 14px; transition: border-color var(--t), background var(--t); }
+    .error-home:hover { border-color: var(--border-2); background: var(--surface); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <p class="error-code">{{ code }}</p>
+    <h1 class="error-message">{{ message }}</h1>
+    <p class="error-detail">{{ detail }}</p>
+    <a href="javascript:history.back()" class="error-home" style="margin-right:10px"><i class="ti ti-arrow-left"></i> Go back</a>
+    <a href="/" class="error-home"><i class="ti ti-home"></i> Home</a>
+</div>
+{% endblock %}

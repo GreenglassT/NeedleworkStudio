@@ -1,0 +1,1292 @@
+{% extends "base.html" %}
+
+{% block title %}Convert Image — Needlework Studio{% endblock %}
+
+{% block brand_name %}Convert Image{% endblock %}
+
+{% block head %}
+    <style>
+        /* ——— PANEL ——— */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            align-items: center;
+        }
+
+        /* ——— CROP MODAL ——— */
+        .crop-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .crop-modal-content {
+            background: var(--surface);
+            border-radius: 12px;
+            max-width: 92vw;
+            max-height: 92vh;
+            overflow: auto;
+            padding: 24px;
+        }
+
+        .crop-layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .crop-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: sticky;
+            top: 80px;
+        }
+
+        /* Canvas area — flex-centered so the wrap shrinks to image */
+        .crop-canvas-area {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* Inline-block so the div shrinks to exactly the rendered image size.
+           This ensures #crop-overlay covers exactly the image — no letterbox. */
+        .crop-img-wrap {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            border-radius: var(--r);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        #crop-img {
+            display: block;
+            max-width: calc(92vw - 340px);
+            max-height: 78vh;
+            width: auto;
+            height: auto;
+        }
+
+        /* ——— CROP OVERLAY ——— */
+        #crop-overlay {
+            position: absolute;
+            inset: 0;
+            cursor: crosshair;
+            user-select: none;
+        }
+
+        #crop-rect {
+            position: absolute;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+            cursor: move;
+        }
+
+        #crop-rect.circle { border-radius: 50%; }
+
+        #crop-rect .ch {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.4);
+            border-radius: 2px;
+        }
+
+        /* ——— STEP NAV BUTTONS ——— */
+        .step-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-back {
+            padding: 10px 16px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+
+        .btn-back:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+        .btn-continue {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: 1px solid var(--gold-dim);
+            border-radius: var(--r);
+            color: var(--gold);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all var(--t);
+        }
+
+        .btn-continue:hover { background: var(--gold-dim); color: var(--text); }
+
+        /* ——— CONTROLS (shared) ——— */
+        .ctrl-group { margin-bottom: 14px; }
+
+        .ctrl-label {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .ctrl-val {
+            color: var(--gold);
+            font-variant-numeric: tabular-nums;
+        }
+        .ctrl-val-editable {
+            cursor: pointer;
+            border-bottom: 1px dashed var(--gold);
+        }
+        .ctrl-val-editable:hover {
+            opacity: .8;
+        }
+
+        .lock-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            cursor: pointer;
+            padding: 0 3px;
+            margin-left: 4px;
+            font-size: 11px;
+            line-height: 1;
+            vertical-align: middle;
+            transition: border-color 0.2s;
+            color: var(--text-dim);
+        }
+        .lock-toggle:hover {
+            border-color: var(--gold-dim, var(--gold));
+        }
+        .lock-toggle:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        input[type="range"]:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .canvas-fabric-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .fabric-label {
+            color: var(--text-dim);
+        }
+        .fabric-dropdown { position: relative; }
+        .fabric-dropdown-btn {
+            padding: 2px 8px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            outline: none;
+            transition: border-color var(--t);
+            white-space: nowrap;
+        }
+        .fabric-dropdown-btn:hover { border-color: var(--gold-dim); }
+        .fabric-dd-arrow { margin-left: 4px; opacity: 0.5; }
+        .fabric-dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            margin-bottom: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            z-index: 100;
+            min-width: 160px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.25);
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .fabric-dropdown-menu.open { display: flex; flex-direction: column; }
+        .fabric-dropdown-menu button {
+            padding: 8px 14px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            text-align: left;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+        .fabric-dropdown-menu button:hover { background: var(--gold-dim); color: var(--text); }
+        .fabric-dropdown-menu button.active { color: var(--gold); }
+        .fabric-size-inline {
+            color: var(--text-muted);
+        }
+        .ctrl-val-input {
+            width: 3.5em;
+            font-size: inherit;
+            font-family: inherit;
+            font-variant-numeric: tabular-nums;
+            color: var(--gold);
+            background: var(--surface-2);
+            border: 1px solid var(--gold);
+            border-radius: 3px;
+            text-align: center;
+            padding: 0 2px;
+            outline: none;
+        }
+        .dim-fabric-select {
+            width: 100%;
+            padding: 5px 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            color: var(--text);
+            background: var(--surface-2);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            cursor: pointer;
+            outline: none;
+        }
+        .dim-fabric-select:focus { border-color: var(--gold); }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--surface-3);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--gold);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background var(--t);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover { background: var(--gold-hover); }
+
+        /* ——— TOGGLE ——— */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .toggle-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--text-muted);
+        }
+
+        .toggle {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .toggle input { opacity: 0; width: 0; height: 0; }
+
+        .toggle-track {
+            position: absolute;
+            inset: 0;
+            background: var(--surface-3);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background var(--t);
+            border: 1px solid var(--border-2);
+        }
+
+        .toggle input:checked + .toggle-track { background: var(--gold-dim); }
+
+        .toggle-track::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            top: 2px;
+            left: 2px;
+            transition: transform var(--t), background var(--t);
+        }
+
+        .toggle input:checked + .toggle-track::after {
+            transform: translateX(16px);
+            background: var(--gold);
+        }
+
+        /* ——— SEGMENT TOGGLE ——— */
+        .seg-toggle {
+            display: flex;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+
+        .seg-btn {
+            flex: 1;
+            padding: 5px 8px;
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--border-2);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            cursor: pointer;
+            transition: all var(--t);
+        }
+
+        .seg-btn:last-child { border-right: none; }
+        .seg-btn:hover { background: var(--surface-2); color: var(--text); }
+        .seg-btn.active { background: var(--gold-dim); color: var(--text); }
+
+        /* ——— ERROR ——— */
+        .gen-error {
+            display: none;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: var(--skip-bg);
+            border: 1px solid var(--skip);
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #d07070;
+            letter-spacing: .02em;
+        }
+
+        .gen-error.visible { display: block; }
+
+        /* ——— SPINNER ——— */
+        .spinner-wrap {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 0 4px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: .06em;
+        }
+
+        .spinner-wrap.visible { display: flex; justify-content: center; }
+
+        .spinner { --sp-size: 16px; flex-shrink: 0; }
+
+        /* ——— STEP 3: GENERATE ——— */
+        .generate-layout {
+            max-width: 1640px;
+            margin: 0 auto;
+            padding: 24px 28px;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .gen-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: sticky;
+            top: 80px;
+            max-height: calc(100vh - 104px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        /* Preview canvas in step 3 sidebar */
+        #crop-preview-canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: var(--r);
+            margin-bottom: 10px;
+        }
+
+        .btn-edit-crop {
+            display: block;
+            width: 100%;
+            padding: 7px 12px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all var(--t);
+            text-align: center;
+        }
+
+        .btn-edit-crop:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+        /* ——— MAIN AREA ——— */
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .empty-state {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 80px 40px;
+            text-align: center;
+        }
+
+        .empty-icon { font-size: 48px; opacity: 0.2; margin-bottom: 16px; }
+
+        .empty-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 20px;
+            color: var(--text-dim);
+        }
+
+        /* ——— CANVAS CARD ——— */
+        .canvas-card {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 20px;
+        }
+
+        .canvas-card.visible { display: block; }
+
+        .canvas-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .gridlines-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .gridlines-label input[type="checkbox"] {
+            accent-color: var(--gold);
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+
+        .download-btn {
+            padding: 7px 16px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all var(--t);
+        }
+
+        .download-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+        .download-dropdown { position: relative; margin-left: auto; }
+        .download-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            z-index: 100;
+            min-width: 140px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.25);
+        }
+        .download-menu.open { display: flex; flex-direction: column; }
+        .download-menu button {
+            padding: 8px 14px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            text-align: left;
+            transition: all var(--t);
+        }
+        .download-menu button:hover { background: var(--gold-dim); color: var(--text); }
+
+        .canvas-area {
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            background: var(--bg);
+            height: 560px;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        .canvas-area:active { cursor: grabbing; }
+
+        .ruler { position: absolute; pointer-events: none; z-index: 10; }
+        .ruler-top { top: 0; left: 0; width: 100%; height: 18px; }
+        .ruler-left { top: 0; left: 0; width: 26px; height: 100%; }
+
+        .zoom-controls {
+            position: absolute; bottom: 14px; left: 14px;
+            display: flex; flex-direction: column; gap: 4px; z-index: 10;
+        }
+        .zoom-btn {
+            width: 36px; height: 36px; border-radius: var(--r);
+            border: 1px solid var(--border-2); background: var(--surface);
+            color: var(--text); font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,.3);
+            transition: background var(--t), border-color var(--t);
+        }
+        .zoom-btn:hover { background: var(--surface-2); border-color: var(--gold-dim); }
+        .zoom-level {
+            font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+            color: var(--text-muted); text-align: center; min-width: 36px;
+            background: var(--surface); border: 1px solid var(--border-2);
+            border-radius: var(--r); padding: 2px 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.3);
+        }
+
+        .canvas-wrapper {
+            position: absolute;
+            top: 0; left: 0;
+            transform-origin: 0 0;
+        }
+
+        #pattern-canvas { display: block; }
+
+        .canvas-info {
+            margin-top: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .04em;
+        }
+
+        /* ——— COLOR KEY ——— */
+        .key-card {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 20px;
+        }
+
+        .key-card.visible { display: block; }
+
+        .key-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .key-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .mark-need-btn {
+            padding: 7px 16px;
+            background: transparent;
+            border: 1px solid var(--gold-dim);
+            border-radius: var(--r);
+            color: var(--gold);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .06em;
+            cursor: pointer;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+
+        .mark-need-btn:hover:not(:disabled) { background: var(--gold-dim); color: var(--text); }
+        .mark-need-btn:disabled { opacity: 0.4; cursor: default; }
+
+        .legend-sort-row { display:flex; align-items:center; gap:6px; margin-top:7px; }
+        .legend-sort-btn { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:.04em; padding:2px 6px; border-radius:3px; border:1px solid var(--border); background:transparent; color:var(--text-dim); cursor:pointer; transition:background var(--t),color var(--t),border-color var(--t); }
+        .legend-sort-btn.active { background:var(--gold); border-color:var(--gold); color:#1a1208; }
+        .legend-sort-btn:not(.active):hover { background:var(--surface-2); color:var(--text); }
+
+        .key-table { width: 100%; border-collapse: collapse; }
+
+        .key-table th {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            padding: 8px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .key-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .key-table tr:last-child td { border-bottom: none; }
+        .key-table tbody tr:hover td { background: var(--surface-2); }
+
+        .leg-replace-cell { padding: 4px !important; width: 1px; }
+        .leg-replace-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 13px;
+            line-height: 1;
+            border-radius: 3px;
+            transition: color var(--t), background var(--t);
+        }
+        .leg-replace-btn:hover { color: var(--gold); background: var(--surface-2); }
+        .edit-fullscreen .leg-replace-btn { display: flex; }
+
+        .sym-cell {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text);
+            text-align: center;
+        }
+
+        .swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border: 1px solid var(--border-2);
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .dmc-num { font-family: 'IBM Plex Mono', monospace; color: var(--text); font-size: 13px; }
+
+        .thread-name { font-family: 'Cormorant Garamond', serif; font-size: 14px; color: var(--text-muted); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+        }
+
+        .status-own      { background: rgba(77,158,122,.15); color: var(--owned); }
+        .status-need     { background: rgba(201,120,48,.15); color: var(--need); }
+        .status-dont_own { background: var(--surface-3); color: var(--text-dim); }
+        .status-not_found { background: var(--surface-3); color: var(--text-dim); }
+
+        /* ——— SAVE BUTTON (in toolbar) ——— */
+        .btn-save-toolbar { border-color: var(--gold-dim); color: var(--gold); margin-left: 0; }
+        .btn-save-toolbar:hover { background: var(--gold-dim); color: var(--text); }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 900px) {
+            .crop-layout, .generate-layout { grid-template-columns: 1fr; padding: 16px; }
+            .crop-sidebar, .gen-sidebar { position: static; }
+            .header-inner { padding: 0 16px; }
+            #crop-img { max-width: 100%; max-height: 60vh; }
+            .crop-modal-content { padding: 16px; max-width: 96vw; max-height: 96vh; }
+        }
+
+        @media (max-width: 600px) {
+            .canvas-toolbar { flex-direction: column; align-items: flex-start; }
+            .download-dropdown { margin-left: 0; }
+            .key-table th:nth-child(4),
+            .key-table td:nth-child(4) { display: none; }
+        }
+
+        .edit-fs-resize-handle { display: none; }
+
+        /* ——— FULLSCREEN EDIT MODE ——— */
+        .edit-fullscreen .generate-layout {
+            position: fixed;
+            inset: 0;
+            z-index: 450;
+            max-width: none;
+            padding: 0;
+            display: flex;
+            flex-direction: row;
+            background: var(--bg);
+            animation: edit-fs-in 200ms ease-out;
+        }
+        @keyframes edit-fs-in { from { opacity: 0 } to { opacity: 1 } }
+
+        .edit-fullscreen .gen-sidebar,
+        .edit-fullscreen .empty-state,
+        .edit-fullscreen .canvas-info,
+        .edit-fullscreen .canvas-fabric-row { display: none !important; }
+
+        .edit-fullscreen .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            gap: 0;
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .edit-fullscreen .canvas-card {
+            flex: 1;
+            display: flex !important;
+            flex-direction: column;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        .edit-fullscreen .canvas-card.visible { display: flex !important; }
+
+        .edit-fullscreen .canvas-toolbar {
+            flex-shrink: 0;
+            padding: 8px 16px;
+            gap: 10px;
+            flex-wrap: nowrap;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .edit-fullscreen .download-dropdown { display: none; }
+
+        .edit-fullscreen .canvas-area {
+            flex: 1;
+            height: 0;
+            min-height: 0;
+            border: none;
+            border-radius: 0;
+        }
+
+        /* Resize handle between canvas and key sidebar */
+        .edit-fullscreen .edit-fs-resize-handle {
+            display: block;
+            width: 4px;
+            flex-shrink: 0;
+            background: var(--border);
+            cursor: col-resize;
+            transition: background var(--t);
+            z-index: 5;
+        }
+        .edit-fullscreen .edit-fs-resize-handle:hover,
+        .edit-fullscreen .edit-fs-resize-handle.resizing { background: var(--gold); }
+
+        /* Color key → right sidebar */
+        .edit-fullscreen .key-card {
+            display: flex !important;
+            flex-direction: column;
+            width: 280px;
+            min-width: 180px;
+            max-width: 520px;
+            flex-shrink: 0;
+            border-radius: 0;
+            border: none;
+            border-left: 1px solid var(--border);
+            padding: 16px 0 0 0;
+            overflow: hidden;
+        }
+        .edit-fullscreen .key-card.visible { display: flex !important; }
+        .edit-fullscreen .key-header {
+            flex-shrink: 0;
+            padding: 0 16px 12px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0;
+        }
+        .edit-fullscreen #key-table-wrap {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Edit-mode legend rows (match pattern-viewer style) */
+        .edit-fullscreen .legend-row { display:flex; align-items:center; gap:8px; padding:5px 14px; cursor:pointer; border-left:3px solid transparent; transition:background var(--t), border-color var(--t); }
+        .edit-fullscreen .legend-row:hover { background:var(--surface-2); }
+        .edit-fullscreen .legend-row.active { border-left-color:var(--gold); background:var(--surface-2); }
+        .edit-fullscreen .legend-swatch { width:20px; height:20px; border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; font-family:"Segoe UI Symbol","Apple Symbols","Noto Sans Symbols","IBM Plex Mono",sans-serif; line-height:1; }
+        .edit-fullscreen .legend-swatch span { display:block; transform:translateY(0.08em); }
+        .edit-fullscreen .legend-info { flex:1; min-width:0; }
+        .edit-fullscreen .legend-dmc { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text); letter-spacing:.03em; }
+        .edit-fullscreen .legend-name { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .edit-fullscreen .legend-count { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--text-dim); letter-spacing:.03em; flex-shrink:0; }
+        .key-edit-totals { display:none; }
+        .edit-fullscreen .key-edit-totals { display:block; font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--text-muted); margin-top:2px; }
+        .edit-fullscreen .key-header > div:nth-child(3) { display:none; }
+        .edit-fullscreen .key-title::after { content:' — Edit Mode'; font-size:11px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace; }
+
+        /* "Done Editing" button highlight */
+        .edit-fullscreen #edit-toggle-btn {
+            background: var(--gold-dim);
+            color: var(--gold);
+            border-color: var(--gold);
+        }
+
+        /* Z-index overrides for editor modals inside fullscreen */
+        .edit-fullscreen .ed-modal { z-index: 510; }
+
+        /* Mobile legend toggle button */
+        .edit-fs-legend-toggle { display: none; }
+
+        /* Mobile: key-card becomes bottom drawer */
+        @media (max-width: 768px) {
+            .edit-fullscreen .main-area { flex-direction: column; }
+            .edit-fullscreen .edit-fs-resize-handle { display: none; }
+            .edit-fullscreen .key-card {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                width: 100% !important;
+                max-width: 100%;
+                max-height: 50vh;
+                border-left: none;
+                border-top: 2px solid var(--gold-dim);
+                border-radius: 12px 12px 0 0;
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
+                z-index: 510;
+                box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+            }
+            .edit-fullscreen .key-card.legend-open { transform: translateY(0); }
+            .edit-fullscreen .edit-fs-legend-toggle {
+                display: block;
+                position: fixed;
+                bottom: 16px;
+                right: 16px;
+                z-index: 511;
+                background: var(--surface);
+                color: var(--gold);
+                border: 1px solid var(--gold-dim);
+                border-radius: 8px;
+                padding: 8px 14px;
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 11px;
+                letter-spacing: .04em;
+                cursor: pointer;
+                box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            }
+        }
+    </style>
+    <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='pdf-export.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+    <!-- ═══════════════════ STEP 1: UPLOAD ═══════════════════ -->
+    <div id="step-upload" class="step active">
+        <div class="page-wrap">
+            <h1 class="page-title">Image to Pattern</h1>
+            <p class="page-sub">Upload a photo to generate your cross-stitch pattern.</p>
+
+            <div class="upload-zone" id="upload-zone">
+                <input type="file" id="img-input" accept="image/jpeg,image/png,image/gif,image/webp"
+                       onchange="handleImageSelect(this.files[0])">
+                <div class="upload-icon"><i class="ti ti-photo-up"></i></div>
+                <div class="upload-label">Drop an image here</div>
+                <div class="upload-hint">or click to browse — jpg, png, gif, webp · max 10 MB</div>
+                <div class="upload-filename" id="upload-filename"></div>
+            </div>
+
+            <div class="gen-error" id="upload-error"></div>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" id="convert-btn" disabled onclick="startConvert()">Convert Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ STEP 2: GENERATE ═══════════════════ -->
+    <div id="step-generate" class="step">
+        <div class="generate-layout">
+
+            <!-- Left sidebar -->
+            <aside class="gen-sidebar">
+
+                <div class="panel">
+                    <div class="panel-title">Source Image</div>
+                    <canvas id="crop-preview-canvas" role="img" aria-label="Source image preview"></canvas>
+                    <button class="btn-edit-crop" onclick="openCropModal()">Edit Crop</button>
+                    <button id="btn-change-image" style="display:none;margin-top:8px;width:100%;padding:6px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;font-size:0.82rem;" onclick="goToUpload()"><i class="ti ti-arrow-left"></i> Upload new image</button>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">Controls</div>
+
+                    <div class="ctrl-group" style="margin-bottom:16px">
+                        <div class="ctrl-label" style="margin-bottom:8px"><span>Dimensions</span></div>
+                        <div class="seg-toggle" id="dim-mode-toggle">
+                            <button class="seg-btn active" onclick="setDimMode('stitches')">Stitches</button>
+                            <button class="seg-btn" onclick="setDimMode('inches')">Inches</button>
+                        </div>
+                    </div>
+
+                    <div class="ctrl-group" id="dim-fabric-group" style="display:none">
+                        <div class="ctrl-label">
+                            <span>Fabric Count</span>
+                        </div>
+                        <select class="dim-fabric-select" id="dim-fabric-select" onchange="setDimFabric(this.selectedIndex)"></select>
+                    </div>
+
+                    <div class="ctrl-group" id="ctrl-group-w">
+                        <div class="ctrl-label">
+                            <span id="label-w">Width (stitches)</span>
+                            <span class="ctrl-val ctrl-val-editable" id="val-grid-w" title="Click to type a value">100</span>
+                        </div>
+                        <input type="range" id="ctrl-grid-w" min="25" max="250" value="100" step="1"
+                               oninput="onWidthSlider(this.value)">
+                    </div>
+
+                    <div class="ctrl-group" id="ctrl-group-h">
+                        <div class="ctrl-label">
+                            <span id="label-h">Height (stitches)
+                                <button class="lock-toggle locked" id="lock-height" onclick="toggleHeightLock()"
+                                        title="Locked: auto from aspect ratio. Click to unlock.">
+                                    <span class="lock-icon"><i class="ti ti-lock"></i></span>
+                                </button>
+                            </span>
+                            <span class="ctrl-val ctrl-val-editable" id="val-grid-h" title="Click to type a value">&mdash;</span>
+                        </div>
+                        <input type="range" id="ctrl-grid-h" min="25" max="250" value="100" step="1"
+                               oninput="onHeightSlider(this.value)" disabled>
+                    </div>
+
+                    <div class="ctrl-group">
+                        <div class="ctrl-label">
+                            <span>Color Count</span>
+                            <span class="ctrl-val ctrl-val-editable" id="val-colors" title="Click to type a value">15</span>
+                        </div>
+                        <input type="range" id="ctrl-colors" min="5" max="34" value="15" step="1"
+                               oninput="updateVal('val-colors', this.value); scheduleRegenerate()">
+                    </div>
+
+                    <div class="ctrl-group">
+                        <div class="ctrl-label" style="margin-bottom:8px"><span>Thread Brand</span></div>
+                        <div class="seg-toggle" id="brand-toggle">
+                            <button class="seg-btn active" onclick="setBrand('DMC')">DMC</button>
+                            <button class="seg-btn" onclick="setBrand('Anchor')">Anchor</button>
+                        </div>
+                    </div>
+
+                    <div class="ctrl-group" id="palette-filter-group">
+                        <div class="ctrl-label" style="margin-bottom:8px"><span>Palette</span></div>
+                        <div class="seg-toggle" id="palette-filter-toggle">
+                            <button class="seg-btn active" onclick="setPaletteFilter('standard')">Standard</button>
+                            <button class="seg-btn" onclick="setPaletteFilter('special')">Special</button>
+                            <button class="seg-btn" onclick="setPaletteFilter('both')">Both</button>
+                        </div>
+                    </div>
+
+                    <div class="toggle-row" style="margin-top:14px">
+                        <span class="toggle-label">Dithering</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="ctrl-dither" checked onchange="scheduleRegenerate()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <span class="toggle-label">Pixel Art</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="ctrl-pixel-art" onchange="onPixelArtChange()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="ctrl-group">
+                        <div class="ctrl-label">
+                            <span>Contrast</span>
+                            <span class="ctrl-val" id="val-contrast">1.0</span>
+                        </div>
+                        <input type="range" id="ctrl-contrast" min="0.5" max="2.0" value="1.0" step="0.1"
+                               oninput="updateVal('val-contrast', parseFloat(this.value).toFixed(1)); scheduleRegenerate()">
+                    </div>
+
+                    <div class="ctrl-group" style="margin-bottom:0">
+                        <div class="ctrl-label">
+                            <span>Brightness</span>
+                            <span class="ctrl-val" id="val-brightness">1.0</span>
+                        </div>
+                        <input type="range" id="ctrl-brightness" min="0.5" max="1.5" value="1.0" step="0.05"
+                               oninput="updateVal('val-brightness', parseFloat(this.value).toFixed(2)); scheduleRegenerate()">
+                    </div>
+
+                    <div id="no-source-notice" style="display:none;margin-top:14px;font-size:0.8rem;color:var(--text-dim);line-height:1.4;">
+                        No source image available. Upload a new image to re-generate with different settings.
+                    </div>
+                </div>
+
+                <div class="spinner-wrap" id="gen-spinner">
+                    <div class="spinner"></div>
+                    <span>Generating…</span>
+                </div>
+
+                <div class="gen-error" id="gen-error"></div>
+
+            </aside>
+
+            <!-- Right: pattern canvas + color key -->
+            <div class="main-area">
+
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon"><i class="ti ti-needle"></i></div>
+                    <div class="empty-text">Generating your pattern…</div>
+                </div>
+
+                <div class="canvas-card" id="canvas-card">
+                    <div class="canvas-toolbar">
+                        <label class="gridlines-label">
+                            <input type="checkbox" id="gridlines-check" checked onchange="renderCanvas()">
+                            Gridlines
+                        </label>
+                        <label class="gridlines-label">
+                            <input type="checkbox" id="symbols-check" checked onchange="onSymbolsToggle()">
+                            Symbols
+                        </label>
+                        <label class="gridlines-label">
+                            <input type="checkbox" id="stitch-check" onchange="onStitchToggle()">
+                            Stitches
+                        </label>
+                        <div class="download-dropdown" id="download-dropdown">
+                            <button class="download-btn" onclick="toggleDownloadMenu(event)">Download <i class="ti ti-chevron-down"></i></button>
+                            <div class="download-menu" id="download-menu">
+                                <button onclick="downloadCanvas(); closeDownloadMenu()">PNG Image</button>
+                                <button onclick="downloadPDF(); closeDownloadMenu()">PDF Document</button>
+                            </div>
+                        </div>
+                        <button class="download-btn" id="edit-toggle-btn" onclick="toggleCanvasEdit()" style="display:none">Edit</button>
+                        <button class="download-btn btn-save-toolbar" id="btn-save-pattern" onclick="openSaveDialog()" style="display:none">Save</button>
+                    </div>
+                    <div class="canvas-area" id="canvas-area">
+                        <div class="canvas-wrapper" id="canvas-wrapper">
+                            <canvas id="pattern-canvas" role="img" aria-label="Generated cross-stitch pattern"></canvas>
+                            <canvas id="overlay-canvas" aria-hidden="true" style="position:absolute;top:0;left:0;pointer-events:none"></canvas>
+                        </div>
+                        <canvas id="ruler-top" class="ruler ruler-top" aria-hidden="true"></canvas>
+                        <canvas id="ruler-left" class="ruler ruler-left" aria-hidden="true"></canvas>
+                        <div class="zoom-controls" id="zoom-controls" style="display:none">
+                            <button class="zoom-btn" id="zoom-in-btn" title="Zoom In" aria-label="Zoom in"><i class="ti ti-zoom-in"></i></button>
+                            <span class="zoom-level" id="zoom-level">100%</span>
+                            <button class="zoom-btn" id="zoom-out-btn" title="Zoom Out" aria-label="Zoom out"><i class="ti ti-zoom-out"></i></button>
+                        </div>
+                    </div>
+                    <div class="canvas-info" id="canvas-info"></div>
+                    <div class="canvas-info canvas-fabric-row" id="fabric-size-panel" style="display:none">
+                        <span class="fabric-label">Fabric:</span>
+                        <div class="fabric-dropdown" id="fabric-dropdown">
+                            <button class="fabric-dropdown-btn" id="fabric-dropdown-btn" onclick="toggleFabricMenu(event)">
+                                14 Count Aida <span class="fabric-dd-arrow"><i class="ti ti-chevron-down"></i></span>
+                            </button>
+                            <div class="fabric-dropdown-menu" id="fabric-dropdown-menu"></div>
+                        </div>
+                        <span id="fabric-size-result" class="fabric-size-inline"></span>
+                    </div>
+                </div>
+
+                <div class="edit-fs-resize-handle" id="edit-fs-resize-handle"></div>
+                <div class="key-card" id="key-card">
+                    <div class="key-header">
+                        <div class="key-title">Color Key</div>
+                        <div class="key-edit-totals" id="key-edit-totals"></div>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:.06em">Show</span>
+                                <div class="seg-toggle" id="display-filter-toggle">
+                                    <button class="seg-btn" onclick="setDisplayFilter('standard')">Standard</button>
+                                    <button class="seg-btn" onclick="setDisplayFilter('special')">Special</button>
+                                    <button class="seg-btn active" onclick="setDisplayFilter('both')">Both</button>
+                                </div>
+                            </div>
+                            <button class="mark-need-btn" id="mark-need-btn" onclick="markAllNeed()">
+                                Mark all unowned as Need
+                            </button>
+                        </div>
+                        <div class="legend-sort-row">
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:.06em">Sort</span>
+                            <button class="legend-sort-btn active" id="sort-btn-number" onclick="setLegendSort('number')">Number</button>
+                            <button class="legend-sort-btn" id="sort-btn-stitches" onclick="setLegendSort('stitches')">Stitches</button>
+                        </div>
+                    </div>
+                    <div id="key-table-wrap"></div>
+                </div>
+
+                <button class="edit-fs-legend-toggle" id="edit-fs-legend-toggle"
+                        onclick="toggleEditLegend()" style="display:none">Legend <i class="ti ti-chevron-up"></i></button>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ SAVE DIALOG ═══════════════════ -->
+    <div id="save-modal" style="display:none;position:fixed;inset:0;z-index:500;
+         background:rgba(0,0,0,0.6);align-items:center;justify-content:center"
+         onclick="if(event.target===this)closeSaveDialog()">
+        <div style="background:var(--surface);border:1px solid var(--border-2);
+                    border-radius:var(--r-lg);padding:28px;width:360px;max-width:90vw">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;
+                        text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);
+                        margin-bottom:14px">Name this pattern</div>
+            <input type="text" id="save-name-input" placeholder="e.g. Cardinal on Branch"
+                   maxlength="120"
+                   style="width:100%;padding:9px 12px;background:var(--surface-2);
+                          border:1px solid var(--border-2);border-radius:var(--r);
+                          color:var(--text);font-family:'Cormorant Garamond',serif;
+                          font-size:16px;outline:none;margin-bottom:12px;
+                          transition:border-color var(--t)"
+                   onkeydown="if(event.key==='Enter')confirmSave()">
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button onclick="closeSaveDialog()"
+                        style="padding:8px 16px;background:transparent;
+                               border:1px solid var(--border-2);border-radius:var(--r);
+                               color:var(--text-muted);font-family:'IBM Plex Mono',monospace;
+                               font-size:11px;cursor:pointer;transition:all var(--t)">Cancel</button>
+                <button id="save-confirm-btn" onclick="confirmSave()"
+                        style="padding:8px 16px;background:transparent;
+                               border:1px solid var(--gold-dim);border-radius:var(--r);
+                               color:var(--gold);font-family:'IBM Plex Mono',monospace;
+                               font-size:11px;cursor:pointer;transition:all var(--t)">Save</button>
+            </div>
+            <div id="save-modal-error"
+                 style="display:none;margin-top:10px;font-family:'IBM Plex Mono',monospace;
+                        font-size:11px;color:#d07070;letter-spacing:.02em"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ CROP MODAL OVERLAY ═══════════════════ -->
+    <div id="crop-modal" class="crop-modal" style="display:none">
+        <div class="crop-modal-content">
+            <div class="crop-layout">
+
+                <!-- Left sidebar: crop controls -->
+                <aside class="crop-sidebar">
+
+                    <div class="panel">
+                        <div class="panel-title">Shape</div>
+                        <div class="seg-toggle" id="crop-shape-toggle">
+                            <button class="seg-btn active" onclick="setCropShape('rect')">Rect</button>
+                            <button class="seg-btn"        onclick="setCropShape('square')">Square</button>
+                            <button class="seg-btn"        onclick="setCropShape('ellipse')">Ellipse</button>
+                            <button class="seg-btn"        onclick="setCropShape('circle')">Circle</button>
+                        </div>
+                    </div>
+
+                    <div class="step-nav">
+                        <button class="btn-back" onclick="closeCropModal(false)">Cancel</button>
+                        <button class="btn-continue" onclick="closeCropModal(true)">Apply Crop</button>
+                    </div>
+
+                </aside>
+
+                <!-- Right: large image with crop overlay -->
+                <div class="crop-canvas-area">
+                    <div class="crop-img-wrap" id="crop-img-wrap">
+                        <img id="crop-img" src="data:," alt="Crop preview">
+                        <div id="crop-overlay">
+                            <div id="crop-rect">
+                                <div class="ch" data-handle="nw" style="top:-5px;left:-5px;cursor:nw-resize"></div>
+                                <div class="ch" data-handle="ne" style="top:-5px;right:-5px;cursor:ne-resize"></div>
+                                <div class="ch" data-handle="sw" style="bottom:-5px;left:-5px;cursor:sw-resize"></div>
+                                <div class="ch" data-handle="se" style="bottom:-5px;right:-5px;cursor:se-resize"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='stitch-renderer.js') }}?v={{ v }}"></script>
+    <script src="{{ url_for('static', filename='editor.js') }}?v={{ v }}"></script>
+    <script src="{{ url_for('static', filename='image-to-pattern.js') }}?v={{ v }}"></script>
+{% endblock %}

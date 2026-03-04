@@ -1,0 +1,759 @@
+{% extends "base.html" %}
+
+{% block title %}Pattern Viewer — Needlework Studio{% endblock %}
+{% block body_attrs %}style="height:100%;overflow:hidden;display:flex;flex-direction:column;line-height:normal;"{% endblock %}
+
+{% block head %}
+    <style>
+        /* (reset and scrollbar styles now in tokens.css) */
+        html { height: 100%; overflow: hidden; }
+
+        /* ——— HEADER ——— */
+        .site-header {
+            flex-shrink: 0;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .hd-row {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .hd-row-top {
+            gap: 14px;
+            padding-top: 10px;
+            padding-bottom: 4px;
+        }
+        /* Desktop: align first row under traffic lights */
+        [data-desktop="darwin"] .hd-row-top { padding-left: 16px; }
+
+        .hd-row-actions {
+            gap: 2px;
+            padding-bottom: 8px;
+            justify-content: space-between;
+        }
+
+        .back-link {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-decoration: none;
+            letter-spacing: .04em;
+            transition: color var(--t);
+            flex-shrink: 0;
+        }
+        .back-link:hover { color: var(--gold); }
+
+        .pattern-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pattern-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .04em;
+            flex-shrink: 0;
+        }
+
+        .hd-tools, .hd-utils {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+        }
+
+        .nav-link {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 6px 11px;
+            border-radius: var(--r);
+            transition: color var(--t), background var(--t);
+            letter-spacing: .04em;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-link:hover { color: var(--text); background: var(--surface-2); }
+
+        .calc-dropdown-wrap {
+            position: relative;
+        }
+
+        .calc-dropdown-wrap .nav-link.open {
+            color: var(--text);
+            background: var(--surface-2);
+        }
+
+        .calc-dropdown-menu {
+            display: none;
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            z-index: 9999;
+            box-shadow: 0 4px 16px rgba(0,0,0,.25);
+            min-width: 160px;
+        }
+
+        .calc-dropdown-menu.open { display: block; }
+
+        .calc-dropdown-menu a {
+            display: block;
+            padding: 9px 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color var(--t), background var(--t);
+        }
+
+        .calc-dropdown-menu a:first-child { border-radius: var(--r) var(--r) 0 0; }
+        .calc-dropdown-menu a:last-child  { border-radius: 0 0 var(--r) var(--r); }
+        .calc-dropdown-menu a:hover { color: var(--text); background: var(--surface-2); }
+
+        .theme-toggle-btn {
+            background: var(--surface-2);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            padding: 5px 10px;
+            transition: border-color var(--t), background var(--t);
+        }
+        .theme-toggle-btn:hover { border-color: var(--gold-dim); background: var(--surface); }
+
+        /* ——— MAIN LAYOUT ——— */
+        .viewer-main {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ——— CANVAS AREA ——— */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: var(--surface-2);
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        .canvas-area.dragging { cursor: grabbing; }
+
+        .canvas-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+        }
+
+        #main-canvas  { display: block; }
+        #overlay-canvas {
+            display: block;
+            position: absolute;
+            top: 0; left: 0;
+            pointer-events: none;
+        }
+
+        /* ——— MINI-MAP ——— */
+        .minimap-wrap {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            overflow: hidden;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,.5);
+            z-index: 10;
+        }
+        #mini-canvas { display: block; }
+
+        /* ——— ZOOM BUTTONS ——— */
+        .zoom-controls {
+            position: absolute; bottom: 14px; left: 14px;
+            display: flex; flex-direction: column; gap: 4px; z-index: 10;
+        }
+        .zoom-btn {
+            width: 36px; height: 36px; border-radius: var(--r);
+            border: 1px solid var(--border-2); background: var(--surface);
+            color: var(--text); font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,.3);
+            transition: background var(--t), border-color var(--t);
+        }
+        .zoom-btn:hover { background: var(--surface-2); border-color: var(--gold-dim); }
+        .zoom-level {
+            font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+            color: var(--text-muted); text-align: center; min-width: 36px;
+            background: var(--surface); border: 1px solid var(--border-2);
+            border-radius: var(--r); padding: 2px 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.3);
+        }
+
+        /* ——— LEGEND SIDEBAR ——— */
+        .legend-resize-handle {
+            width: 4px;
+            flex-shrink: 0;
+            background: var(--border);
+            cursor: col-resize;
+            transition: background var(--t);
+            z-index: 5;
+        }
+        .legend-resize-handle:hover,
+        .legend-resize-handle.resizing { background: var(--gold); }
+
+        .legend-panel {
+            width: 220px;
+            min-width: 150px;
+            max-width: 520px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            --sw: 20px;
+            --sw-font: 9px;
+            --chk: 16px;
+            --leg-dmc: 10px;
+            --leg-name: 9px;
+            --leg-count: 9px;
+        }
+
+        .legend-header {
+            padding: var(--lh-pad-y, 12px) var(--lh-pad-x, 14px) var(--lh-pad-b, 9px);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .legend-header h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: var(--lh-title, 15px);
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 3px;
+        }
+
+        .legend-totals {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: var(--lh-totals, 9px);
+            color: var(--text-dim);
+            letter-spacing: .04em;
+        }
+
+        .legend-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 5px 0;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: background var(--t), border-color var(--t);
+        }
+        .legend-row:hover { background: var(--surface-2); }
+        .legend-row.active {
+            border-left-color: var(--gold);
+            background: var(--surface-2);
+        }
+
+        .legend-swatch {
+            width: var(--sw);
+            height: var(--sw);
+            border-radius: 3px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--sw-font);
+            font-family: "Segoe UI Symbol","Apple Symbols","Noto Sans Symbols","IBM Plex Mono",sans-serif;
+            line-height: 1;
+        }
+
+        .legend-swatch span {
+            display: block;
+            transform: translateY(0.08em);
+        }
+
+        .leg-dash {
+            flex-shrink: 0;
+            align-self: center;
+        }
+
+        .legend-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .legend-dmc {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: var(--leg-dmc);
+            color: var(--text);
+            letter-spacing: .03em;
+        }
+
+        .legend-name {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: var(--leg-name);
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .legend-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: var(--leg-count);
+            color: var(--text-dim);
+            letter-spacing: .03em;
+            flex-shrink: 0;
+        }
+        .legend-count .lc-done { color: var(--gold); }
+
+        .leg-replace-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 2px;
+            font-size: 13px;
+            line-height: 1;
+            flex-shrink: 0;
+            border-radius: 3px;
+            transition: color var(--t), background var(--t);
+        }
+        .leg-replace-btn:hover {
+            color: var(--gold);
+            background: var(--surface-2);
+        }
+        body.edit-mode-on .leg-replace-btn {
+            display: flex;
+        }
+
+        .legend-sort-row {
+            display: flex;
+            gap: 4px;
+            margin-top: 7px;
+        }
+        .legend-sort-btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: var(--lh-sort, 8px);
+            letter-spacing: .04em;
+            padding: var(--lh-sort-py, 2px) var(--lh-sort-px, 6px);
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background var(--t), color var(--t), border-color var(--t);
+        }
+        .legend-sort-btn.active {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: #1a1208;
+        }
+        .legend-sort-btn:not(.active):hover {
+            background: var(--surface-2);
+            color: var(--text);
+        }
+
+        .legend-search {
+            width: 100%;
+            margin-top: 7px;
+            padding: var(--lh-search-py, 5px) var(--lh-search-px, 8px);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: var(--lh-search, 10px);
+            letter-spacing: .03em;
+            color: var(--text);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            outline: none;
+            transition: border-color var(--t);
+        }
+        .legend-search::placeholder { color: var(--text-dim); }
+        .legend-search:focus { border-color: var(--gold-dim); }
+
+        /* ——— LOADING OVERLAY ——— */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            z-index: 20;
+        }
+
+        .loading-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            letter-spacing: .08em;
+        }
+
+        /* ——— KEYBOARD HINT ——— */
+        .kb-hint {
+            position: absolute;
+            bottom: 14px;
+            left: 60px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--text-dim);
+            letter-spacing: .04em;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* ——— PROGRESS TRACKING ——— */
+        .leg-check {
+            width:var(--chk); height:var(--chk); border-radius:3px; border:1px solid var(--border-2);
+            background:var(--surface-2); display:flex; align-items:center; justify-content:center;
+            font-size:10px; color:transparent; flex-shrink:0; transition:all var(--t); cursor:pointer;
+        }
+        .leg-check.checked { background:var(--owned); border-color:var(--owned); color:#fff; }
+        .legend-row.completed .legend-name,
+        .legend-row.completed .legend-dmc { text-decoration:line-through; opacity:.5; }
+        /* ——— TIMER DISPLAY ——— */
+        .timer-display {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: .04em;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        /* ——— CELL PROGRESS ——— */
+        .cell-progress-wrap { margin: 8px 0 12px; }
+        .cell-progress-bar-track { height: 4px; background: var(--border-2); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+        .cell-progress-bar { height: 100%; background: var(--gold); border-radius: 2px; transition: width .3s; }
+        .cell-progress-label { font-family: 'IBM Plex Mono', monospace; font-size: var(--lh-totals, 9px); color: var(--text-dim); }
+
+        /* ——— CELL MARK MODE ——— */
+        .canvas-area.cell-mark-mode { cursor: crosshair; }
+        .canvas-area.cell-mark-mode.dragging { cursor: crosshair; }
+
+        #cell-mark-btn.active {
+            color: var(--gold);
+            background: rgba(200,145,58,0.12);
+            border-color: var(--gold-dim);
+        }
+
+        body.edit-mode-on #cell-mark-btn,
+        body.edit-mode-on .cell-progress-wrap { display: none; }
+
+        /* ——— ZEN / FULLSCREEN MODE ——— */
+        body.zen-mode .site-header { display: none; }
+        body.zen-mode .kb-hint { display: none; }
+
+        .zen-toolbar {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 300;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+        body.zen-mode .zen-toolbar { display: flex; }
+
+        .zen-toolbar-btn {
+            pointer-events: auto;
+            background: var(--surface);
+            color: var(--text-muted);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            padding: 6px 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            transition: opacity .3s, color var(--t), background var(--t), border-color var(--t);
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .zen-toolbar-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
+        .zen-toolbar-btn.visible { opacity: 1; }
+        .zen-toolbar-btn.open { color: var(--text); background: var(--surface-2); opacity: 1; }
+
+        #zen-menu {
+            min-width: 200px;
+            pointer-events: auto;
+        }
+        #zen-menu .menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+        #zen-menu a,
+        #zen-menu button.zen-menu-item {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 9px 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+            text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            transition: color var(--t), background var(--t);
+        }
+        #zen-menu a:hover,
+        #zen-menu button.zen-menu-item:hover { color: var(--text); background: var(--surface-2); }
+        #zen-menu > :first-child { border-radius: var(--r) var(--r) 0 0; }
+        #zen-menu > :last-child  { border-radius: 0 0 var(--r) var(--r); }
+
+        .legend-title-row { display: flex; align-items: center; justify-content: space-between; }
+        .zen-exit-btn {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            background: var(--surface);
+            color: var(--text-muted);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            padding: 4px 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color var(--t), background var(--t), border-color var(--t);
+        }
+        .zen-exit-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
+        body.zen-mode .zen-exit-btn { display: flex; }
+
+        /* ——— LEGEND TOGGLE (default hidden, shown on mobile) ——— */
+        .legend-toggle-btn { display: none; }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 640px) {
+            .hd-row { padding: 0 10px; }
+            .hd-row-top { gap: 8px; padding-top: 6px; padding-bottom: 2px; flex-wrap: wrap; }
+            .hd-row-actions { padding-bottom: 6px; }
+            .back-link { font-size: 10px; }
+            .pattern-title { font-size: 14px; line-height: 1.2; }
+            .pattern-meta { font-size: 9px; }
+            .legend-resize-handle { display: none; }
+            .legend-panel {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                width: 100% !important;
+                max-width: 100%;
+                min-width: 0;
+                max-height: 55vh;
+                border-left: none;
+                border-top: 2px solid var(--gold-dim);
+                border-radius: 12px 12px 0 0;
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
+                z-index: 200;
+                box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+            }
+            .legend-panel.open { transform: translateY(0); }
+            .legend-toggle-btn {
+                display: block;
+                position: fixed;
+                bottom: 16px;
+                right: 16px;
+                z-index: 201;
+                background: var(--surface);
+                color: var(--gold);
+                border: 1px solid var(--gold-dim);
+                border-radius: 8px;
+                padding: 8px 14px;
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 11px;
+                letter-spacing: .04em;
+                cursor: pointer;
+                box-shadow: 0 2px 10px rgba(0,0,0,.3);
+                transition: background var(--t), color var(--t);
+            }
+            .legend-toggle-btn:active { background: var(--gold-dim); color: var(--text); }
+        }
+    </style>
+{% endblock %}
+
+{% block header %}
+<header class="site-header">
+    <div class="hd-row hd-row-top">
+        <a href="/saved-patterns" class="back-link"><i class="ti ti-arrow-left"></i> Saved Patterns</a>
+        <span class="pattern-title" id="pattern-title">Loading…</span>
+        <span class="pattern-meta" id="pattern-meta"></span>
+        <span class="timer-display" id="timer-display" title="Time spent on this pattern" style="display:none"></span>
+    </div>
+    <div class="hd-row hd-row-actions">
+        <div class="hd-tools">
+            <button class="nav-link" id="cell-mark-btn" onclick="toggleCellMarkMode()"
+                    title="Mark stitched cells (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i> Mark Complete</button>
+            <button class="nav-link" id="view-mode-btn" onclick="toggleViewMode()"><i class="ti ti-needle"></i> Thread View</button>
+            <script>!function(){var m=localStorage.getItem('pv-viewMode'),b=document.getElementById('view-mode-btn');if(m==='thread'&&b)b.innerHTML='<i class="ti ti-grid-dots"></i> Chart View';}();</script>
+            <div class="calc-dropdown-wrap">
+                <button class="nav-link" id="calc-toggle" onclick="toggleCalcMenu(event)">Calculate Materials <i class="ti ti-chevron-down"></i></button>
+                <div class="calc-dropdown-menu" id="calc-menu">
+                    <a href="/pattern-calculator?pattern={{ pattern_slug }}">Thread Needs</a>
+                    <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric">Fabric Size</a>
+                </div>
+            </div>
+            <button class="nav-link" id="edit-toggle-btn" onclick="toggleEditMode()">Edit Pattern</button>
+            <button class="nav-link" id="cancel-btn" onclick="cancelEdit()" style="display:none">Cancel</button>
+            <button class="nav-link" id="save-btn" onclick="savePattern()" style="display:none;color:var(--gold)">Save</button>
+        </div>
+        <div class="hd-utils">
+            <button class="nav-link" id="help-btn"
+                    onclick="showShortcutHelp(typeof editMode!=='undefined'&&editMode&&typeof editor!=='undefined'&&editor&&editor.isActive())"
+                    title="Keyboard shortcuts (?)" aria-label="Show keyboard shortcuts"><i class="ti ti-keyboard"></i></button>
+            <button class="nav-link" id="zen-btn" onclick="toggleZenMode()" title="Zen Mode (F)" aria-label="Zen mode">Zen Mode</button>
+            <button class="nav-link theme-toggle-btn" id="theme-toggle"
+                    onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
+            <a href="/logout" class="nav-link danger">Logout</a>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="viewer-main">
+    <div class="canvas-area" id="canvas-area">
+        <div class="loading-overlay" id="loading-overlay">
+            <span class="loading-text">Loading pattern…</span>
+        </div>
+
+        <div class="canvas-wrapper" id="canvas-wrapper">
+            <canvas id="main-canvas" role="img" aria-label="Cross-stitch pattern grid"></canvas>
+            <canvas id="overlay-canvas" aria-hidden="true"></canvas>
+        </div>
+        <div class="minimap-wrap" id="minimap-wrap">
+            <canvas id="mini-canvas" aria-hidden="true"></canvas>
+        </div>
+        <div class="zoom-controls" id="zoom-controls">
+            <button class="zoom-btn" id="zoom-in-btn" title="Zoom In" aria-label="Zoom in"><i class="ti ti-zoom-in"></i></button>
+            <span class="zoom-level" id="zoom-level">100%</span>
+            <button class="zoom-btn" id="zoom-out-btn" title="Zoom Out" aria-label="Zoom out"><i class="ti ti-zoom-out"></i></button>
+        </div>
+        <div class="kb-hint">Scroll to zoom · Drag to pan · Click legend to highlight · ? for shortcuts</div>
+    </div>
+
+    <div class="legend-resize-handle" id="legend-resize-handle"></div>
+    <aside class="legend-panel" id="legend-panel">
+        <div class="legend-header">
+            <div class="legend-title-row">
+                <h3>Color Legend</h3>
+                <button class="zen-exit-btn" id="zen-exit-btn" onclick="toggleZenMode()">
+                    <i class="ti ti-arrows-minimize"></i> Exit Zen
+                </button>
+            </div>
+            <div class="legend-totals" id="legend-totals"></div>
+            <div class="legend-sort-row">
+                <button class="legend-sort-btn active" id="sort-btn-number" onclick="setLegendSort('number')">DMC #</button>
+                <button class="legend-sort-btn" id="sort-btn-stitches" onclick="setLegendSort('stitches')">Stitches</button>
+            </div>
+            <input type="text" class="legend-search" id="legend-search"
+                   placeholder="Search DMC # or name…" maxlength="100" oninput="filterLegend()">
+            <div class="cell-progress-wrap" id="cell-progress-wrap">
+                <div class="cell-progress-bar-track">
+                    <div class="cell-progress-bar" id="cell-progress-bar" style="width:0%"></div>
+                </div>
+                <span class="cell-progress-label" id="cell-progress-label"></span>
+            </div>
+        </div>
+        <div class="legend-scroll" id="legend-scroll"></div>
+    </aside>
+</div>
+<button class="legend-toggle-btn" id="legend-toggle-btn" onclick="toggleLegendPanel()">Legend <i class="ti ti-chevron-up"></i></button>
+<div class="zen-toolbar" id="zen-toolbar">
+    <div style="position:relative">
+        <button class="zen-toolbar-btn" id="zen-menu-btn"
+                onclick="toggleZenMenu(event)" aria-label="Zen menu">
+            <i class="ti ti-menu-2"></i>
+        </button>
+        <div class="calc-dropdown-menu" id="zen-menu">
+            <button class="zen-menu-item" onclick="zenMenuAction('mark-complete')">
+                <i class="ti ti-pencil-check"></i> <span id="zen-mark-label">Mark Complete</span>
+            </button>
+            <button class="zen-menu-item" onclick="zenMenuAction('view-mode')">
+                <i class="ti ti-needle" id="zen-view-icon"></i> <span id="zen-view-label">Thread View</span>
+            </button>
+            <div class="menu-divider"></div>
+            <a href="/pattern-calculator?pattern={{ pattern_slug }}">
+                <i class="ti ti-calculator"></i> Thread Needs
+            </a>
+            <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric">
+                <i class="ti ti-ruler"></i> Fabric Size
+            </a>
+            <div class="menu-divider"></div>
+            <button class="zen-menu-item" onclick="zenMenuAction('edit')">
+                <i class="ti ti-edit"></i> Edit Pattern
+            </button>
+            <button class="zen-menu-item" onclick="zenMenuAction('theme')">
+                <i class="ti ti-sun-moon"></i> Toggle Theme
+            </button>
+            <button class="zen-menu-item" onclick="zenMenuAction('shortcuts')">
+                <i class="ti ti-keyboard"></i> Keyboard Shortcuts
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Fork confirmation dialog -->
+<div class="ed-modal" id="fork-dialog" style="display:none" onclick="if(event.target===this)closeForkDialog()">
+    <div class="ed-modal-card">
+        <h3>Edit Pattern</h3>
+        <p>Edit the original pattern directly, or create a copy to keep the original safe.</p>
+        <div class="ed-modal-actions">
+            <button class="ed-modal-btn" onclick="closeForkDialog()">Cancel</button>
+            <button class="ed-modal-btn" onclick="editOriginal()">Edit Original</button>
+            <button class="ed-modal-btn primary" onclick="confirmFork()">Create Copy &amp; Edit</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='stitch-renderer.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='editor.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='shortcut-help.js') }}?v={{ v }}"></script>
+<script>
+    window._PAGE_CONFIG = {
+        patternSlug: {{ pattern_slug | tojson }},
+        patternSymbols: {{ pattern_symbols | tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='pattern-viewer.js') }}?v={{ v }}"></script>
+{% endblock %}

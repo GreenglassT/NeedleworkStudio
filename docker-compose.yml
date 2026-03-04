@@ -1,0 +1,13 @@
+services:
+  needlework-studio:
+    build: .
+    ports:
+      - "6969:6969"
+    volumes:
+      - needlework-data:/data
+    environment:
+      - PORT=6969
+    restart: unless-stopped
+
+volumes:
+  needlework-data:

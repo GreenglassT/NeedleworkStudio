@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}Import OXS — Needlework Studio{% endblock %}
+{% block brand_name %}Import OXS{% endblock %}
+
+{% block head %}
+    <style>
+        /* ——— INFO BOX (warnings) ——— */
+        .info-box {
+            background: rgba(180,140,60,.08);
+            border: 1px solid var(--gold);
+            border-radius: var(--r);
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .info-box ul {
+            margin: 6px 0 0 0;
+            padding-left: 18px;
+        }
+
+        .info-box li {
+            margin-bottom: 3px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+    <h1 class="page-title">OXS Import</h1>
+    <p class="page-sub">Import an Open Cross Stitch (.oxs) pattern file.</p>
+
+    <!-- ——— STEP 1: UPLOAD ——— -->
+    <div id="step-upload" class="step active">
+        <div class="upload-zone" id="drop-zone"
+             onclick="document.getElementById('oxs-input').click()"
+             ondragover="onDragOver(event)"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDrop(event)">
+            <div class="upload-icon"><i class="ti ti-file-code"></i></div>
+            <div class="upload-label">Drop an OXS file here</div>
+            <div class="upload-hint">or click to browse — .oxs files only</div>
+            <div class="upload-filename" id="filename-display"></div>
+        </div>
+        <input type="file" id="oxs-input" accept=".oxs,application/xml,text/xml" style="display:none" onchange="onFileSelected(this)">
+
+        <div class="error-box" id="upload-error"></div>
+
+        <div class="btn-row">
+            <button class="btn btn-primary" id="import-btn" disabled onclick="importOXS()">Import OXS</button>
+        </div>
+    </div>
+
+    <!-- ——— STEP 2: PROCESSING ——— -->
+    <div id="step-processing" class="step">
+        <div class="processing-wrap">
+            <div class="spinner lg"></div>
+            <div class="processing-label">Parsing pattern…</div>
+        </div>
+    </div>
+
+    <!-- ——— STEP 3: PREVIEW & SAVE ——— -->
+    <div id="step-preview" class="step">
+        <div class="section-label">Pattern Name</div>
+        <input type="text" id="pattern-name" class="name-input" placeholder="Pattern name…" maxlength="120">
+        <div class="dim-line" id="dim-line"></div>
+
+        <div id="warnings-box" class="info-box" style="display:none"></div>
+
+        <div class="preview-grid-row">
+            <div class="preview-canvas-wrap">
+                <canvas id="preview-canvas" role="img" aria-label="Pattern preview"></canvas>
+            </div>
+            <div class="preview-side">
+                <div class="section-label">Colors (<span id="color-count">0</span>)</div>
+                <div class="legend-list" id="legend-list"></div>
+            </div>
+        </div>
+
+        <div class="error-box" id="save-error"></div>
+
+        <div class="btn-row" id="pre-save-actions">
+            <button class="btn btn-primary" id="save-btn" onclick="savePattern()">Save Pattern</button>
+            <button class="btn btn-ghost" onclick="resetToUpload()">Re-import</button>
+        </div>
+
+        <div class="btn-row post-save-actions" id="post-save-actions" style="display:none">
+            <a class="btn btn-primary" id="link-view">View Pattern</a>
+            <a class="btn btn-ghost" id="link-stash">Project Materials Calculator</a>
+            <button class="btn btn-ghost" onclick="resetToUpload()">Import Another</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const _SYMBOLS = '+\u00d7#@*!=?%&~^$\u25cf\u25a0\u25b2\u25c6\u2605\u00a7\u00b6\u2020\u2021\u00b1\u00f7\u25ce\u2295\u2297\u2260\u221a\u221e\u229e\u2b21\u00a4\u203b';
+
+    let selectedFile = null;
+    let patternData  = null;
+
+    /* ——— STEP MANAGEMENT ——— */
+    function showStep(n) {
+        document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step-' + ['upload', 'processing', 'preview'][n - 1]).classList.add('active');
+    }
+
+    /* ——— FILE SELECTION ——— */
+    function onFileSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        setFile(file);
+    }
+
+    function setFile(file) {
+        if (!file.name.toLowerCase().endsWith('.oxs')) {
+            showUploadError('Please select an OXS file.');
+            return;
+        }
+        selectedFile = file;
+        document.getElementById('filename-display').textContent = file.name;
+        document.getElementById('import-btn').disabled = false;
+        hideUploadError();
+    }
+
+    function onDragOver(e) {
+        e.preventDefault();
+        document.getElementById('drop-zone').classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+        document.getElementById('drop-zone').classList.remove('drag-over');
+    }
+
+    function onDrop(e) {
+        e.preventDefault();
+        document.getElementById('drop-zone').classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) setFile(file);
+    }
+
+    function showUploadError(msg) {
+        const el = document.getElementById('upload-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function hideUploadError() {
+        document.getElementById('upload-error').style.display = 'none';
+    }
+
+    /* ——— OXS PARSING ——— */
+    function parseOXS(xmlText) {
+        const doc = (new DOMParser()).parseFromString(xmlText, 'application/xml');
+
+        // Check for XML parse errors
+        const parseErr = doc.querySelector('parsererror');
+        if (parseErr) throw 'Could not parse XML file.';
+
+        // Read <properties>
+        const props = doc.querySelector('properties');
+        if (!props) throw 'Missing <properties> element.';
+
+        const grid_w = parseInt(props.getAttribute('chartwidth'));
+        const grid_h = parseInt(props.getAttribute('chartheight'));
+        const title  = props.getAttribute('charttitle') || '';
+
+        if (isNaN(grid_w) || isNaN(grid_h) || grid_w < 1 || grid_h < 1)
+            throw 'Invalid or missing chart dimensions.';
+        if (grid_w > 500 || grid_h > 500)
+            throw 'Chart dimensions too large (maximum 500\u00d7500).';
+
+        // Read <palette>
+        const paletteMap = {};   // index → { dmc, name, hex, brand }
+        const unmatchedWarnings = [];
+        let dmcCount = 0, anchorCount = 0;
+
+        const items = doc.querySelectorAll('palette > palette_item');
+        for (const item of items) {
+            const idx    = parseInt(item.getAttribute('index'));
+            const number = item.getAttribute('number') || '';
+            const name   = item.getAttribute('name') || '';
+            const color  = (item.getAttribute('color') || 'FFFFFF').replace(/^#/, '');
+            const hex    = '#' + color.padStart(6, '0').toUpperCase();
+
+            if (idx === 0) continue; // cloth = background
+
+            // Brand detection — DMC or Anchor
+            let brand = null, threadKey;
+            const dmcStripped = number.replace(/^DMC\s+/i, '').trim();
+            const anchorStripped = number.replace(/^Anchor\s+/i, '').trim();
+            if (/^DMC\s+/i.test(number)) {
+                brand = 'DMC'; threadKey = dmcStripped; dmcCount++;
+            } else if (/^Anchor\s+/i.test(number)) {
+                brand = 'Anchor'; threadKey = anchorStripped; anchorCount++;
+            } else if (/^\d+$/.test(dmcStripped) || /^(blanc|ecru)$/i.test(dmcStripped)) {
+                brand = 'DMC'; threadKey = dmcStripped; dmcCount++;
+            } else {
+                threadKey = 'hex:' + hex;
+                unmatchedWarnings.push(name || number || hex);
+            }
+
+            paletteMap[idx] = { dmc: threadKey, name: name || dmcStripped, hex: hex, brand: brand };
+        }
+        const detectedBrand = anchorCount > dmcCount ? 'Anchor' : 'DMC';
+
+        // Read <fullstitches>
+        const grid = new Array(grid_w * grid_h).fill('BG');
+        const stitchCounts = {};
+
+        const fullstitchesEl = doc.querySelector('fullstitches');
+        if (fullstitchesEl) {
+            for (const stitch of fullstitchesEl.querySelectorAll('stitch')) {
+                const x      = parseInt(stitch.getAttribute('x'));
+                const y      = parseInt(stitch.getAttribute('y'));
+                const palidx = parseInt(stitch.getAttribute('palindex'));
+
+                if (palidx === 0) continue; // cloth stitch
+                const entry = paletteMap[palidx];
+                if (!entry) continue;
+
+                if (x >= 0 && x < grid_w && y >= 0 && y < grid_h) {
+                    const pos = y * grid_w + x;
+                    // Decrement count for overwritten color (duplicate stitch at same position)
+                    const existing = grid[pos];
+                    if (existing !== 'BG') {
+                        stitchCounts[existing] = (stitchCounts[existing] || 1) - 1;
+                    }
+                    grid[pos] = entry.dmc;
+                    stitchCounts[entry.dmc] = (stitchCounts[entry.dmc] || 0) + 1;
+                }
+            }
+        }
+
+        // ── Part stitches ──
+        const part_stitches = [];
+        const partEl = doc.querySelector('partstitches');
+        if (partEl) {
+            // Group by (col, row) to determine composite stitch types
+            const cellMap = {}; // "col,row" → [{dir, dmc}]
+            for (const st of partEl.querySelectorAll('stitch')) {
+                const px = parseInt(st.getAttribute('x'));
+                const py = parseInt(st.getAttribute('y'));
+                const pi = parseInt(st.getAttribute('palindex'));
+                const dir = parseInt(st.getAttribute('direction'));
+                if (pi === 0 || !paletteMap[pi]) continue;
+                if (px < 0 || px >= grid_w || py < 0 || py >= grid_h) continue;
+                const key = px + ',' + py;
+                if (!cellMap[key]) cellMap[key] = [];
+                cellMap[key].push({ dir, dmc: paletteMap[pi].dmc });
+            }
+            // Convert grouped directions into our stitch types
+            const dirToCorner = { 1: 'TL', 2: 'TR', 3: 'BR', 4: 'BL' };
+            for (const [key, entries] of Object.entries(cellMap)) {
+                const [col, row] = key.split(',').map(Number);
+                // Group by DMC color
+                const byColor = {};
+                for (const e of entries) {
+                    if (!byColor[e.dmc]) byColor[e.dmc] = new Set();
+                    byColor[e.dmc].add(e.dir);
+                }
+                for (const [dmc, dirs] of Object.entries(byColor)) {
+                    const d = [...dirs].sort();
+                    if (d.length === 4) {
+                        // Full cross — put in full stitch grid instead
+                        grid[row * grid_w + col] = dmc;
+                        stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 1;
+                    } else if (d.length === 1) {
+                        // Quarter stitch
+                        part_stitches.push({ x: col, y: row, type: 'quarter', dmc, dir: dirToCorner[d[0]] });
+                        stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 0.25;
+                    } else if (d.length === 2) {
+                        if ((d[0] === 2 && d[1] === 4) || (d[0] === 4 && d[1] === 2)) {
+                            part_stitches.push({ x: col, y: row, type: 'half', dmc, dir: 'fwd' });
+                            stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 0.5;
+                        } else if ((d[0] === 1 && d[1] === 3) || (d[0] === 3 && d[1] === 1)) {
+                            part_stitches.push({ x: col, y: row, type: 'half', dmc, dir: 'bwd' });
+                            stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 0.5;
+                        } else {
+                            // Two non-diagonal quarters
+                            for (const dd of d) {
+                                part_stitches.push({ x: col, y: row, type: 'quarter', dmc, dir: dirToCorner[dd] });
+                            }
+                            stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 0.5;
+                        }
+                    } else if (d.length === 3) {
+                        // Three-quarter stitch: determine halfDir and shortCorner
+                        let halfDir, shortCorner;
+                        if (!dirs.has(1)) { halfDir = 'fwd'; shortCorner = 'BR'; }
+                        else if (!dirs.has(2)) { halfDir = 'bwd'; shortCorner = 'BL'; }
+                        else if (!dirs.has(3)) { halfDir = 'fwd'; shortCorner = 'TL'; }
+                        else { halfDir = 'bwd'; shortCorner = 'TR'; }
+                        part_stitches.push({ x: col, y: row, type: 'three_quarter', dmc, dir: halfDir + '_' + shortCorner });
+                        stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 0.75;
+                    }
+                }
+            }
+        }
+
+        // ── Backstitches ──
+        const backstitches = [];
+        const bsEl = doc.querySelector('backstitches');
+        if (bsEl) {
+            for (const st of bsEl.querySelectorAll('stitch')) {
+                const x1 = parseInt(st.getAttribute('x1'));
+                const y1 = parseInt(st.getAttribute('y1'));
+                const x2 = parseInt(st.getAttribute('x2'));
+                const y2 = parseInt(st.getAttribute('y2'));
+                const pi = parseInt(st.getAttribute('palindex'));
+                if (pi === 0 || !paletteMap[pi]) continue;
+                if (x1 === x2 && y1 === y2) continue;
+                const dmc = paletteMap[pi].dmc;
+                // Normalize direction
+                let nx1 = x1, ny1 = y1, nx2 = x2, ny2 = y2;
+                if (ny1 > ny2 || (ny1 === ny2 && nx1 > nx2)) {
+                    nx1 = x2; ny1 = y2; nx2 = x1; ny2 = y1;
+                }
+                backstitches.push({ x1: nx1, y1: ny1, x2: nx2, y2: ny2, dmc });
+                stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 1;
+            }
+        }
+
+        // ── Knots / Ornaments ──
+        const knots = [];
+        let skippedOrnaments = 0;
+        const ornEl = doc.querySelector('ornaments_inc_knots_and_beads');
+        if (ornEl) {
+            for (const obj of ornEl.querySelectorAll('object')) {
+                const ox = parseInt(obj.getAttribute('x'));
+                const oy = parseInt(obj.getAttribute('y'));
+                const pi = parseInt(obj.getAttribute('palindex'));
+                const otype = (obj.getAttribute('objecttype') || '').toLowerCase();
+                if (pi === 0 || !paletteMap[pi]) continue;
+                if (otype === 'knot') {
+                    const dmc = paletteMap[pi].dmc;
+                    knots.push({ x: ox, y: oy, dmc });
+                    stitchCounts[dmc] = (stitchCounts[dmc] || 0) + 1;
+                } else {
+                    skippedOrnaments++;
+                }
+            }
+        }
+
+        // Count remaining skipped elements
+        const cbEl = doc.querySelector('commentboxes');
+        const skippedComments = cbEl ? cbEl.querySelectorAll('commentbox').length : 0;
+
+        // Build legend_data (only used colors, sorted by stitch count desc)
+        const usedEntries = Object.values(paletteMap)
+            .filter(e => (stitchCounts[e.dmc] || 0) > 0)
+            .sort((a, b) => (stitchCounts[b.dmc] || 0) - (stitchCounts[a.dmc] || 0));
+
+        if (usedEntries.length === 0) throw 'No stitches found in this file.';
+        if (usedEntries.length > 34) throw 'Pattern has ' + usedEntries.length + ' colors but maximum is 34.';
+
+        const legend = usedEntries.map((e, i) => ({
+            dmc:      e.dmc,
+            name:     e.name,
+            hex:      e.hex,
+            symbol:   _SYMBOLS[i % _SYMBOLS.length],
+            stitches: Math.round(stitchCounts[e.dmc] || 0),
+            status:   'dont_own',
+            category: '',
+        }));
+
+        // Build warnings
+        const warnings = [];
+        if (skippedOrnaments > 0) warnings.push(skippedOrnaments + ' non-knot ornament' + (skippedOrnaments > 1 ? 's' : '') + ' ignored');
+        if (skippedComments > 0) warnings.push(skippedComments + ' comment box' + (skippedComments > 1 ? 'es' : '') + ' ignored');
+        for (const name of unmatchedWarnings) {
+            warnings.push('Unrecognized thread \u201c' + name + '\u201d \u2014 using raw hex color');
+        }
+        if (part_stitches.length > 0) warnings.push(part_stitches.length + ' part stitch' + (part_stitches.length > 1 ? 'es' : '') + ' imported');
+        if (backstitches.length > 0) warnings.push(backstitches.length + ' backstitch' + (backstitches.length > 1 ? 'es' : '') + ' imported');
+        if (knots.length > 0) warnings.push(knots.length + ' French knot' + (knots.length > 1 ? 's' : '') + ' imported');
+
+        return { grid_w, grid_h, title, grid, legend, part_stitches, backstitches, knots, warnings, brand: detectedBrand };
+    }
+
+    /* ——— IMPORT ——— */
+    async function importOXS() {
+        if (!selectedFile) return;
+
+        showStep(2);
+
+        let result;
+        try {
+            const xmlText = await selectedFile.text();
+            result = parseOXS(xmlText);
+        } catch (err) {
+            showStep(1);
+            showUploadError(typeof err === 'string' ? err : 'Could not parse OXS file.');
+            return;
+        }
+
+        patternData = result;
+        renderPreview();
+        showStep(3);
+    }
+
+    /* ——— PREVIEW ——— */
+    function renderPreview() {
+        const { grid_w, grid_h, grid, legend, title, warnings, part_stitches, backstitches, knots } = patternData;
+
+        document.getElementById('pattern-name').value = title || 'Imported Pattern';
+
+        const fullCount = grid.filter(c => c !== 'BG').length;
+        const partCount = (part_stitches || []).length;
+        const bsCount = (backstitches || []).length;
+        const knotCount = (knots || []).length;
+        let dimText = grid_w + ' \u00d7 ' + grid_h + ' stitches  \u00b7  ' + fullCount + ' full';
+        if (partCount > 0) dimText += '  \u00b7  ' + partCount + ' part';
+        if (bsCount > 0) dimText += '  \u00b7  ' + bsCount + ' back';
+        if (knotCount > 0) dimText += '  \u00b7  ' + knotCount + ' knot' + (knotCount > 1 ? 's' : '');
+        dimText += '  \u00b7  ' + legend.length + ' colors';
+        document.getElementById('dim-line').textContent = dimText;
+        document.getElementById('color-count').textContent = legend.length;
+
+        // Mini canvas
+        const CELL = Math.max(2, Math.min(8, Math.floor(480 / Math.max(grid_w, grid_h))));
+        const canvas = document.getElementById('preview-canvas');
+        canvas.width  = grid_w * CELL;
+        canvas.height = grid_h * CELL;
+        const ctx = canvas.getContext('2d');
+
+        const hexMap = {};
+        legend.forEach(e => { hexMap[e.dmc] = e.hex; });
+
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const bgColor = isDark ? '#1c1610' : '#f0ebe0';
+
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let row = 0; row < grid_h; row++) {
+            for (let col = 0; col < grid_w; col++) {
+                const dmc = grid[row * grid_w + col];
+                if (dmc === 'BG') continue;
+                const hex = hexMap[dmc] || '#888888';
+                ctx.fillStyle = hex;
+                ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
+            }
+        }
+
+        // Legend list
+        const list = document.getElementById('legend-list');
+        list.innerHTML = '';
+        legend.forEach(e => {
+            const row = document.createElement('div');
+            row.className = 'legend-row';
+            const hex = safeHex(e.hex);
+            const fg = contrastColor(hex);
+            row.innerHTML =
+                '<div class="legend-swatch" style="background:' + hex + ';color:' + fg + '"><span>' + escHtml(e.symbol || '') + '</span></div>' +
+                '<div class="legend-dmc">' + escHtml(e.dmc) + '</div>' +
+                '<div class="legend-name">' + escHtml(e.name) + '</div>' +
+                '<div class="legend-count">' + (e.stitches || 0) + '</div>';
+            list.appendChild(row);
+        });
+
+        // Warnings
+        showWarnings(warnings || []);
+    }
+
+    function showWarnings(warnings) {
+        const box = document.getElementById('warnings-box');
+        if (!warnings.length) { box.style.display = 'none'; return; }
+        box.innerHTML = '<strong>Import notes:</strong><ul>' +
+            warnings.map(w => '<li>' + escHtml(w) + '</li>').join('') + '</ul>';
+        box.style.display = 'block';
+    }
+
+    /* ——— SAVE ——— */
+    function generateThumbnail() {
+        if (!patternData) return null;
+        const { grid, grid_w, grid_h, legend } = patternData;
+        const hexLookup = {};
+        for (const e of legend) hexLookup[e.dmc] = e.hex || '#888888';
+
+        const maxW = 120, maxH = 120;
+        const scale = Math.min(maxW / grid_w, maxH / grid_h, 1);
+        const outW = Math.max(1, Math.round(grid_w * scale));
+        const outH = Math.max(1, Math.round(grid_h * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width  = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+
+        for (let py = 0; py < outH; py++) {
+            for (let px = 0; px < outW; px++) {
+                const gx = Math.min(grid_w - 1, Math.floor(px / scale));
+                const gy = Math.min(grid_h - 1, Math.floor(py / scale));
+                const dmc = grid[gy * grid_w + gx];
+                if (dmc === 'BG' || !hexLookup[dmc]) continue;
+                ctx.fillStyle = hexLookup[dmc];
+                ctx.fillRect(px, py, 1, 1);
+            }
+        }
+        return canvas.toDataURL('image/png');
+    }
+
+    async function savePattern() {
+        const name = document.getElementById('pattern-name').value.trim() || 'Imported Pattern';
+        const saveBtn = document.getElementById('save-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving\u2026';
+
+        const body = {
+            format:           'needlework-studio',
+            version:          2,
+            name:             name,
+            brand:            patternData.brand || 'DMC',
+            grid_w:           patternData.grid_w,
+            grid_h:           patternData.grid_h,
+            grid_data:        patternData.grid,
+            legend_data:      patternData.legend,
+            part_stitches:    patternData.part_stitches || [],
+            backstitches:     patternData.backstitches  || [],
+            knots:            patternData.knots          || [],
+            thumbnail:        generateThumbnail(),
+        };
+
+        let res;
+        try {
+            res = await fetch('/api/saved-patterns/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+        } catch (err) {
+            showSaveError('Network error: ' + err.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Pattern';
+            return;
+        }
+
+        if (!res.ok) {
+            const b = await res.json().catch(() => ({}));
+            showSaveError(b.error || 'Save failed (HTTP ' + res.status + ')');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Pattern';
+            return;
+        }
+
+        const saved = await res.json();
+
+        document.getElementById('pre-save-actions').style.display = 'none';
+        document.getElementById('link-view').href = '/view/' + saved.slug;
+        document.getElementById('link-stash').href = '/pattern-calculator?pattern=' + saved.slug;
+        document.getElementById('post-save-actions').style.display = 'flex';
+    }
+
+    function showSaveError(msg) {
+        const el = document.getElementById('save-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    /* ——— RESET ——— */
+    function resetToUpload() {
+        selectedFile = null;
+        patternData = null;
+        document.getElementById('oxs-input').value = '';
+        document.getElementById('filename-display').textContent = '';
+        document.getElementById('import-btn').disabled = true;
+        hideUploadError();
+        document.getElementById('warnings-box').style.display = 'none';
+        document.getElementById('warnings-box').innerHTML = '';
+        document.getElementById('pre-save-actions').style.display = '';
+        document.getElementById('post-save-actions').style.display = 'none';
+        document.getElementById('save-btn').disabled = false;
+        document.getElementById('save-btn').textContent = 'Save Pattern';
+        document.getElementById('save-error').style.display = 'none';
+        showStep(1);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Needlework Studio{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#c8913a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='notify.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dropdown.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='components.css') }}">
+    {% if desktop_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='sync.css') }}">{% endif %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script>
+    // Intercept fetch globally: inject CSRF token + X-Requested-With header,
+    // and redirect to login on 401 (expired session).
+    (function() {
+        const _fetch = window.fetch;
+        window.fetch = function(input, init) {
+            init = init || {};
+            init.headers = new Headers(init.headers || {});
+            if (!init.headers.has('X-Requested-With')) {
+                init.headers.set('X-Requested-With', 'fetch');
+            }
+            if (!init.headers.has('X-CSRFToken')) {
+                const tok = document.querySelector('meta[name="csrf-token"]');
+                if (tok) init.headers.set('X-CSRFToken', tok.content);
+            }
+            return _fetch.call(this, input, init).then(function(resp) {
+                if (resp.status === 401 && !resp.url.includes('/login')) {
+                    window.location.href = '/login';
+                }
+                return resp;
+            });
+        };
+    })();
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body {% block body_attrs %}{% endblock %}>
+    {% block header %}
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="/" class="brand">
+                <span class="brand-eyebrow">{% block brand_eyebrow %}Needlework Tools{% endblock %}</span>
+                <span class="brand-name">{% block brand_name %}Needlework Studio{% endblock %}</span>
+            </a>
+            <div class="hd-divider"></div>
+            <button class="hamburger-btn" onclick="toggleNav()" aria-label="Toggle navigation menu"><i class="ti ti-menu-2"></i></button>
+            <nav class="hd-nav">
+                <a href="/" class="nav-link nav-primary {{ 'active' if request.path == '/' }}">Home</a>
+                <a href="/inventory" class="nav-link nav-primary {{ 'active' if request.path == '/inventory' }}">Inventory</a>
+                <a href="/saved-patterns" class="nav-link nav-primary {{ 'active' if request.path.startswith('/saved-patterns') }}">Saved Patterns</a>
+                <div class="nav-sep"></div>
+                <span class="nav-section">Create</span>
+                <a href="/image-to-pattern" class="nav-link {{ 'active' if request.path == '/image-to-pattern' }}">Convert Image</a>
+                <div class="nav-dropdown {{ 'active' if request.path in ['/pdf-to-pattern', '/json-to-pattern', '/oxs-to-pattern'] }}">
+                    <button type="button" class="nav-link nav-dropdown-trigger">Import File <i class="ti ti-chevron-down nav-dropdown-chevron"></i></button>
+                    <div class="nav-dropdown-menu">
+                        <a href="/pdf-to-pattern" class="nav-link {{ 'active' if request.path == '/pdf-to-pattern' }}">PDF Pattern</a>
+                        <a href="/json-to-pattern" class="nav-link {{ 'active' if request.path == '/json-to-pattern' }}">JSON Pattern</a>
+                        <a href="/oxs-to-pattern" class="nav-link {{ 'active' if request.path == '/oxs-to-pattern' }}">OXS Pattern</a>
+                    </div>
+                </div>
+                <a href="/create-pattern" class="nav-link {{ 'active' if request.path == '/create-pattern' }}">Blank Canvas</a>
+                <div class="nav-sep"></div>
+                <span class="nav-section">Plan</span>
+                <a href="/pattern-calculator" class="nav-link {{ 'active' if request.path == '/pattern-calculator' }}">Project Materials Calculator</a>
+                {% if desktop_mode %}
+                <button class="sync-btn" id="sync-header-btn" title="Sync Settings">
+                    <i class="ti ti-cloud sync-icon"></i>
+                    <span class="sync-dot"></span>
+                    Sync
+                </button>
+                {% endif %}
+                <button class="nav-link theme-toggle-btn" id="theme-toggle"
+                        onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
+                {% if not desktop_mode %}<a href="/logout" class="nav-link danger">Logout</a>{% endif %}
+            </nav>
+        </div>
+    </header>
+    {% endblock %}
+
+    {% block content %}{% endblock %}
+
+    {% if desktop_mode %}
+    <div id="sync-overlay" class="sync-overlay" hidden>
+        <div class="sync-modal">
+            <div class="sync-modal-header">
+                <h2>Sync Settings</h2>
+                <button class="sync-modal-close" onclick="document.getElementById('sync-overlay').hidden=true"><i class="ti ti-x"></i></button>
+            </div>
+            <div class="sync-modal-body" id="sync-modal-body"></div>
+            <div class="sync-error" id="sync-error" style="padding:0 24px"></div>
+            <div class="sync-modal-footer" id="sync-modal-footer"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='notify.js') }}"></script>
+    <script src="{{ url_for('static', filename='dropdown.js') }}"></script>
+    {% if desktop_mode %}<script src="{{ url_for('static', filename='sync.js') }}"></script>{% endif %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

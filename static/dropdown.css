@@ -1,0 +1,169 @@
+/* ===== dropdown.css — themed custom selects ===== */
+/* Uses design tokens from tokens.css — dark/light automatic. */
+
+/* ——— CONTAINER ——— */
+.dmc-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dmc-dropdown--full {
+    display: block;
+    width: 100%;
+}
+
+/* ——— TRIGGER BUTTON ——— */
+.dmc-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 28px 7px 10px;
+    border-radius: var(--r);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--t);
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dmc-dropdown-trigger:hover { border-color: var(--border-2); }
+.dmc-dropdown-trigger:focus { outline: none; border-color: var(--gold-dim); }
+.dmc-dropdown-trigger:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ——— ARROW ——— */
+.dmc-dropdown-arrow {
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--text-muted);
+    transition: transform var(--t);
+    pointer-events: none;
+}
+
+.dmc-dropdown.open .dmc-dropdown-arrow {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* ——— MENU ——— */
+.dmc-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    max-height: 280px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    box-shadow: 0 6px 24px rgba(0,0,0,.35);
+    z-index: 200;
+    padding: 4px 0;
+}
+
+.dmc-dropdown.open .dmc-dropdown-menu { display: block; }
+
+/* Open upward when near viewport bottom */
+.dmc-dropdown.open-up .dmc-dropdown-menu {
+    top: auto;
+    bottom: calc(100% + 4px);
+}
+
+/* ——— OPTIONS ——— */
+.dmc-dropdown-option {
+    padding: 7px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--t), background var(--t);
+    white-space: nowrap;
+}
+
+.dmc-dropdown-option:hover,
+.dmc-dropdown-option.dmc-dropdown-focused {
+    color: var(--text);
+    background: var(--surface-2);
+}
+
+.dmc-dropdown-option[aria-selected="true"] {
+    color: var(--gold);
+}
+
+/* ——— SCROLLBAR ——— */
+.dmc-dropdown-menu::-webkit-scrollbar { width: 4px; }
+.dmc-dropdown-menu::-webkit-scrollbar-track { background: transparent; }
+.dmc-dropdown-menu::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+/* ——— VARIANT: LARGE (calculator pages) ——— */
+.dmc-dropdown--lg .dmc-dropdown-trigger {
+    padding: 10px 30px 10px 14px;
+    font-size: 13px;
+}
+
+.dmc-dropdown--lg .dmc-dropdown-option {
+    font-size: 13px;
+    padding: 8px 14px;
+}
+
+/* ——— VARIANT: PILL (saved patterns sort) ——— */
+.dmc-dropdown--pill .dmc-dropdown-trigger {
+    padding: 5px 28px 5px 10px;
+    font-size: 10px;
+    letter-spacing: .04em;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border-2);
+}
+
+.dmc-dropdown--pill .dmc-dropdown-menu { border-radius: 8px; }
+.dmc-dropdown--pill .dmc-dropdown-option { font-size: 10px; }
+
+/* ——— VARIANT: STATUS (per-card project status) ——— */
+.dmc-dropdown--status .dmc-dropdown-trigger {
+    padding: 4px 24px 4px 8px;
+    font-size: 10px;
+    letter-spacing: .04em;
+    background: var(--surface-2);
+}
+
+/* Color-coded trigger states */
+.dmc-dropdown--status.ps-in_progress .dmc-dropdown-trigger {
+    color: var(--need);
+    border-color: var(--need-border);
+}
+.dmc-dropdown--status.ps-completed .dmc-dropdown-trigger {
+    color: var(--owned);
+    border-color: var(--owned-border);
+}
+.dmc-dropdown--status.ps-not_started .dmc-dropdown-trigger {
+    color: var(--ps-todo);
+    border-color: var(--ps-todo-border);
+}
+
+/* Color-coded options */
+.dmc-dropdown-option[data-value="in_progress"] { color: var(--need); }
+.dmc-dropdown-option[data-value="completed"]   { color: var(--owned); }
+.dmc-dropdown-option[data-value="not_started"]  { color: var(--ps-todo, var(--text-muted)); }
+
+.dmc-dropdown-option[data-value="in_progress"]:hover,
+.dmc-dropdown-option[data-value="in_progress"].dmc-dropdown-focused { color: var(--need); }
+.dmc-dropdown-option[data-value="completed"]:hover,
+.dmc-dropdown-option[data-value="completed"].dmc-dropdown-focused { color: var(--owned); }
+
+/* ——— MOBILE ——— */
+@media (max-width: 480px) {
+    .dmc-dropdown-menu { max-height: 220px; }
+}

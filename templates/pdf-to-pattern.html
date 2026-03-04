@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Import PDF — Needlework Studio{% endblock %}
+{% block brand_name %}Import PDF{% endblock %}
+
+{% block head %}
+    <style>
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.own { background: var(--owned); }
+        .status-dot.need { background: var(--need); }
+        .status-dot.dont_own { background: var(--text-dim); }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+    <h1 class="page-title">PDF Import</h1>
+    <p class="page-sub">Import a cross-stitch PDF to create an interactive pattern.</p>
+
+    <!-- ——— STEP 1: UPLOAD ——— -->
+    <div id="step-upload" class="step active">
+        <div class="upload-zone" id="drop-zone"
+             onclick="document.getElementById('pdf-input').click()"
+             ondragover="onDragOver(event)"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDrop(event)">
+            <div class="upload-icon"><i class="ti ti-file-upload"></i></div>
+            <div class="upload-label">Drop a PDF here</div>
+            <div class="upload-hint">or click to browse — .pdf files only</div>
+            <div class="upload-filename" id="filename-display"></div>
+        </div>
+        <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="onFileSelected(this)">
+
+        <div class="error-box" id="upload-error"></div>
+
+        <div class="btn-row">
+            <button class="btn btn-primary" id="import-btn" disabled onclick="importPdf()">Import PDF</button>
+        </div>
+    </div>
+
+    <!-- ——— STEP 2: PROCESSING ——— -->
+    <div id="step-processing" class="step">
+        <div class="processing-wrap">
+            <div class="spinner lg"></div>
+            <div class="processing-label">Parsing pattern…</div>
+        </div>
+    </div>
+
+    <!-- ——— STEP 3: PREVIEW & SAVE ——— -->
+    <div id="step-preview" class="step">
+        <div class="section-label">Pattern Name</div>
+        <input type="text" id="pattern-name" class="name-input" placeholder="Pattern name…" maxlength="120">
+        <div class="dim-line" id="dim-line"></div>
+
+        <div class="preview-grid-row">
+            <div class="preview-canvas-wrap">
+                <canvas id="preview-canvas" role="img" aria-label="Pattern preview"></canvas>
+            </div>
+            <div class="preview-side">
+                <div class="section-label">Colors (<span id="color-count">0</span>)</div>
+                <div class="legend-list" id="legend-list"></div>
+            </div>
+        </div>
+
+        <div class="error-box" id="save-error"></div>
+
+        <div class="btn-row" id="pre-save-actions">
+            <button class="btn btn-primary" id="save-btn" onclick="savePattern()">Save Pattern</button>
+            <button class="btn btn-ghost" onclick="resetToUpload()">Re-import</button>
+        </div>
+
+        <div class="btn-row post-save-actions" id="post-save-actions" style="display:none">
+            <a class="btn btn-primary" id="link-view">View Pattern</a>
+            <a class="btn btn-ghost" id="link-stash">Project Materials Calculator</a>
+            <button class="btn btn-ghost" onclick="resetToUpload()">Import Another</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedFile = null;
+    let patternData  = null;
+
+    /* ——— STEP MANAGEMENT ——— */
+    function showStep(n) {
+        document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step-' + ['upload', 'processing', 'preview'][n - 1]).classList.add('active');
+    }
+
+    /* ——— FILE SELECTION ——— */
+    function onFileSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        setFile(file);
+    }
+
+    function setFile(file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            showUploadError('Please select a PDF file.');
+            return;
+        }
+        selectedFile = file;
+        document.getElementById('filename-display').textContent = file.name;
+        document.getElementById('import-btn').disabled = false;
+        hideUploadError();
+    }
+
+    function onDragOver(e) {
+        e.preventDefault();
+        document.getElementById('drop-zone').classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+        document.getElementById('drop-zone').classList.remove('drag-over');
+    }
+
+    function onDrop(e) {
+        e.preventDefault();
+        document.getElementById('drop-zone').classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) setFile(file);
+    }
+
+    function showUploadError(msg) {
+        const el = document.getElementById('upload-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function hideUploadError() {
+        document.getElementById('upload-error').style.display = 'none';
+    }
+
+    /* ——— IMPORT ——— */
+    async function importPdf() {
+        if (!selectedFile) return;
+
+        showStep(2);
+
+        const fd = new FormData();
+        fd.append('pdf', selectedFile);
+
+        let res;
+        try {
+            res = await fetch('/api/pdf/import', { method: 'POST', body: fd });
+        } catch (err) {
+            showStep(1);
+            showUploadError('Network error: ' + err.message);
+            return;
+        }
+
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            showStep(1);
+            showUploadError((body.error || 'Import failed') + ' (HTTP ' + res.status + ')');
+            return;
+        }
+
+        patternData = await res.json();
+        renderPreview();
+        showStep(3);
+    }
+
+    /* ——— PREVIEW ——— */
+    function renderPreview() {
+        const { grid_w, grid_h, grid, legend, title } = patternData;
+
+        // Name input
+        document.getElementById('pattern-name').value = title || 'Imported Pattern';
+
+        // Dimensions
+        const total = grid.filter(c => c !== 'BG').length;
+        document.getElementById('dim-line').textContent =
+            grid_w + ' × ' + grid_h + ' stitches  ·  ' + total + ' filled  ·  ' + legend.length + ' colors';
+        document.getElementById('color-count').textContent = legend.length;
+
+        // Mini canvas
+        const CELL = Math.max(2, Math.min(8, Math.floor(480 / Math.max(grid_w, grid_h))));
+        const canvas = document.getElementById('preview-canvas');
+        canvas.width  = grid_w * CELL;
+        canvas.height = grid_h * CELL;
+        const ctx = canvas.getContext('2d');
+
+        // Build color lookup
+        const hexMap = {};
+        legend.forEach(e => { hexMap[e.dmc] = e.hex; });
+
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const bgColor = isDark ? '#1c1610' : '#f0ebe0';
+
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let row = 0; row < grid_h; row++) {
+            for (let col = 0; col < grid_w; col++) {
+                const dmc = grid[row * grid_w + col];
+                if (dmc === 'BG') continue;
+                const hex = hexMap[dmc] || '#888888';
+                ctx.fillStyle = hex;
+                ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
+            }
+        }
+
+        // Legend list
+        const list = document.getElementById('legend-list');
+        list.innerHTML = '';
+        legend.forEach(e => {
+            const row = document.createElement('div');
+            row.className = 'legend-row';
+            const hex = safeHex(e.hex);
+            const fg = contrastColor(hex);
+            row.innerHTML =
+                '<div class="legend-swatch" style="background:' + hex + ';color:' + fg + '"><span>' + escHtml(e.symbol || '') + '</span></div>' +
+                '<div class="legend-dmc">' + escHtml(e.dmc) + '</div>' +
+                '<div class="legend-name">' + escHtml(e.name) + '</div>' +
+                '<div class="legend-count">' + e.stitches + '</div>' +
+                '<div class="status-dot ' + (e.status || 'dont_own') + '"></div>';
+            list.appendChild(row);
+        });
+    }
+
+    /* ——— SAVE ——— */
+    function generateThumbnail() {
+        if (!patternData) return null;
+        const { grid, grid_w, grid_h, legend } = patternData;
+        const hexLookup = {};
+        for (const e of legend) hexLookup[e.dmc] = e.hex || '#888888';
+
+        const maxW = 120, maxH = 120;
+        const scale = Math.min(maxW / grid_w, maxH / grid_h, 1);
+        const outW = Math.max(1, Math.round(grid_w * scale));
+        const outH = Math.max(1, Math.round(grid_h * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width  = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+
+        for (let py = 0; py < outH; py++) {
+            for (let px = 0; px < outW; px++) {
+                const gx = Math.min(grid_w - 1, Math.floor(px / scale));
+                const gy = Math.min(grid_h - 1, Math.floor(py / scale));
+                const dmc = grid[gy * grid_w + gx];
+                if (dmc === 'BG' || !hexLookup[dmc]) continue;
+                ctx.fillStyle = hexLookup[dmc];
+                ctx.fillRect(px, py, 1, 1);
+            }
+        }
+        return canvas.toDataURL('image/png');
+    }
+
+    async function savePattern() {
+        const name = document.getElementById('pattern-name').value.trim() || 'Imported Pattern';
+        const saveBtn = document.getElementById('save-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+
+        const body = {
+            name,
+            grid_w:      patternData.grid_w,
+            grid_h:      patternData.grid_h,
+            color_count: patternData.legend.length,
+            grid_data:   patternData.grid,
+            legend_data: patternData.legend,
+            thumbnail:   generateThumbnail(),
+        };
+
+        let res;
+        try {
+            res = await fetch('/api/saved-patterns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+        } catch (err) {
+            showSaveError('Network error: ' + err.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Pattern';
+            return;
+        }
+
+        if (!res.ok) {
+            const b = await res.json().catch(() => ({}));
+            showSaveError(b.error || 'Save failed (HTTP ' + res.status + ')');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Pattern';
+            return;
+        }
+
+        const saved = await res.json();
+
+        // Show post-save action links instead of auto-redirecting
+        document.getElementById('pre-save-actions').style.display = 'none';
+        document.getElementById('link-view').href = '/view/' + saved.slug;
+        document.getElementById('link-stash').href = '/pattern-calculator?pattern=' + saved.slug;
+        document.getElementById('post-save-actions').style.display = 'flex';
+    }
+
+    function showSaveError(msg) {
+        const el = document.getElementById('save-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    /* ——— RESET ——— */
+    function resetToUpload() {
+        selectedFile = null;
+        patternData = null;
+        document.getElementById('pdf-input').value = '';
+        document.getElementById('filename-display').textContent = '';
+        document.getElementById('import-btn').disabled = true;
+        hideUploadError();
+        // Restore save-action state so next import shows the Save button
+        document.getElementById('pre-save-actions').style.display = '';
+        document.getElementById('post-save-actions').style.display = 'none';
+        document.getElementById('save-btn').disabled = false;
+        document.getElementById('save-btn').textContent = 'Save Pattern';
+        document.getElementById('save-error').style.display = 'none';
+        showStep(1);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Login — Needlework Studio{% endblock %}
+{% block body_attrs %}style="display:flex;align-items:center;justify-content:center;"{% endblock %}
+
+{% block header %}
+    <div class="desktop-drag-bar"></div>
+    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
+{% endblock %}
+
+{% block head %}
+    <style>
+        /* solid --skip-bg override for error message background */
+        :root { --skip-bg: #2c1010; }
+        [data-theme="light"] { --skip-bg: #f5e8e8; }
+
+        /* ——— THEME TOGGLE ——— */
+        .theme-toggle-btn {
+            position: fixed;
+            top: 16px;
+            right: 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: var(--r);
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            transition: border-color var(--t), color var(--t);
+        }
+
+        .theme-toggle-btn:hover { border-color: var(--border-2); color: var(--text); }
+
+        /* ——— LOGIN CARD ——— */
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+        }
+
+        .login-header {
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+            padding: 28px 24px;
+            text-align: center;
+        }
+
+        .login-eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--gold);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .login-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: .02em;
+            margin-bottom: 4px;
+        }
+
+        .login-header p {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+        }
+
+        /* ——— FORM ——— */
+        .login-form {
+            padding: 28px 24px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            transition: border-color var(--t);
+        }
+
+        .form-group input::placeholder { color: var(--text-dim); }
+        .form-group input:focus { outline: none; border-color: var(--gold-dim); }
+
+        .remember-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+
+        .remember-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--gold);
+            cursor: pointer;
+        }
+
+        .remember-group label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 11px 14px;
+            background: var(--surface-3);
+            border: 1px solid var(--border-2);
+            color: var(--gold);
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background var(--t), border-color var(--t), color var(--t);
+        }
+
+        .login-btn:hover {
+            background: var(--surface-2);
+            border-color: var(--gold-dim);
+            color: var(--gold-hover);
+        }
+
+        .login-btn:active { opacity: .85; }
+        .login-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+        .error-message {
+            background: var(--skip-bg);
+            border: 1px solid var(--skip);
+            color: var(--skip);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            margin-bottom: 18px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .03em;
+        }
+
+        @media (max-width: 480px) {
+            .login-container { padding: 12px; }
+            .login-form { padding: 20px 16px; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="Needlework Studio" style="height:56px;margin-bottom:12px">
+                <p>Sign in to manage your collection</p>
+            </div>
+            <form class="login-form" method="POST" action="/login">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if error %}
+                <div class="error-message">{{ error }}</div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username"
+                           required autocomplete="username"
+                           autocapitalize="none" autocorrect="off" spellcheck="false">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password"
+                           required autocomplete="current-password">
+                </div>
+
+                <div class="remember-group">
+                    <input type="checkbox" id="remember" name="remember" value="1">
+                    <label for="remember">Remember me for 30 days</label>
+                </div>
+
+                <button type="submit" class="login-btn">Sign In</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelector('form.login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('.login-btn');
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const remember = document.getElementById('remember').checked;
+
+        btn.disabled = true;
+        btn.textContent = 'Signing in\u2026';
+
+        let resp;
+        try {
+            const payload = JSON.stringify({username, password, remember});
+            resp = await fetch(window.location.pathname + window.location.search, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'fetch',
+                    'X-Login-Payload': btoa(payload)
+                },
+                body: payload
+            });
+        } catch (_) {
+            showError('Network error — please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+            return;
+        }
+
+        let data;
+        try {
+            data = await resp.json();
+        } catch (_) {
+            showError('Server error (' + resp.status + ') — please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+            return;
+        }
+
+        if (resp.ok && data.redirect) {
+            window.location.href = data.redirect;
+            return;
+        }
+        showError(data.error || 'Login failed.');
+
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+    });
+
+    function showError(msg) {
+        let el = document.querySelector('.error-message');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'error-message';
+            document.querySelector('.login-form').prepend(el);
+        }
+        el.textContent = msg;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,205 @@
+/* ── Sync Button & Modal ─────────────────────────────────────── */
+/* Desktop-mode only: cloud sync icon in header nav.             */
+
+/* ── Header Sync Button ──────────────────────────────────────── */
+.sync-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 5px 10px;
+    font-size: 16px;
+    line-height: 1;
+    transition: all var(--t);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .04em;
+}
+.sync-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.sync-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.sync-btn .sync-icon { font-size: 16px; }
+
+/* Status dot */
+.sync-btn .sync-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+}
+.sync-btn .sync-dot.paired     { background: var(--owned); }
+.sync-btn .sync-dot.syncing    { background: var(--gold); animation: syncPulse 1s ease-in-out infinite; }
+.sync-btn .sync-dot.error      { background: var(--skip); }
+
+@keyframes syncPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .3; }
+}
+
+/* Spinning icon during sync */
+.sync-btn.syncing .sync-icon { animation: spin .8s linear infinite; }
+
+/* ── Sync Modal ──────────────────────────────────────────────── */
+.sync-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    backdrop-filter: blur(5px);
+    padding: 20px;
+}
+.sync-overlay[hidden] { display: none; }
+
+.sync-modal {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-lg);
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 28px 70px rgba(0,0,0,.7);
+    animation: notifyDialogIn .22s cubic-bezier(.16,1,.3,1);
+    overflow: hidden;
+}
+
+.sync-modal-header {
+    padding: 20px 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sync-modal-header h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+.sync-modal-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px;
+    padding: 4px; line-height: 1;
+    transition: color var(--t);
+}
+.sync-modal-close:hover { color: var(--text); }
+
+.sync-modal-body {
+    padding: 20px 24px;
+}
+
+/* ── Form Fields ─────────────────────────────────────────────── */
+.sync-field {
+    margin-bottom: 14px;
+}
+.sync-field label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+.sync-field input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    transition: border-color var(--t);
+}
+.sync-field input:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+.sync-field input::placeholder { color: var(--text-dim); }
+
+/* ── Status Section ──────────────────────────────────────────── */
+.sync-status {
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    margin-bottom: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.sync-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+}
+.sync-status-row .val { color: var(--text); }
+
+.sync-error {
+    color: var(--skip);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    margin-top: 8px;
+    min-height: 16px;
+}
+
+/* ── Footer Buttons ──────────────────────────────────────────── */
+.sync-modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+}
+
+.sync-btn-action {
+    padding: 8px 18px;
+    border-radius: var(--r);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: all var(--t);
+    border: 1px solid var(--border-2);
+    background: transparent;
+    color: var(--text-muted);
+}
+.sync-btn-action:hover { border-color: var(--gold-dim); color: var(--gold); }
+.sync-btn-action:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.sync-btn-action:disabled { opacity: .4; cursor: not-allowed; }
+
+.sync-btn-action.primary {
+    background: var(--owned-bg);
+    border-color: var(--owned-border);
+    color: var(--owned);
+}
+.sync-btn-action.primary:hover { border-color: var(--owned); }
+
+.sync-btn-action.danger {
+    background: var(--skip-bg);
+    border-color: var(--skip-border);
+    color: var(--skip);
+}
+.sync-btn-action.danger:hover { border-color: var(--skip); color: #d07070; }
+
+/* ── Sync Results ────────────────────────────────────────────── */
+.sync-results {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    line-height: 1.6;
+}
+.sync-results .num { color: var(--gold); }
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .sync-modal { max-width: calc(100vw - 40px); }
+}

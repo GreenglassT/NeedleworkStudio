@@ -1,0 +1,46 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Database (user data — don't track)
+*.db
+backups/
+
+# Secrets
+.secret_key
+.env
+
+# Runtime
+gunicorn.ctl
+*.sock
+
+# Uploads (user-generated content)
+uploads/*
+!uploads/.gitkeep
+
+# Playwright MCP (dev tooling)
+.playwright-mcp/
+
+# IDE / tool config
+.claude/
+.DS_Store
+
+# Test / dev artifacts
+cookies.txt
+*.backup-*
+*.png
+!electron/resources/*.png
+!static/icons/*.png
+
+# Large reference files
+*.pdf
+
+# PyInstaller
+build/
+dist/
+
+# Electron
+electron/node_modules/
+electron/dist/
+electron/out/

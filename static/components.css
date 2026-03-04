@@ -1,0 +1,422 @@
+/* ── Shared Component Styles ─────────────────────────────────── */
+/* Extracted from templates to reduce duplication.               */
+/* Override via CSS custom properties where templates diverge.   */
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin .8s linear infinite; }
+
+.spinner {
+    width:  var(--sp-size, 22px);
+    height: var(--sp-size, 22px);
+    border: var(--sp-border, 2px) solid var(--border-2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin var(--sp-speed, .7s) linear infinite;
+    margin: var(--sp-margin, 0);
+}
+.spinner.lg { --sp-size: 44px; --sp-border: 3px; --sp-speed: 0.8s; --sp-margin: 0 auto 24px; }
+
+/* ── Step Machine ────────────────────────────────────────────── */
+.step        { display: none; }
+.step.active { display: block; }
+
+/* ── Upload Zone ─────────────────────────────────────────────── */
+.upload-zone {
+    border: 2px dashed var(--border-2);
+    border-radius: var(--r-lg);
+    padding: var(--uz-pad, 56px 32px);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--t), background var(--t);
+    background: var(--surface);
+    position: relative;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+    border-color: var(--uz-hover-border, var(--gold));
+    background: var(--surface-2);
+}
+
+.upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0;
+    cursor: pointer; width: 100%; height: 100%;
+}
+
+.upload-icon {
+    font-size: var(--uz-icon-size, 40px);
+    margin-bottom: var(--uz-icon-mb, 16px);
+    opacity: var(--uz-icon-opacity, .6);
+}
+
+.upload-label {
+    display: block;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: var(--uz-label-size, 20px);
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: var(--uz-label-mb, 8px);
+}
+
+.upload-hint {
+    font-size: var(--uz-hint-size, 14px);
+    color: var(--uz-hint-color, var(--text-muted));
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.upload-filename {
+    margin-top: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    word-break: break-all;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 10px 24px;
+    border-radius: var(--r);
+    border: none;
+    cursor: pointer;
+    transition: background var(--t), color var(--t), opacity var(--t);
+}
+
+.btn-primary { background: var(--gold); color: var(--bg); }
+.btn-primary:hover { background: var(--gold-hover); }
+.btn-primary:disabled { opacity: .4; cursor: default; }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-2);
+}
+.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+
+/* ── Error Box ───────────────────────────────────────────────── */
+.error-box {
+    background: var(--skip-bg);
+    border: 1px solid var(--skip);
+    border-radius: var(--r);
+    padding: var(--err-pad, 14px 18px);
+    color: #d07070;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--err-fs, 12px);
+    margin-top: var(--err-mt, 20px);
+    display: none;
+}
+
+/* ── Page Layout ─────────────────────────────────────────────── */
+.page-wrap {
+    max-width: var(--pw-max, 900px);
+    margin: 0 auto;
+    padding: var(--pw-pad, 40px 24px 80px);
+}
+
+.page-title {
+    font-size: var(--pt-size, 32px);
+    font-weight: 600;
+    letter-spacing: .01em;
+    margin-bottom: var(--pt-mb, 6px);
+}
+
+.page-sub {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: var(--ps-mb, 36px);
+}
+
+/* ── Brand Toggle ───────────────────────────────────────────── */
+.brand-seg {
+    position: relative;
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+}
+.brand-seg-indicator {
+    position: absolute;
+    top: 3px; bottom: 3px;
+    left: 0; width: 0;
+    background: var(--gold);
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    transition: left .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+    z-index: 0;
+}
+.brand-seg-btn {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    transition: color .2s;
+    white-space: nowrap;
+}
+.brand-seg-btn:hover:not(.active) { color: var(--text-muted); }
+.brand-seg-btn.active { color: #fff; }
+
+/* ── Import Workflow (shared across PDF/JSON/OXS import) ──── */
+.btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    align-items: center;
+}
+.post-save-actions a.btn {
+    text-decoration: none;
+    text-align: center;
+}
+.processing-wrap {
+    text-align: center;
+    padding: 80px 32px;
+}
+.processing-label {
+    font-size: 18px;
+    color: var(--text-muted);
+}
+.preview-grid-row {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.preview-canvas-wrap {
+    flex: 0 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px;
+    overflow: hidden;
+}
+.preview-canvas-wrap canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+.preview-side {
+    flex: 1 1 260px;
+    min-width: 220px;
+}
+.section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+}
+.name-input {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    color: var(--text);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    padding: 10px 14px;
+    margin-bottom: 24px;
+    outline: none;
+    transition: border-color var(--t);
+}
+.name-input:focus { border-color: var(--gold); }
+.dim-line {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+/* ── Legend List (import previews) ───────────────────────────── */
+.legend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    font-size: 13px;
+}
+.legend-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-family: 'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols','IBM Plex Mono',sans-serif;
+}
+.legend-swatch span {
+    display: block;
+    transform: translateY(0.08em);
+}
+.legend-dmc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    flex-shrink: 0;
+    min-width: 42px;
+}
+.legend-name {
+    flex: 1;
+    color: var(--text-muted);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.legend-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+/* ── Keyboard Shortcut Cheat Sheet ───────────────────────────── */
+.ks-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    padding: 20px;
+}
+
+.ks-dialog {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-lg);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, .6);
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+}
+
+.ks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.ks-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+
+.ks-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--r);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    transition: color var(--t), background var(--t);
+    line-height: 1;
+}
+.ks-close:hover { color: var(--text); background: var(--surface-2); }
+
+.ks-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.ks-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+}
+.ks-row:last-child { border-bottom: none; }
+
+.ks-key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-2);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--gold);
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 72px;
+    text-align: center;
+    letter-spacing: .03em;
+}
+
+.ks-desc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: .02em;
+    line-height: 1.4;
+}
+
+.ks-footer {
+    padding: 10px 20px 14px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.ks-hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: .04em;
+}
+
+@media (max-width: 480px) {
+    .ks-dialog { max-width: 100%; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+    .ks-overlay { align-items: flex-end; padding: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ks-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
