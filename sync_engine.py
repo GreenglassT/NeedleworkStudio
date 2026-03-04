@@ -3,12 +3,36 @@
 Handles:
 - Pull: fetch changes from server, apply to local DB (patterns + thread inventory)
 - Push: send local changes to server
-- Conflict resolution: last-write-wins on updated_at
+- Conflict resolution: last-write-wins on updated_at, capped to server_time
 """
 
 import json
 import sqlite3
 import requests
+from datetime import datetime, timezone
+
+
+_VALID_BRANDS = ('DMC', 'Anchor')
+_VALID_STATUSES = ('dont_own', 'own', 'need')
+_VALID_PROJECT_STATUSES = ('not_started', 'in_progress', 'completed')
+_MAX_NAME_LEN = 120
+_MAX_GRID_DIM = 500
+_MAX_THUMBNAIL = 500_000
+_MAX_STITCH_ITEMS = 250_000  # 500*500
+
+
+def _clamp_timestamp(ts, ceiling):
+    """Reject timestamps beyond ceiling (server_time). Returns ts or ceiling."""
+    if not ts or not ceiling:
+        return ts
+    return min(ts, ceiling)
+
+
+def _valid_grid_dims(w, h):
+    """Return True if grid dimensions are valid integers in range."""
+    return (isinstance(w, int) and not isinstance(w, bool) and
+            isinstance(h, int) and not isinstance(h, bool) and
+            1 <= w <= _MAX_GRID_DIM and 1 <= h <= _MAX_GRID_DIM)
 
 
 class SyncEngine:
@@ -40,11 +64,11 @@ class SyncEngine:
                 'push': push_result,
             }
         except requests.ConnectionError:
-            return {'error': f'Could not connect to {self.server_url}'}
+            return {'error': 'Could not connect to remote server'}
         except requests.Timeout:
             return {'error': 'Connection timed out'}
         except Exception as e:
-            return {'error': str(e)}
+            return {'error': 'Sync failed unexpectedly'}
 
     def _pull(self, since, user_id):
         """Pull changes from server and apply locally."""
@@ -54,7 +78,7 @@ class SyncEngine:
             headers=self.headers,
             timeout=30)
         if resp.status_code != 200:
-            return {'error': f'Server returned {resp.status_code}: {resp.text[:200]}'}
+            return {'error': f'Server returned status {resp.status_code}'}
 
         data = resp.json()
         server_time = data.get('server_time', '')
@@ -66,9 +90,9 @@ class SyncEngine:
         # --- Pull pattern upserts ---
         for p_meta in data.get('patterns', {}).get('upserted', []):
             slug = p_meta.get('slug')
-            if not slug:
+            if not slug or not isinstance(slug, str) or len(slug) > 16:
                 continue
-            server_updated = p_meta.get('updated_at', '')
+            server_updated = _clamp_timestamp(p_meta.get('updated_at', ''), server_time)
             local = cursor.execute(
                 "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
                 (slug, user_id)).fetchone()
@@ -82,12 +106,47 @@ class SyncEngine:
             if full_resp.status_code != 200:
                 continue
             p = full_resp.json()
-            grid_json = json.dumps(p['grid_data']) if isinstance(p.get('grid_data'), list) else p.get('grid_data', '[]')
-            legend_json = json.dumps(p['legend_data']) if isinstance(p.get('legend_data'), list) else p.get('legend_data', '[]')
-            ps_json = json.dumps(p.get('part_stitches_data', [])) if isinstance(p.get('part_stitches_data'), list) else p.get('part_stitches_data', '[]')
-            bs_json = json.dumps(p.get('backstitches_data', [])) if isinstance(p.get('backstitches_data'), list) else p.get('backstitches_data', '[]')
-            kn_json = json.dumps(p.get('knots_data', [])) if isinstance(p.get('knots_data'), list) else p.get('knots_data', '[]')
+
+            # -- Validate pulled pattern data --
+            grid_w = p.get('grid_w')
+            grid_h = p.get('grid_h')
+            if not _valid_grid_dims(grid_w, grid_h):
+                continue  # skip invalid pattern
+
+            name = str(p.get('name', 'Untitled'))[:_MAX_NAME_LEN]
+            brand = p.get('brand', 'DMC')
+            if brand not in _VALID_BRANDS:
+                brand = 'DMC'
+            project_status = p.get('project_status', 'not_started')
+            if project_status not in _VALID_PROJECT_STATUSES:
+                project_status = 'not_started'
+            color_count = p.get('color_count', 0)
+            if not isinstance(color_count, int) or color_count < 0 or color_count > 34:
+                color_count = 0
+
+            # Validate grid_data length matches dimensions
+            grid_data = p.get('grid_data', [])
+            if not isinstance(grid_data, list) or len(grid_data) != grid_w * grid_h:
+                continue  # corrupted grid
+            grid_json = json.dumps(grid_data)
+
+            legend_data = p.get('legend_data', [])
+            legend_json = json.dumps(legend_data) if isinstance(legend_data, list) else '[]'
+
+            # Validate stitch layer sizes
+            ps = p.get('part_stitches_data', [])
+            bs = p.get('backstitches_data', [])
+            kn = p.get('knots_data', [])
+            ps_json = json.dumps(ps) if isinstance(ps, list) and len(ps) <= _MAX_STITCH_ITEMS else '[]'
+            bs_json = json.dumps(bs) if isinstance(bs, list) and len(bs) <= _MAX_STITCH_ITEMS else '[]'
+            kn_json = json.dumps(kn) if isinstance(kn, list) and len(kn) <= _MAX_STITCH_ITEMS else '[]'
+
             progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
+
+            # Validate thumbnail size
+            thumbnail = p.get('thumbnail')
+            if thumbnail and (not isinstance(thumbnail, str) or len(thumbnail) > _MAX_THUMBNAIL):
+                thumbnail = None
 
             if local:
                 cursor.execute(
@@ -96,10 +155,10 @@ class SyncEngine:
                               progress_data=?, project_status=?,
                               part_stitches_data=?, backstitches_data=?, knots_data=?, brand=?
                        WHERE id=? AND user_id=?""",
-                    (p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'), p.get('color_count', 0),
-                     grid_json, legend_json, p.get('thumbnail'),
-                     server_updated, progress_json, p.get('project_status', 'not_started'),
-                     ps_json, bs_json, kn_json, p.get('brand', 'DMC'),
+                    (name, grid_w, grid_h, color_count,
+                     grid_json, legend_json, thumbnail,
+                     server_updated, progress_json, project_status,
+                     ps_json, bs_json, kn_json, brand,
                      local['id'], user_id))
             else:
                 cursor.execute(
@@ -108,11 +167,11 @@ class SyncEngine:
                             thumbnail, created_at, updated_at, progress_data, project_status,
                             part_stitches_data, backstitches_data, knots_data, brand)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (slug, user_id, p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'),
-                     p.get('color_count', 0), grid_json, legend_json, p.get('thumbnail'),
-                     p.get('created_at', server_updated), server_updated, progress_json,
-                     p.get('project_status', 'not_started'), ps_json, bs_json, kn_json,
-                     p.get('brand', 'DMC')))
+                    (slug, user_id, name, grid_w, grid_h,
+                     color_count, grid_json, legend_json, thumbnail,
+                     _clamp_timestamp(p.get('created_at', server_updated), server_time),
+                     server_updated, progress_json,
+                     project_status, ps_json, bs_json, kn_json, brand))
             stats['patterns_pulled'] += 1
 
         # --- Pull pattern deletes ---
@@ -128,10 +187,22 @@ class SyncEngine:
         # --- Pull thread status upserts ---
         for ts in data.get('thread_statuses', {}).get('upserted', []):
             brand = ts.get('brand', 'DMC')
-            number = ts.get('number', '')
-            if not number:
+            if brand not in _VALID_BRANDS:
                 continue
-            server_updated = ts.get('updated_at', '')
+            number = ts.get('number', '')
+            if not number or not isinstance(number, str) or len(number) > 10:
+                continue
+            server_updated = _clamp_timestamp(ts.get('updated_at', ''), server_time)
+
+            # Validate status and notes
+            status = ts.get('status', 'dont_own')
+            if status not in _VALID_STATUSES:
+                status = 'dont_own'
+            notes = str(ts.get('notes', ''))[:1000]
+            skein_qty = ts.get('skein_qty', 0)
+            if not isinstance(skein_qty, (int, float)) or skein_qty < 0 or skein_qty > 9999:
+                skein_qty = 0
+
             # Resolve (brand, number) → local thread_id
             thread_row = cursor.execute(
                 "SELECT id FROM threads WHERE brand = ? AND number = ?",
@@ -147,13 +218,11 @@ class SyncEngine:
             if local:
                 cursor.execute(
                     "UPDATE user_thread_status SET status=?, notes=?, skein_qty=?, updated_at=? WHERE user_id=? AND thread_id=?",
-                    (ts.get('status', 'dont_own'), ts.get('notes', ''), ts.get('skein_qty', 0),
-                     server_updated, user_id, tid))
+                    (status, notes, skein_qty, server_updated, user_id, tid))
             else:
                 cursor.execute(
                     "INSERT INTO user_thread_status (user_id, thread_id, status, notes, skein_qty, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                    (user_id, tid, ts.get('status', 'dont_own'), ts.get('notes', ''),
-                     ts.get('skein_qty', 0), server_updated))
+                    (user_id, tid, status, notes, skein_qty, server_updated))
             stats['threads_pulled'] += 1
 
         # --- Pull thread status deletes ---
@@ -247,6 +316,6 @@ class SyncEngine:
             headers=self.headers,
             timeout=60)
         if resp.status_code != 200:
-            return {'error': f'Push failed: {resp.status_code} {resp.text[:200]}'}
+            return {'error': f'Push failed with status {resp.status_code}'}
 
         return resp.json()

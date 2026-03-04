@@ -1035,7 +1035,10 @@ def _cleanup_orphaned_images():
             continue
         fpath = os.path.join(UPLOADS_DIR, fname)
         if fpath not in referenced and os.path.getmtime(fpath) < cutoff:
-            os.remove(fpath)
+            try:
+                os.remove(fpath)
+            except FileNotFoundError:
+                pass
 
 
 def hex_to_lab(hex_color):
@@ -2659,8 +2662,11 @@ def api_delete_saved_pattern(pattern_slug):
         ref_count = cursor.execute(
             "SELECT COUNT(*) FROM saved_patterns WHERE source_image_path = ?",
             (img_path,)).fetchone()[0]
-        if ref_count == 0 and os.path.isfile(img_path):
-            os.remove(img_path)
+        if ref_count == 0:
+            try:
+                os.remove(img_path)
+            except FileNotFoundError:
+                pass
 
     if affected == 0:
         return jsonify({'error': 'Pattern not found'}), 404
@@ -2720,8 +2726,11 @@ def api_batch_saved_patterns():
             ref_count = cursor.execute(
                 "SELECT COUNT(*) FROM saved_patterns WHERE source_image_path = ?",
                 (img_path,)).fetchone()[0]
-            if ref_count == 0 and os.path.isfile(img_path):
-                os.remove(img_path)
+            if ref_count == 0:
+                try:
+                    os.remove(img_path)
+                except FileNotFoundError:
+                    pass
         _cleanup_orphaned_images()
         return jsonify({'deleted': deleted}), 200
 
@@ -3132,6 +3141,14 @@ def api_sync_config_pair():
     if not server_url or not username or not password:
         return jsonify({'error': 'server_url, username, and password are required'}), 400
 
+    # Validate URL format and enforce HTTPS (allow http for localhost only)
+    from urllib.parse import urlparse
+    parsed = urlparse(server_url)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return jsonify({'error': 'Invalid server URL'}), 400
+    if parsed.scheme == 'http' and parsed.hostname not in ('localhost', '127.0.0.1'):
+        return jsonify({'error': 'HTTPS is required for remote servers'}), 400
+
     # Call remote server to get a token
     import requests as http_requests
     try:
@@ -3140,7 +3157,7 @@ def api_sync_config_pair():
             json={'username': username, 'password': password},
             timeout=15)
     except http_requests.ConnectionError:
-        return jsonify({'error': f'Could not connect to {server_url}'}), 502
+        return jsonify({'error': 'Could not connect to remote server'}), 502
     except http_requests.Timeout:
         return jsonify({'error': 'Connection timed out'}), 504
 
