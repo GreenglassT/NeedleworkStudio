@@ -1020,10 +1020,13 @@
         // 'number' — keep API default order (already sorted by number)
     }
 
-    function renderThreads() {
+    let _skipAnim = false;
+    function renderThreads(animate = true) {
+        _skipAnim = !animate;
         _sortThreads();
         if (currentView === 'grid') renderGrid();
         else renderList();
+        _skipAnim = false;
     }
 
     function emptyMsg(col) {
@@ -1033,12 +1036,18 @@
         </div>`;
     }
 
+    function statusBtns(id, status, cls) {
+        return `<button class="${cls} ${status==='own'?'s-own':''}" onclick="setStatus(${id},'own')">Own</button>`
+             + `<button class="${cls} ${status==='need'?'s-need':''}" onclick="setStatus(${id},'need')">Need</button>`
+             + `<button class="${cls} ${status==='dont_own'?'s-skip':''}" onclick="setStatus(${id},'dont_own')">Don't Own</button>`;
+    }
+
     function renderGrid() {
         const el = document.getElementById('thread-grid');
         if (!threads.length) { el.innerHTML = emptyMsg(true); return; }
         el.innerHTML = threads.map((t, i) => `
             <div class="thread-card ${statusCls(t.status)}${selectedIds.has(t.id)?' selected':''}"
-                 data-id="${t.id}" style="animation-delay:${Math.min(i*15,350)}ms"
+                 data-id="${t.id}" style="${_skipAnim ? 'animation:none' : 'animation-delay:'+Math.min(i*15,350)+'ms'}"
                  onclick="cardClick(event,this,${t.id})">
                 <div class="card-swatch" style="background:${safeHex(t.hex_color)}">
                     <span class="card-select-check"><i class="ti ti-check"></i></span>
@@ -1050,11 +1059,7 @@
                     </div>
                     <div class="card-cat">${escHtml(t.category)}${!currentBrand ? '<span class="brand-badge">'+escHtml(t.brand)+'</span>' : ''}</div>
                     ${selectionMode ? '' : `
-                    <div class="card-btns">
-                        <button class="sbtn ${t.status==='own'?'s-own':''}"       onclick="setStatus(${t.id},'own')">Own</button>
-                        <button class="sbtn ${t.status==='need'?'s-need':''}"     onclick="setStatus(${t.id},'need')">Need</button>
-                        <button class="sbtn ${t.status==='dont_own'?'s-skip':''}" onclick="setStatus(${t.id},'dont_own')">Don't Own</button>
-                    </div>
+                    <div class="card-btns">${statusBtns(t.id, t.status, 'sbtn')}</div>
                     <button class="sim-btn" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Find Similar</button>
                     <textarea class="notes-ta" rows="2" placeholder="Notes…" maxlength="500"
                               onchange="updateNotes(${t.id},this.value)">${escHtml(t.notes||'')}</textarea>
@@ -1075,7 +1080,7 @@
         if (!threads.length) { el.innerHTML = emptyMsg(false); return; }
         el.innerHTML = threads.map((t, i) => `
             <div class="list-row${selectedIds.has(t.id)?' selected':''}" data-id="${t.id}"
-                 style="animation-delay:${Math.min(i*8,280)}ms"
+                 style="${_skipAnim ? 'animation:none' : 'animation-delay:'+Math.min(i*8,280)+'ms'}"
                  onclick="cardClick(event,this,${t.id})">
                 <div class="list-swatch" style="background:${safeHex(t.hex_color)}"></div>
                 <div class="list-num">${escHtml(t.number)}</div>
@@ -1086,10 +1091,8 @@
                 ${selectionMode
                     ? `<div class="list-select-check"><i class="ti ti-check"></i></div>`
                     : `<div class="list-btns">
-                        <button class="lbtn ${t.status==='own'?'s-own':''}"       onclick="setStatus(${t.id},'own')">Own</button>
-                        <button class="lbtn ${t.status==='need'?'s-need':''}"     onclick="setStatus(${t.id},'need')">Need</button>
-                        <button class="lbtn ${t.status==='dont_own'?'s-skip':''}" onclick="setStatus(${t.id},'dont_own')">Don't Own</button>
-                        <button class="lbtn-sim"                                   onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Similar</button>
+                        ${statusBtns(t.id, t.status, 'lbtn')}
+                        <button class="lbtn-sim" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Similar</button>
                        </div>`
                 }
                 <input type="number" class="list-skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
@@ -1104,60 +1107,62 @@
         `).join('');
     }
 
+    function patchThread(id, data) {
+        return fetch(`/api/threads/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    }
+
+    const _statEl = { own: 'stat-owned', need: 'stat-need', dont_own: 'stat-dont-own' };
+
     async function setStatus(id, status) {
-        // Optimistic: update in-memory array and patch just the changed DOM elements.
         const thread = threads.find(t => t.id === id);
+        const oldStatus = thread ? thread.status : null;
         if (thread) thread.status = status;
         _patchStatusInDOM(id, status);
-        // Wait for PATCH to complete before refreshing stats.
-        await fetch(`/api/threads/${id}`, {
-            method: 'PATCH',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({status})
-        });
-        loadStats();
+        // Update stat counters locally (avoid API round-trip)
+        if (oldStatus && oldStatus !== status) {
+            const decEl = document.getElementById(_statEl[oldStatus]);
+            const incEl = document.getElementById(_statEl[status]);
+            if (decEl) decEl.textContent = Math.max(0, parseInt(decEl.textContent) - 1);
+            if (incEl) incEl.textContent = parseInt(incEl.textContent) + 1;
+        }
+        await patchThread(id, { status });
+    }
+
+    function _applyBtnStatus(btns, base, status) {
+        const map = ['own', 'need', 'dont_own'];
+        const cls = ['s-own', 's-need', 's-skip'];
+        for (let i = 0; i < 3; i++) {
+            if (btns[i]) btns[i].className = base + (status === map[i] ? ' ' + cls[i] : '');
+        }
     }
 
     function _patchStatusInDOM(id, status) {
         const sc = statusCls(status);
-        // Grid card: update border colour + sbtn active states
         const card = document.querySelector(`.thread-card[data-id="${id}"]`);
         if (card) {
             card.classList.remove('s-own', 's-need', 's-skip');
             if (sc) card.classList.add(sc);
-            const btns = card.querySelectorAll('.sbtn');
-            if (btns[0]) btns[0].className = `sbtn${status === 'own'      ? ' s-own'  : ''}`;
-            if (btns[1]) btns[1].className = `sbtn${status === 'need'     ? ' s-need' : ''}`;
-            if (btns[2]) btns[2].className = `sbtn${status === 'dont_own' ? ' s-skip' : ''}`;
+            _applyBtnStatus(card.querySelectorAll('.sbtn'), 'sbtn', status);
         }
-        // List row: update lbtn active states
         const row = document.querySelector(`.list-row[data-id="${id}"]`);
-        if (row) {
-            const btns = row.querySelectorAll('.lbtn');
-            if (btns[0]) btns[0].className = `lbtn${status === 'own'      ? ' s-own'  : ''}`;
-            if (btns[1]) btns[1].className = `lbtn${status === 'need'     ? ' s-need' : ''}`;
-            if (btns[2]) btns[2].className = `lbtn${status === 'dont_own' ? ' s-skip' : ''}`;
-        }
+        if (row) _applyBtnStatus(row.querySelectorAll('.lbtn'), 'lbtn', status);
     }
 
     async function updateNotes(id, notes) {
         const thread = threads.find(t => t.id === id);
         if (thread) thread.notes = notes;
-        await fetch(`/api/threads/${id}`, {
-            method: 'PATCH',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({notes})
-        });
+        await patchThread(id, { notes });
     }
 
     function updateSkeinQty(id, qty) {
         qty = Math.round(Math.max(0, parseFloat(qty) || 0) * 100) / 100;
         const thread = threads.find(t => t.id === id);
         if (thread) thread.skein_qty = qty;
-        fetch(`/api/threads/${id}`, {
-            method: 'PATCH', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({skein_qty: qty})
-        });
+        patchThread(id, { skein_qty: qty });
     }
 
     async function printShoppingList() {
@@ -1202,65 +1207,41 @@
     }
     document.addEventListener('click', closeExportMenu);
 
-    async function downloadShoppingList() {
-        const params = new URLSearchParams({ status: 'need' });
-        _brandParam(params);
-        const res = await fetch('/api/threads?' + params);
-        const list = await res.json();
-        if (!list.length) { toast('No threads on your shopping list.', { type: 'info' }); return; }
-        const header = currentBrand ? ['Number','Name','Category','Skeins Owned','Notes']
-                                    : ['Brand','Number','Name','Category','Skeins Owned','Notes'];
-        const rows = [header];
-        for (const t of list) {
-            const row = [];
-            if (!currentBrand) row.push(`"${String(t.brand||'').replace(/"/g,'""')}"`);
-            row.push(
-                `"${String(t.number).replace(/"/g,'""')}"`,
-                `"${String(t.name).replace(/"/g,'""')}"`,
-                `"${String(t.category).replace(/"/g,'""')}"`,
-                t.skein_qty || 0,
-                `"${String(t.notes||'').replace(/"/g,'""')}"`
-            );
-            rows.push(row);
-        }
-        const csv  = rows.map(r => r.join(',')).join('\r\n');
-        const prefix = currentBrand ? currentBrand.toLowerCase() : 'all';
-        downloadBlob(csv, prefix + '-shopping-list.csv', 'text/csv;charset=utf-8;');
-    }
+    function _csvQ(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
 
-    async function downloadFullInventory() {
-        const params = new URLSearchParams();
+    async function _downloadThreadsCsv(filter, filename, { includeStatus } = {}) {
+        const params = new URLSearchParams(filter);
         _brandParam(params);
         const res = await fetch('/api/threads?' + params);
         const list = await res.json();
         if (!list.length) { toast('No threads found.', { type: 'info' }); return; }
-        const header = currentBrand ? ['Number','Name','Category','Status','Skeins','Notes']
-                                    : ['Brand','Number','Name','Category','Status','Skeins','Notes'];
+        const header = [];
+        if (!currentBrand) header.push('Brand');
+        header.push('Number', 'Name', 'Category');
+        if (includeStatus) header.push('Status');
+        header.push('Skeins', 'Notes');
         const rows = [header];
         for (const t of list) {
             const row = [];
-            if (!currentBrand) row.push(`"${String(t.brand||'').replace(/"/g,'""')}"`);
-            row.push(
-                `"${String(t.number).replace(/"/g,'""')}"`,
-                `"${String(t.name).replace(/"/g,'""')}"`,
-                `"${String(t.category).replace(/"/g,'""')}"`,
-                `"${({own:'Owned',need:'Need',dont_own:"Don't Own"})[t.status]||t.status}"`,
-                t.skein_qty || 0,
-                `"${String(t.notes||'').replace(/"/g,'""')}"`
-            );
+            if (!currentBrand) row.push(_csvQ(t.brand));
+            row.push(_csvQ(t.number), _csvQ(t.name), _csvQ(t.category));
+            if (includeStatus) row.push(_csvQ(STATUS_LABEL[t.status] || t.status));
+            row.push(t.skein_qty || 0, _csvQ(t.notes));
             rows.push(row);
         }
-        const csv  = rows.map(r => r.join(',')).join('\r\n');
         const prefix = currentBrand ? currentBrand.toLowerCase() : 'all';
-        downloadBlob(csv, prefix + '-full-inventory.csv', 'text/csv;charset=utf-8;');
+        downloadBlob(rows.map(r => r.join(',')).join('\r\n'), prefix + '-' + filename, 'text/csv;charset=utf-8;');
     }
+
+    function downloadShoppingList() { return _downloadThreadsCsv({ status: 'need' }, 'shopping-list.csv'); }
+    function downloadFullInventory() { return _downloadThreadsCsv({}, 'full-inventory.csv', { includeStatus: true }); }
 
     function switchView(view) {
         currentView = view;
         document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
         document.getElementById('thread-grid').classList.toggle('active', view === 'grid');
         document.getElementById('thread-list').classList.toggle('active', view === 'list');
-        renderThreads();
+        renderThreads(false);
     }
 
     function debounceSearch() {
@@ -1273,7 +1254,7 @@
     document.getElementById('status-filter').addEventListener('change', loadThreads);
     document.getElementById('sort-filter').addEventListener('change', () => {
         localStorage.setItem('dmc-inv-sort', document.getElementById('sort-filter').value);
-        renderThreads();
+        renderThreads(false);
     });
     document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
@@ -1302,11 +1283,12 @@
             }
 
             results.innerHTML = similar.map(t => {
+                const hex = safeHex(t.hex_color);
                 const badge = t.status === 'own'  ? '<span class="sim-badge owned">owned</span>' :
                               t.status === 'need' ? '<span class="sim-badge need">need</span>'   : '';
                 return `
                     <div class="sim-item">
-                        <div class="sim-swatch" style="background:${safeHex(t.hex_color)};color:${contrastColor(safeHex(t.hex_color))}">${escHtml(t.number)}</div>
+                        <div class="sim-swatch" style="background:${hex};color:${contrastColor(hex)}">${escHtml(t.number)}</div>
                         <div class="sim-info">
                             <div class="sim-name">${escHtml(t.name)}${badge}</div>
                             <div class="sim-meta">${escHtml(t.number)} · ${escHtml(t.category)}</div>
@@ -1361,7 +1343,7 @@
         btn.classList.toggle('active', selectionMode);
         document.getElementById('select-all-bar').style.display = selectionMode ? 'block' : 'none';
         document.getElementById('bulk-bar').style.display = 'none';
-        renderThreads();
+        renderThreads(false);
     }
 
     function toggleThreadSelection(id) {
@@ -1395,12 +1377,7 @@
 
     async function bulkSetStatus(status) {
         if (!selectedIds.size) return;
-        await Promise.all(Array.from(selectedIds).map(id =>
-            fetch(`/api/threads/${id}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
-            })
-        ));
+        await Promise.all(Array.from(selectedIds).map(id => patchThread(id, { status })));
         selectedIds.clear();
         _updateSelectionUI();
         await Promise.all([loadThreads(), loadStats()]);

@@ -1,3 +1,7 @@
+/* ——— CONSTANTS ——— */
+const FABRIC_COLOR  = '#F5F0E8';
+const FALLBACK_HEX  = '#888888';
+
 /* ——— STATE ——— */
 let currentStep    = 'upload';
 let selectedFile   = null;
@@ -28,61 +32,39 @@ let dimMode          = 'stitches'; // 'stitches' | 'inches'
 let dimFabricIdx     = 1;          // index into FABRIC_COUNTS (default 14-count Aida)
 
 /* ——— AUTOSAVE / RECOVERY ——— */
-let _autosaveTimer = null;
-function _autosaveKey() { return 'ns-autosave-itp-' + (loadedPatternSlug || 'new'); }
+const _autosave = createAutosaver(
+    () => 'ns-autosave-itp-' + (loadedPatternSlug || 'new'),
+    () => patternData,
+    () => {
+        legendData = patternData.legend;
+        _lookupDirty = true;
+        renderCanvas();
+        if (editorInstance && editorInstance.isActive()) renderEditLegend(); else renderKey();
+    }
+);
+const _scheduleAutosave = _autosave.schedule;
+const _clearAutosave = _autosave.clear;
+const _checkAutosaveRecovery = _autosave.checkRecovery;
 
-function _scheduleAutosave() {
-    clearTimeout(_autosaveTimer);
-    _autosaveTimer = setTimeout(() => {
-        if (!patternData) return;
-        try {
-            localStorage.setItem(_autosaveKey(), JSON.stringify({
-                grid: patternData.grid, legend: patternData.legend,
-                grid_w: patternData.grid_w, grid_h: patternData.grid_h,
-                part_stitches: patternData.part_stitches || [],
-                backstitches: patternData.backstitches || [],
-                knots: patternData.knots || [], beads: patternData.beads || [],
-                timestamp: Date.now()
-            }));
-        } catch (e) { /* localStorage full */ }
-    }, 5000);
+/* ——— UI HELPERS (shared) ——— */
+function _showResultCards() {
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('canvas-card').classList.add('visible');
+    document.getElementById('key-card').classList.add('visible');
+    document.getElementById('btn-save-pattern').style.display = '';
+    document.getElementById('edit-toggle-btn').style.display = '';
+    document.getElementById('zoom-controls').style.display = '';
 }
 
-function _clearAutosave() {
-    clearTimeout(_autosaveTimer);
-    localStorage.removeItem(_autosaveKey());
-}
-
-function _checkAutosaveRecovery() {
-    const key = _autosaveKey();
-    const saved = localStorage.getItem(key);
-    if (!saved) return;
-    try {
-        const data = JSON.parse(saved);
-        const age = Date.now() - data.timestamp;
-        if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(key); return; }
-        toast('Unsaved edits found from ' + new Date(data.timestamp).toLocaleString() + '.', {
-            type: 'info', duration: 0,
-            actions: [
-                { label: 'Recover', onClick: () => {
-                    patternData.grid = data.grid;
-                    patternData.legend = data.legend;
-                    patternData.grid_w = data.grid_w;
-                    patternData.grid_h = data.grid_h;
-                    patternData.part_stitches = data.part_stitches || [];
-                    patternData.backstitches = data.backstitches || [];
-                    patternData.knots = data.knots || [];
-                    patternData.beads = data.beads || [];
-                    legendData = patternData.legend;
-                    _lookupDirty = true;
-                    renderCanvas();
-                    if (editorInstance && editorInstance.isActive()) renderEditLegend(); else renderKey();
-                    toast('Edits recovered.', { type: 'success' });
-                }},
-                { label: 'Discard', onClick: () => { localStorage.removeItem(key); } }
-            ]
-        });
-    } catch (e) { localStorage.removeItem(key); }
+function _showThumbnailPreview(dataUrl) {
+    const img = new Image();
+    img.onload = function() {
+        const cv = document.getElementById('crop-preview-canvas');
+        cv.width  = img.naturalWidth;
+        cv.height = img.naturalHeight;
+        cv.getContext('2d').drawImage(img, 0, 0);
+    };
+    img.src = dataUrl;
 }
 
 /* ——— STEP NAVIGATION ——— */
@@ -372,14 +354,15 @@ function applyHeightLockState() {
 
 function recalcAutoHeight() {
     if (!imgAspect && !patternData) return null;
+    // Compute crop-aware aspect ratio (shared by both modes)
+    let aspect;
+    if (cropBox.w < 0.999 || cropBox.h < 0.999 || cropBox.x > 0.001 || cropBox.y > 0.001) {
+        aspect = imgAspect && cropBox.w > 0 ? (cropBox.h / cropBox.w) * imgAspect : (imgAspect || 1);
+    } else {
+        aspect = imgAspect || (patternData ? patternData.grid_h / patternData.grid_w : 1);
+    }
     if (dimMode === 'inches') {
         const wIn = parseFloat(document.getElementById('ctrl-grid-w').value);
-        let aspect;
-        if (cropBox.w < 0.999 || cropBox.h < 0.999 || cropBox.x > 0.001 || cropBox.y > 0.001) {
-            aspect = imgAspect && cropBox.w > 0 ? (cropBox.h / cropBox.w) * imgAspect : (imgAspect || 1);
-        } else {
-            aspect = imgAspect || (patternData ? patternData.grid_h / patternData.grid_w : 1);
-        }
         const hIn = Math.max(1, Math.round(wIn * aspect * 2) / 2); // snap to 0.5
         const slider = document.getElementById('ctrl-grid-h');
         slider.max = Math.max(30, hIn);
@@ -388,12 +371,6 @@ function recalcAutoHeight() {
         return hIn;
     }
     const w = parseInt(document.getElementById('ctrl-grid-w').value);
-    let aspect;
-    if (cropBox.w < 0.999 || cropBox.h < 0.999 || cropBox.x > 0.001 || cropBox.y > 0.001) {
-        aspect = imgAspect && cropBox.w > 0 ? (cropBox.h / cropBox.w) * imgAspect : (imgAspect || 1);
-    } else {
-        aspect = imgAspect || (patternData ? patternData.grid_h / patternData.grid_w : 1);
-    }
     const h = Math.max(25, Math.round(w * aspect));
     const slider = document.getElementById('ctrl-grid-h');
     slider.max = Math.max(250, h);
@@ -757,11 +734,7 @@ async function generatePattern() {
         }
 
         showSpinner(false);
-        document.getElementById('empty-state').style.display = 'none';
-        document.getElementById('canvas-card').classList.add('visible');
-        document.getElementById('key-card').classList.add('visible');
-        document.getElementById('btn-save-pattern').style.display = '';
-        document.getElementById('zoom-controls').style.display = '';
+        _showResultCards();
 
         canvasCellPx = 19;
         renderCanvas();
@@ -798,84 +771,14 @@ let _snapTimer = null;
 function applyCanvasTransform() {
     const wrapper = document.getElementById('canvas-wrapper');
     if (wrapper) wrapper.style.transform = `translate(${cvPanX}px,${cvPanY}px) scale(${cvScale})`;
-    renderRulers();
+    _renderRulers();
     const zl = document.getElementById('zoom-level');
     if (zl) zl.textContent = Math.round(canvasCellPx * cvScale / 19 * 100) + '%';
 }
 
-function renderRulers() {
+function _renderRulers() {
     if (!patternData) return;
-    const { grid_w, grid_h } = patternData;
-    const cellPx = canvasCellPx;
-    const area = document.getElementById('canvas-area');
-    const areaW = area.clientWidth;
-    const areaH = area.clientHeight;
-    const isDark = document.documentElement.dataset.theme !== 'light';
-    const dpr = window.devicePixelRatio || 1;
-
-    const effectiveCell = cellPx * cvScale;
-    let step = 10;
-    if (effectiveCell < 3) step = 50;
-    else if (effectiveCell < 6) step = 20;
-
-    const bgColor = isDark ? 'rgba(28,26,24,0.88)' : 'rgba(252,250,247,0.88)';
-    const textColor = isDark ? '#8a8580' : '#999';
-    const lineColor = isDark ? 'rgba(138,133,128,0.25)' : 'rgba(136,136,136,0.2)';
-
-    const RULER_H = 18;
-    const RULER_W = 26;
-
-    // ── Top ruler ──
-    const topC = document.getElementById('ruler-top');
-    topC.width = areaW * dpr;
-    topC.height = RULER_H * dpr;
-    topC.style.width = areaW + 'px';
-    topC.style.height = RULER_H + 'px';
-    const tCtx = topC.getContext('2d');
-    tCtx.scale(dpr, dpr);
-    tCtx.fillStyle = bgColor;
-    tCtx.fillRect(0, 0, areaW, RULER_H);
-    tCtx.strokeStyle = lineColor;
-    tCtx.lineWidth = 1;
-    tCtx.beginPath();
-    tCtx.moveTo(0, RULER_H - 0.5);
-    tCtx.lineTo(areaW, RULER_H - 0.5);
-    tCtx.stroke();
-    tCtx.font = '9px "IBM Plex Mono", monospace';
-    tCtx.fillStyle = textColor;
-    tCtx.textAlign = 'center';
-    tCtx.textBaseline = 'bottom';
-    for (let col = step; col <= grid_w; col += step) {
-        const screenX = cvPanX + (col - 0.5) * cellPx * cvScale;
-        if (screenX < RULER_W || screenX > areaW + 20) continue;
-        tCtx.fillText(col.toString(), screenX, RULER_H - 3);
-    }
-
-    // ── Left ruler ──
-    const leftC = document.getElementById('ruler-left');
-    leftC.width = RULER_W * dpr;
-    leftC.height = areaH * dpr;
-    leftC.style.width = RULER_W + 'px';
-    leftC.style.height = areaH + 'px';
-    const lCtx = leftC.getContext('2d');
-    lCtx.scale(dpr, dpr);
-    lCtx.fillStyle = bgColor;
-    lCtx.fillRect(0, 0, RULER_W, areaH);
-    lCtx.strokeStyle = lineColor;
-    lCtx.lineWidth = 1;
-    lCtx.beginPath();
-    lCtx.moveTo(RULER_W - 0.5, 0);
-    lCtx.lineTo(RULER_W - 0.5, areaH);
-    lCtx.stroke();
-    lCtx.font = '9px "IBM Plex Mono", monospace';
-    lCtx.fillStyle = textColor;
-    lCtx.textAlign = 'right';
-    lCtx.textBaseline = 'middle';
-    for (let row = step; row <= grid_h; row += step) {
-        const screenY = cvPanY + (row - 0.5) * cellPx * cvScale;
-        if (screenY < RULER_H || screenY > areaH + 10) continue;
-        lCtx.fillText(row.toString(), RULER_W - 4, screenY);
-    }
+    renderRulers(patternData.grid_w, patternData.grid_h, canvasCellPx, cvScale, cvPanX, cvPanY);
 }
 
 function fitCanvasToView() {
@@ -923,7 +826,8 @@ function renderCanvas(skipFit) {
     if (_lookupDirty) {
         lookup = {};
         for (const e of legend) {
-            lookup[e.dmc] = { hex: e.hex || '#888888', symbol: e.symbol, name: e.name || '', count: e.stitches || 0, dashIdx: 0 };
+            const hex = e.hex || FALLBACK_HEX;
+            lookup[e.dmc] = { hex, symbol: e.symbol, name: e.name || '', count: e.stitches || 0, dashIdx: 0, contrast: contrastColor(hex) };
         }
         if (patternData.backstitches && patternData.backstitches.length > 0) {
             const bsDmcs = [...new Set(patternData.backstitches.map(bs => bs.dmc))];
@@ -946,7 +850,7 @@ function renderCanvas(skipFit) {
 
     if (showStitch) {
         /* ——— STITCH VIEW ——— */
-        const fabColor = '#F5F0E8';
+        const fabColor = FABRIC_COLOR;
         ctx.fillStyle = fabColor;
         ctx.fillRect(0, 0, W, H);
         /* Fabric texture: weave + aida dots (before stitches so it's behind them) */
@@ -955,21 +859,14 @@ function renderCanvas(skipFit) {
         for (let row = 0; row < grid_h; row++) {
             for (let col = 0; col < grid_w; col++) {
                 const dmc  = grid[row * grid_w + col];
-                if (dmc === 'BG') continue;
-                const info = lookup[dmc] || { hex: '#888888' };
-                drawStitch(ctx, col * cellPx, row * cellPx, cellPx, info.hex, fabColor);
-            }
-        }
-        /* Paint BG cells with fabric color so cropped corners don't show stitches */
-        const hasBG = grid.includes('BG');
-        if (hasBG) {
-            ctx.fillStyle = fabColor;
-            for (let row = 0; row < grid_h; row++) {
-                for (let col = 0; col < grid_w; col++) {
-                    if (grid[row * grid_w + col] === 'BG') {
-                        ctx.fillRect(col * cellPx, row * cellPx, cellPx, cellPx);
-                    }
+                if (dmc === 'BG') {
+                    // Overwrite fabric weave texture on BG cells
+                    ctx.fillStyle = fabColor;
+                    ctx.fillRect(col * cellPx, row * cellPx, cellPx, cellPx);
+                    continue;
                 }
+                const info = lookup[dmc] || { hex: FALLBACK_HEX };
+                drawStitch(ctx, col * cellPx, row * cellPx, cellPx, info.hex, fabColor);
             }
         }
     } else {
@@ -985,7 +882,7 @@ function renderCanvas(skipFit) {
             for (let col = 0; col < grid_w; col++) {
                 const dmc  = grid[row * grid_w + col];
                 if (dmc === 'BG') continue;
-                const info = lookup[dmc] || { hex: '#888888', symbol: '?' };
+                const info = lookup[dmc] || { hex: FALLBACK_HEX, symbol: '?' };
                 const x = col * cellPx;
                 const y = row * cellPx;
 
@@ -993,7 +890,7 @@ function renderCanvas(skipFit) {
                 ctx.fillRect(x, y, cellPx, cellPx);
 
                 if (cellPx >= 8 && showSymbols) {
-                    ctx.fillStyle = contrastColor(info.hex);
+                    ctx.fillStyle = info.contrast;
                     ctx.fillText(info.symbol, x + cellPx / 2, y + cellPx / 2);
                 }
             }
@@ -1015,25 +912,21 @@ function renderCanvas(skipFit) {
     }
 
     if (showGrid && cellPx >= 4) {
-        // Thin gridlines every cell
+        // Thin gridlines — batched into one path
         ctx.strokeStyle = showStitch ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.18)';
         ctx.lineWidth = 0.5;
-        for (let col = 0; col <= grid_w; col++) {
-            ctx.beginPath(); ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); ctx.stroke();
-        }
-        for (let row = 0; row <= grid_h; row++) {
-            ctx.beginPath(); ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); ctx.stroke();
-        }
-        // Bold gridlines every 10th col/row (stitch mode matches pattern viewer)
+        ctx.beginPath();
+        for (let col = 0; col <= grid_w; col++) { ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); }
+        for (let row = 0; row <= grid_h; row++) { ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); }
+        ctx.stroke();
+        // Bold gridlines every 10th — batched into one path
         if (showStitch) {
             ctx.strokeStyle = 'rgba(0,0,0,0.55)';
             ctx.lineWidth = Math.max(1, cellPx / 7);
-            for (let col = 0; col <= grid_w; col++) {
-                if (col % 10 === 0) { ctx.beginPath(); ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); ctx.stroke(); }
-            }
-            for (let row = 0; row <= grid_h; row++) {
-                if (row % 10 === 0) { ctx.beginPath(); ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); ctx.stroke(); }
-            }
+            ctx.beginPath();
+            for (let col = 0; col <= grid_w; col += 10) { ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); }
+            for (let row = 0; row <= grid_h; row += 10) { ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); }
+            ctx.stroke();
         }
     }
 
@@ -1085,7 +978,7 @@ function renderCanvas(skipFit) {
         `${grid_w} × ${grid_h} stitches · ${totalSt.toLocaleString()} total · ${legend.length} colors`;
 
     if (needsFit && !skipFit) fitCanvasToView();
-    else renderRulers();
+    else _renderRulers();
 }
 
 /* ——— STITCH / SYMBOL TOGGLE ——— */
@@ -1142,7 +1035,7 @@ function ensureEditor() {
             const stitchMode = document.getElementById('stitch-check').checked;
 
             if (stitchMode) {
-                const fabColor = '#F5F0E8';
+                const fabColor = FABRIC_COLOR;
                 ctx.fillStyle = fabColor;
                 ctx.fillRect(x, y, cp, cp);
                 if (dmc !== 'BG') {
@@ -1212,7 +1105,7 @@ function toggleCanvasEdit() {
         kc.classList.remove('legend-open');
         kc.style.width = '';  /* clear resize-handle inline width */
         renderKey(); /* restore table view */
-        requestAnimationFrame(() => { fitCanvasToView(); renderRulers(); });
+        requestAnimationFrame(() => { fitCanvasToView(); _renderRulers(); });
     } else {
         /* ——— ENTER fullscreen edit ——— */
         editorInstance.activate();
@@ -1221,7 +1114,7 @@ function toggleCanvasEdit() {
         document.body.style.overflow = 'hidden';
         if (legBtn && window.innerWidth <= 768) legBtn.style.display = '';
         renderEditLegend(); /* compact row view */
-        requestAnimationFrame(() => { fitCanvasToView(); renderRulers(); });
+        requestAnimationFrame(() => { fitCanvasToView(); _renderRulers(); });
     }
 }
 
@@ -1307,11 +1200,6 @@ async function downloadPDF() {
 }
 
 /* ——— COLOR KEY ——— */
-function _dmcSortKey(dmc) {
-    const n = parseInt(dmc, 10);
-    return isNaN(n) ? Infinity : n;
-}
-
 function filteredLegend() {
     let rows;
     if (displayFilter === 'standard') rows = legendData.filter(e => e.category === 'Standard');
@@ -1319,7 +1207,7 @@ function filteredLegend() {
     else rows = [...legendData];
     return rows.sort(legendSort === 'stitches'
         ? (a, b) => (b.stitches || 0) - (a.stitches || 0)
-        : (a, b) => _dmcSortKey(a.dmc) - _dmcSortKey(b.dmc) || String(a.dmc).localeCompare(String(b.dmc))
+        : (a, b) => dmcSortKey(a.dmc) - dmcSortKey(b.dmc) || String(a.dmc).localeCompare(String(b.dmc))
     );
 }
 
@@ -1332,8 +1220,6 @@ function setLegendSort(mode) {
 
 function renderKey() {
     const wrap = document.getElementById('key-table-wrap');
-    const statusLabel = { own: 'Owned', need: 'Need', dont_own: "Don't Own", not_found: 'Not Found' };
-    const statusClass = { own: 'status-own', need: 'status-need', dont_own: 'status-dont_own', not_found: 'status-not_found' };
 
     const rows = filteredLegend();
 
@@ -1355,8 +1241,8 @@ function renderKey() {
 
     for (const e of rows) {
         const swatchColor = safeHex(e.hex);
-        const sc = statusClass[e.status] || 'status-not_found';
-        const sl = statusLabel[e.status] || e.status;
+        const sc = STATUS_CLASS[e.status] || 'status-not_found';
+        const sl = STATUS_LABEL[e.status] || e.status;
         html += `
             <tr data-dmc="${escHtml(e.dmc)}" class="key-row">
                 <td class="sym-cell">${escHtml(e.symbol)}</td>
@@ -1473,7 +1359,6 @@ const FABRIC_COUNTS = [
     { count: 32, name: '32 over 2', type: 'Linen' },
 ];
 /* Populate fabric dropdown */
-let selectedFabricIdx = 1; // default 14 Count Aida
 (function() {
     const menu = document.getElementById('fabric-dropdown-menu');
     const sel = document.getElementById('dim-fabric-select');
@@ -1481,7 +1366,7 @@ let selectedFabricIdx = 1; // default 14 Count Aida
         const btn = document.createElement('button');
         btn.textContent = `${f.name} ${f.type}`;
         btn.dataset.idx = i;
-        if (i === selectedFabricIdx) btn.classList.add('active');
+        if (i === dimFabricIdx) btn.classList.add('active');
         btn.onclick = () => selectFabric(i);
         menu.appendChild(btn);
         // Also populate the sidebar fabric <select>
@@ -1502,7 +1387,6 @@ function closeFabricMenu() {
     document.getElementById('fabric-dropdown-menu').classList.remove('open');
 }
 function selectFabric(idx) {
-    selectedFabricIdx = idx;
     dimFabricIdx = idx;
     const f = FABRIC_COUNTS[idx];
     document.getElementById('fabric-dropdown-btn').innerHTML =
@@ -1520,8 +1404,7 @@ document.addEventListener('click', closeFabricMenu);
 function updateFabricSize() {
     if (!patternData) return;
     const { grid_w, grid_h } = patternData;
-    const f = FABRIC_COUNTS[selectedFabricIdx];
-    const eff = (f.count >= 25) ? f.count / 2 : f.count;
+    const eff = getEffectiveFabricCount();
     const dw = (grid_w / eff).toFixed(1);
     const dh = (grid_h / eff).toFixed(1);
     const sw = (grid_w / eff + 6).toFixed(1);
@@ -1558,45 +1441,6 @@ function clearUploadError() {
 
 
 
-/* ——— THUMBNAIL GENERATION ——— */
-function generateThumbnail() {
-    if (!patternData) return null;
-    const { grid, grid_w, grid_h, legend } = patternData;
-
-    // Pre-parse hex colors to RGB arrays (once per color, not per pixel)
-    const rgbLookup = {};
-    for (const e of legend) rgbLookup[e.dmc] = hexToRgb(e.hex || '#888888');
-    const bgRgb = [255, 255, 255];
-
-    const maxW = 120, maxH = 120;
-    const scale = Math.min(maxW / grid_w, maxH / grid_h, 1);
-    const outW = Math.max(1, Math.round(grid_w * scale));
-    const outH = Math.max(1, Math.round(grid_h * scale));
-
-    const canvas = document.createElement('canvas');
-    canvas.width  = outW;
-    canvas.height = outH;
-    const ctx = canvas.getContext('2d');
-    const imgData = ctx.createImageData(outW, outH);
-    const d = imgData.data;
-
-    for (let py = 0; py < outH; py++) {
-        for (let px = 0; px < outW; px++) {
-            const gx  = Math.min(grid_w - 1, Math.floor(px / scale));
-            const gy  = Math.min(grid_h - 1, Math.floor(py / scale));
-            const gVal = grid[gy * grid_w + gx];
-            const rgb = gVal === 'BG' ? bgRgb : (rgbLookup[gVal] || bgRgb);
-            const i = (py * outW + px) * 4;
-            d[i]     = rgb[0];
-            d[i + 1] = rgb[1];
-            d[i + 2] = rgb[2];
-            d[i + 3] = 255;
-        }
-    }
-    ctx.putImageData(imgData, 0, 0);
-    return canvas.toDataURL('image/png');
-}
-
 /* ——— SAVE DIALOG ——— */
 function openSaveDialog() {
     document.getElementById('save-name-input').value = '';
@@ -1617,7 +1461,7 @@ async function confirmSave() {
     btn.textContent = 'Saving…';
     document.getElementById('save-modal-error').style.display = 'none';
 
-    const thumbnail = generateThumbnail();
+    const thumbnail = generateThumbnail(patternData);
 
     // Capture current generation settings
     const dimSave = getDimStitchValues();
@@ -1764,27 +1608,13 @@ async function maybeLoadSavedPattern() {
             document.getElementById('ctrl-grid-h').value = saved.grid_h;
             updateVal('val-grid-h', saved.grid_h);
 
-            document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('canvas-card').classList.add('visible');
-            document.getElementById('key-card').classList.add('visible');
-            document.getElementById('btn-save-pattern').style.display = '';
-            document.getElementById('edit-toggle-btn').style.display = '';
-            document.getElementById('zoom-controls').style.display = '';
+            _showResultCards();
 
             renderCanvas();
             renderKey();
 
             // Draw thumbnail into source image preview
-            if (saved.thumbnail) {
-                const img = new Image();
-                img.onload = function() {
-                    const cv = document.getElementById('crop-preview-canvas');
-                    cv.width  = img.naturalWidth;
-                    cv.height = img.naturalHeight;
-                    cv.getContext('2d').drawImage(img, 0, 0);
-                };
-                img.src = saved.thumbnail;
-            }
+            if (saved.thumbnail) _showThumbnailPreview(saved.thumbnail);
 
             showSpinner(false);
 
@@ -1815,27 +1645,12 @@ async function maybeLoadSavedPattern() {
             updateVal('val-grid-h', saved.grid_h);
 
             // Draw thumbnail into crop-preview-canvas if available
-            if (saved.thumbnail) {
-                const img = new Image();
-                img.onload = function() {
-                    const cv = document.getElementById('crop-preview-canvas');
-                    cv.width  = img.naturalWidth;
-                    cv.height = img.naturalHeight;
-                    cv.getContext('2d').drawImage(img, 0, 0);
-                };
-                img.src = saved.thumbnail;
-            }
+            if (saved.thumbnail) _showThumbnailPreview(saved.thumbnail);
 
             showSpinner(false);
-            document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('canvas-card').classList.add('visible');
-            document.getElementById('key-card').classList.add('visible');
-            document.getElementById('btn-save-pattern').style.display = '';
-
+            _showResultCards();
             // No source file — hide "Edit crop" button
             document.querySelector('.btn-edit-crop').style.display = 'none';
-            document.getElementById('edit-toggle-btn').style.display = '';
-            document.getElementById('zoom-controls').style.display = '';
             ensureEditor();
 
             canvasCellPx = 19;
@@ -1976,28 +1791,18 @@ async function maybeLoadSavedPattern() {
 })();
 
 /* ——— ZOOM +/- BUTTONS ——— */
-document.getElementById('zoom-in-btn').addEventListener('click', function() {
+function _zoomByFactor(factor) {
     const area = document.getElementById('canvas-area');
     const cx = area.clientWidth / 2, cy = area.clientHeight / 2;
-    const factor = 1.3;
     const maxZoom = area.clientWidth / (canvasCellPx * 8);
     cvPanX = cx - (cx - cvPanX) * factor;
     cvPanY = cy - (cy - cvPanY) * factor;
     cvScale = Math.max(0.05, Math.min(maxZoom, cvScale * factor));
     applyCanvasTransform();
     scheduleSnap();
-});
-document.getElementById('zoom-out-btn').addEventListener('click', function() {
-    const area = document.getElementById('canvas-area');
-    const cx = area.clientWidth / 2, cy = area.clientHeight / 2;
-    const factor = 1 / 1.3;
-    const maxZoom = area.clientWidth / (canvasCellPx * 8);
-    cvPanX = cx - (cx - cvPanX) * factor;
-    cvPanY = cy - (cy - cvPanY) * factor;
-    cvScale = Math.max(0.05, Math.min(maxZoom, cvScale * factor));
-    applyCanvasTransform();
-    scheduleSnap();
-});
+}
+document.getElementById('zoom-in-btn').addEventListener('click', () => _zoomByFactor(1.3));
+document.getElementById('zoom-out-btn').addEventListener('click', () => _zoomByFactor(1 / 1.3));
 
 /* ——— EDITOR: Legend clicks ——— */
 document.getElementById('key-table-wrap').addEventListener('click', function(e) {
@@ -2035,7 +1840,6 @@ window.addEventListener('beforeunload', function(e) {
 /* ——— INIT ——— */
 initCropOverlay();
 window.addEventListener('resize', () => {
-    if (currentStep === 'crop') renderCropRect();
     if (patternData) fitCanvasToView();
 });
 maybeLoadSavedPattern();

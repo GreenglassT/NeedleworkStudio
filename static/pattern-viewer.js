@@ -1,60 +1,46 @@
-/* ——— CALCULATE DROPDOWN ——— */
-function toggleCalcMenu(e) {
-    e.stopPropagation();
-    const menu = document.getElementById('calc-menu');
-    const btn = document.getElementById('calc-toggle');
-    const wasOpen = menu.classList.contains('open');
+const FABRIC_COLOR = '#F5F0E8';
 
-    // Close first
-    menu.classList.remove('open');
-    btn.classList.remove('open');
-
-    if (!wasOpen) {
-        // Position the fixed menu below the button
-        const rect = btn.getBoundingClientRect();
-        menu.style.top = (rect.bottom + 6) + 'px';
-        menu.style.right = (window.innerWidth - rect.right) + 'px';
-        menu.classList.add('open');
-        btn.classList.add('open');
-    }
-}
-document.addEventListener('click', function () {
-    document.getElementById('calc-menu').classList.remove('open');
-    document.getElementById('calc-toggle').classList.remove('open');
-});
-
-/* ——— ZEN MENU DROPDOWN ——— */
-function toggleZenMenu(e) {
-    e.stopPropagation();
-    const menu = document.getElementById('zen-menu');
-    const btn  = document.getElementById('zen-menu-btn');
-    const wasOpen = menu.classList.contains('open');
-
-    menu.classList.remove('open');
-    btn.classList.remove('open');
-
-    if (!wasOpen) {
-        const rect = btn.getBoundingClientRect();
-        menu.style.top  = (rect.bottom + 6) + 'px';
-        menu.style.left = rect.left + 'px';
-        menu.classList.add('open');
-        btn.classList.add('open');
-        // Keep toolbar visible while menu is open
-        clearTimeout(_zenMoveTimer);
-    }
-}
-
-document.addEventListener('click', function () {
-    var menu = document.getElementById('zen-menu');
-    var btn  = document.getElementById('zen-menu-btn');
+/* ——— DROPDOWN HELPERS ——— */
+function _closeDropdown(menuId, btnId) {
+    const menu = document.getElementById(menuId);
+    const btn  = document.getElementById(btnId);
     if (menu) menu.classList.remove('open');
     if (btn)  btn.classList.remove('open');
+}
+
+function _toggleDropdown(menuId, btnId, anchorSide, onOpen) {
+    const menu = document.getElementById(menuId);
+    const btn  = document.getElementById(btnId);
+    const wasOpen = menu.classList.contains('open');
+    _closeDropdown(menuId, btnId);
+    if (!wasOpen) {
+        const rect = btn.getBoundingClientRect();
+        menu.style.top = (rect.bottom + 6) + 'px';
+        if (anchorSide === 'left') menu.style.left = rect.left + 'px';
+        else menu.style.right = (window.innerWidth - rect.right) + 'px';
+        menu.classList.add('open');
+        btn.classList.add('open');
+        if (onOpen) onOpen();
+    }
+}
+
+document.addEventListener('click', function () {
+    _closeDropdown('calc-menu', 'calc-toggle');
+    _closeDropdown('zen-menu', 'zen-menu-btn');
 });
 
+function toggleCalcMenu(e) {
+    e.stopPropagation();
+    _toggleDropdown('calc-menu', 'calc-toggle', 'right');
+}
+
+function toggleZenMenu(e) {
+    e.stopPropagation();
+    _toggleDropdown('zen-menu', 'zen-menu-btn', 'left', () => clearTimeout(_zenMoveTimer));
+}
+
 function zenMenuAction(action) {
-    // Close menu first
-    document.getElementById('zen-menu').classList.remove('open');
-    document.getElementById('zen-menu-btn').classList.remove('open');
+    _closeDropdown('zen-menu', 'zen-menu-btn');
 
     if (action === 'mark-complete') {
         toggleCellMarkMode();
@@ -73,11 +59,11 @@ function zenMenuAction(action) {
 }
 
 function _syncZenMenuLabels() {
-    var markLabel = document.getElementById('zen-mark-label');
+    const markLabel = document.getElementById('zen-mark-label');
     if (markLabel) markLabel.textContent = _cellMarkMode ? 'Stop Marking' : 'Mark Complete';
 
-    var viewLabel = document.getElementById('zen-view-label');
-    var viewIcon  = document.getElementById('zen-view-icon');
+    const viewLabel = document.getElementById('zen-view-label');
+    const viewIcon  = document.getElementById('zen-view-icon');
     if (viewLabel) viewLabel.textContent = viewMode === 'chart' ? 'Thread View' : 'Chart View';
     if (viewIcon)  viewIcon.className = viewMode === 'chart' ? 'ti ti-needle' : 'ti ti-grid-dots';
 }
@@ -85,6 +71,7 @@ function _syncZenMenuLabels() {
 /* ——— STATE ——— */
 const PATTERN_SLUG = window._PAGE_CONFIG.patternSlug;
 let patternData = null;   // { grid, grid_w, grid_h, legend, brand }
+let _totalStitchableCount = 0; // cached count of non-BG cells
 let patternBrand = 'DMC'; // 'DMC' | 'Anchor'
 let lookup = {};          // dmc → { hex, symbol, name, count }
 let cellPx = 19;          // canvas px per stitch
@@ -103,64 +90,21 @@ let _cellDragStart   = null;        // {col, row} for rectangle start
 let _cellDragEnd     = null;        // {col, row} for rectangle end
 
 /* ——— AUTOSAVE ——— */
-let _autosaveTimer = null;
-const _AUTOSAVE_KEY = 'ns-autosave-' + PATTERN_SLUG;
-
-function _scheduleAutosave() {
-    clearTimeout(_autosaveTimer);
-    _autosaveTimer = setTimeout(() => {
-        if (!patternData) return;
-        try {
-            localStorage.setItem(_AUTOSAVE_KEY, JSON.stringify({
-                grid: patternData.grid, legend: patternData.legend,
-                grid_w: patternData.grid_w, grid_h: patternData.grid_h,
-                part_stitches: patternData.part_stitches || [],
-                backstitches: patternData.backstitches || [],
-                knots: patternData.knots || [], beads: patternData.beads || [],
-                timestamp: Date.now()
-            }));
-        } catch (e) { /* localStorage full — silently skip */ }
-    }, 5000);
-}
-
-function _clearAutosave() {
-    clearTimeout(_autosaveTimer);
-    localStorage.removeItem(_AUTOSAVE_KEY);
-}
-
-function _checkAutosaveRecovery() {
-    const raw = localStorage.getItem(_AUTOSAVE_KEY);
-    if (!raw) return;
-    try {
-        const saved = JSON.parse(raw);
-        const age = Date.now() - saved.timestamp;
-        if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(_AUTOSAVE_KEY); return; }
-        const when = new Date(saved.timestamp).toLocaleString();
-        toast('Unsaved edits found from ' + when, {
-            type: 'info', duration: 0,
-            actions: [
-                { label: 'Recover', onClick: () => {
-                    patternData.grid = saved.grid;
-                    patternData.legend = saved.legend;
-                    patternData.grid_w = saved.grid_w;
-                    patternData.grid_h = saved.grid_h;
-                    patternData.part_stitches = saved.part_stitches || [];
-                    patternData.backstitches = saved.backstitches || [];
-                    patternData.knots = saved.knots || [];
-                    patternData.beads = saved.beads || [];
-                    lookup = {};
-                    for (const e of patternData.legend) {
-                        lookup[e.dmc] = { hex: e.hex || '#888888', symbol: e.symbol || '?', name: e.name || '', count: e.stitches || 0, dashIdx: 0 };
-                    }
-                    _recountLegend();
-                    renderMain(); renderMinimap(); updateMinimapViewport(); renderLegend();
-                    toast('Edits recovered.', { type: 'success' });
-                }},
-                { label: 'Discard', onClick: () => { localStorage.removeItem(_AUTOSAVE_KEY); }}
-            ]
-        });
-    } catch (e) { localStorage.removeItem(_AUTOSAVE_KEY); }
-}
+const _autosave = createAutosaver(
+    'ns-autosave-' + PATTERN_SLUG,
+    () => patternData,
+    () => {
+        lookup = {};
+        for (const e of patternData.legend) {
+            lookup[e.dmc] = { hex: e.hex || '#888888', symbol: e.symbol || '?', name: e.name || '', count: e.stitches || 0, dashIdx: 0 };
+        }
+        _recountLegend();
+        renderMain(); renderMinimap(); updateMinimapViewport(); renderLegend();
+    }
+);
+const _scheduleAutosave = _autosave.schedule;
+const _clearAutosave = _autosave.clear;
+const _checkAutosaveRecovery = _autosave.checkRecovery;
 
 /* ——— SESSION TIMER ——— */
 let _timerAccumSecs   = 0;     // total seconds loaded from DB
@@ -187,6 +131,13 @@ const COL_LBL_MM  = 8;
 const CELL_MM_EQ  = 2.5;
 function gX() { return Math.round(ROW_LBL_MM * cellPx / CELL_MM_EQ); }
 function gY() { return Math.round(COL_LBL_MM * cellPx / CELL_MM_EQ); }
+
+function _drawFaded(ctx, dmc, drawFn) {
+    const faded = !editMode && completedDmcs.has(String(dmc));
+    if (faded) ctx.globalAlpha = 0.42;
+    drawFn();
+    if (faded) ctx.globalAlpha = 1.0;
+}
 
 /* ——— RENDER MAIN CANVAS ——— */
 function renderMain() {
@@ -237,7 +188,7 @@ function renderMain() {
 
     // Cells: thread-mode or chart-mode
     if (viewMode === 'thread') {
-        const fabColor = '#F5F0E8';
+        const fabColor = FABRIC_COLOR;
         ctx.fillStyle = fabColor;
         ctx.fillRect(gutX, gutY, grid_w * cellPx, grid_h * cellPx);
         drawStitchFabric(ctx, canvas.width, canvas.height, cellPx, grid_w, grid_h, fabColor, gutX, gutY);
@@ -247,7 +198,10 @@ function renderMain() {
                 if (dmc === 'BG') continue;
                 const info = lookup[dmc];
                 if (!info) continue;
-                drawStitch(ctx, gutX + col * cellPx, gutY + row * cellPx, cellPx, info.hex, fabColor);
+                const x = gutX + col * cellPx, y = gutY + row * cellPx;
+                drawStitch(ctx, x, y, cellPx, info.hex, fabColor);
+                if (completedDmcs.has(String(dmc))) { ctx.fillStyle = 'rgba(255,255,255,0.58)'; ctx.fillRect(x, y, cellPx, cellPx); }
+                if (!editMode && stitchedCells.has(row * grid_w + col)) { ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.fillRect(x, y, cellPx, cellPx); }
             }
         }
     } else {
@@ -269,30 +223,8 @@ function renderMain() {
                     ctx.fillStyle = contrastColor(info.hex);
                     ctx.fillText(info.symbol, x + cellPx / 2, y + cellPx / 2);
                 }
-            }
-        }
-    }
-
-    // Completion overlay: wash out completed colors
-    if (completedDmcs.size > 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.58)';
-        for (let row = 0; row < grid_h; row++) {
-            for (let col = 0; col < grid_w; col++) {
-                if (completedDmcs.has(String(grid[row * grid_w + col]))) {
-                    ctx.fillRect(gutX + col * cellPx, gutY + row * cellPx, cellPx, cellPx);
-                }
-            }
-        }
-    }
-
-    // Cell-level progress wash — individually marked stitched cells
-    if (stitchedCells.size > 0 && !editMode) {
-        ctx.fillStyle = 'rgba(255,255,255,0.72)';
-        for (let row = 0; row < grid_h; row++) {
-            for (let col = 0; col < grid_w; col++) {
-                if (stitchedCells.has(row * grid_w + col)) {
-                    ctx.fillRect(gutX + col * cellPx, gutY + row * cellPx, cellPx, cellPx);
-                }
+                if (completedDmcs.has(String(dmc))) { ctx.fillStyle = 'rgba(255,255,255,0.58)'; ctx.fillRect(x, y, cellPx, cellPx); }
+                if (!editMode && stitchedCells.has(row * grid_w + col)) { ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.fillRect(x, y, cellPx, cellPx); }
             }
         }
     }
@@ -302,63 +234,42 @@ function renderMain() {
         for (const ps of patternData.part_stitches) {
             const info = lookup[ps.dmc];
             if (!info) continue;
-            const faded = !editMode && completedDmcs.has(String(ps.dmc));
-            if (faded) ctx.globalAlpha = 0.42;
             const { sx, sy } = _resolvePartFields(ps);
-            const px = gutX + sx * cellPx;
-            const py = gutY + sy * cellPx;
-            if (viewMode === 'thread') {
-                drawThreadPartStitch(ctx, px, py, cellPx, ps, info.hex);
-            } else {
-                drawChartPartStitch(ctx, px, py, cellPx, ps, info.hex, info.symbol);
-            }
-            if (faded) ctx.globalAlpha = 1.0;
+            const px = gutX + sx * cellPx, py = gutY + sy * cellPx;
+            _drawFaded(ctx, ps.dmc, () => {
+                if (viewMode === 'thread') drawThreadPartStitch(ctx, px, py, cellPx, ps, info.hex);
+                else drawChartPartStitch(ctx, px, py, cellPx, ps, info.hex, info.symbol);
+            });
         }
     }
 
-    // Thin gridlines every cell — clipped to grid bounds
+    // Thin gridlines every cell — batched into single stroke
     ctx.strokeStyle = 'rgba(0,0,0,0.15)';
     ctx.lineWidth = 0.5;
-    for (let col = 0; col <= grid_w; col++) {
-        const x = gutX + col * cellPx;
-        ctx.beginPath(); ctx.moveTo(x, gutY); ctx.lineTo(x, gridEndY); ctx.stroke();
-    }
-    for (let row = 0; row <= grid_h; row++) {
-        const y = gutY + row * cellPx;
-        ctx.beginPath(); ctx.moveTo(gutX, y); ctx.lineTo(gridEndX, y); ctx.stroke();
-    }
+    ctx.beginPath();
+    for (let col = 0; col <= grid_w; col++) { const x = gutX + col * cellPx; ctx.moveTo(x, gutY); ctx.lineTo(x, gridEndY); }
+    for (let row = 0; row <= grid_h; row++) { const y = gutY + row * cellPx; ctx.moveTo(gutX, y); ctx.lineTo(gridEndX, y); }
+    ctx.stroke();
 
-    // Bold gridlines every 10th absolute col/row — clipped to grid bounds
+    // Bold gridlines every 10th — batched into single stroke
     ctx.strokeStyle = 'rgba(0,0,0,0.55)';
     ctx.lineWidth = Math.max(1, cellPx / 7);
-    for (let col = 0; col <= grid_w; col++) {
-        if (col % 10 === 0) {
-            const x = gutX + col * cellPx;
-            ctx.beginPath(); ctx.moveTo(x, gutY); ctx.lineTo(x, gridEndY); ctx.stroke();
-        }
-    }
-    for (let row = 0; row <= grid_h; row++) {
-        if (row % 10 === 0) {
-            const y = gutY + row * cellPx;
-            ctx.beginPath(); ctx.moveTo(gutX, y); ctx.lineTo(gridEndX, y); ctx.stroke();
-        }
-    }
+    ctx.beginPath();
+    for (let col = 0; col <= grid_w; col += 10) { const x = gutX + col * cellPx; ctx.moveTo(x, gutY); ctx.lineTo(x, gridEndY); }
+    for (let row = 0; row <= grid_h; row += 10) { const y = gutY + row * cellPx; ctx.moveTo(gutX, y); ctx.lineTo(gridEndX, y); }
+    ctx.stroke();
 
     // Backstitches — on top of gridlines
     if (patternData.backstitches && patternData.backstitches.length > 0) {
         for (const bs of patternData.backstitches) {
             const info = lookup[bs.dmc];
             if (!info) continue;
-            const faded = !editMode && completedDmcs.has(String(bs.dmc));
-            if (faded) ctx.globalAlpha = 0.42;
             const p1 = stitchIntersectionPx(bs.x1, bs.y1, gutX, gutY, cellPx);
             const p2 = stitchIntersectionPx(bs.x2, bs.y2, gutX, gutY, cellPx);
-            if (viewMode === 'chart') {
-                drawChartBackstitch(ctx, p1.x, p1.y, p2.x, p2.y, info.hex, cellPx, info.dashIdx);
-            } else {
-                drawBackstitch(ctx, p1.x, p1.y, p2.x, p2.y, info.hex, cellPx);
-            }
-            if (faded) ctx.globalAlpha = 1.0;
+            _drawFaded(ctx, bs.dmc, () => {
+                if (viewMode === 'chart') drawChartBackstitch(ctx, p1.x, p1.y, p2.x, p2.y, info.hex, cellPx, info.dashIdx);
+                else drawBackstitch(ctx, p1.x, p1.y, p2.x, p2.y, info.hex, cellPx);
+            });
         }
     }
 
@@ -367,15 +278,11 @@ function renderMain() {
         for (const k of patternData.knots) {
             const info = lookup[k.dmc];
             if (!info) continue;
-            const faded = !editMode && completedDmcs.has(String(k.dmc));
-            if (faded) ctx.globalAlpha = 0.42;
             const pt = stitchIntersectionPx(k.x, k.y, gutX, gutY, cellPx);
-            if (viewMode === 'chart') {
-                drawChartFrenchKnot(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol);
-            } else {
-                drawFrenchKnot(ctx, pt.x, pt.y, info.hex, cellPx);
-            }
-            if (faded) ctx.globalAlpha = 1.0;
+            _drawFaded(ctx, k.dmc, () => {
+                if (viewMode === 'chart') drawChartFrenchKnot(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol);
+                else drawFrenchKnot(ctx, pt.x, pt.y, info.hex, cellPx);
+            });
         }
     }
 
@@ -384,15 +291,11 @@ function renderMain() {
         for (const b of patternData.beads) {
             const info = lookup[b.dmc];
             if (!info) continue;
-            const faded = !editMode && completedDmcs.has(String(b.dmc));
-            if (faded) ctx.globalAlpha = 0.42;
             const pt = stitchCellCenterPx(b.x, b.y, gutX, gutY, cellPx);
-            if (viewMode === 'chart') {
-                drawChartBead(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol);
-            } else {
-                drawBead(ctx, pt.x, pt.y, info.hex, cellPx);
-            }
-            if (faded) ctx.globalAlpha = 1.0;
+            _drawFaded(ctx, b.dmc, () => {
+                if (viewMode === 'chart') drawChartBead(ctx, pt.x, pt.y, info.hex, cellPx, info.symbol);
+                else drawBead(ctx, pt.x, pt.y, info.hex, cellPx);
+            });
         }
     }
 
@@ -403,96 +306,13 @@ function renderMain() {
 }
 
 /* ——— MINI-MAP ——— */
-const MM_CELL = 2; // px per stitch in minimap (before display scaling)
-
 function renderMinimap() {
-    const { grid, grid_w, grid_h } = patternData;
-    const mmW = grid_w * MM_CELL;
-    const mmH = grid_h * MM_CELL;
-
-    // Scale to fit within 200×120 px
-    const mmS = Math.min(200 / mmW, 120 / mmH, 1.0);
-    const dispW = Math.max(1, Math.round(mmW * mmS));
-    const dispH = Math.max(1, Math.round(mmH * mmS));
-
-    const canvas = document.getElementById('mini-canvas');
-    canvas.width  = dispW;
-    canvas.height = dispH;
-    canvas._mmS = mmS; // pixels-per-stitch on the displayed minimap
-
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, dispW, dispH);
-
-    const cellDisp = MM_CELL * mmS; // each stitch occupies this many display px
-    for (let row = 0; row < grid_h; row++) {
-        for (let col = 0; col < grid_w; col++) {
-            const dmc  = grid[row * grid_w + col];
-            const info = lookup[dmc] || { hex: '#888888' };
-            ctx.fillStyle = info.hex;
-            ctx.fillRect(
-                Math.floor(col * cellDisp),
-                Math.floor(row * cellDisp),
-                Math.ceil(cellDisp),
-                Math.ceil(cellDisp)
-            );
-        }
-    }
-
-    // Save pattern pixels (no viewport rect yet)
-    canvas._patternImg = ctx.getImageData(0, 0, dispW, dispH);
+    renderMinimapCanvas(patternData.grid, patternData.grid_w, patternData.grid_h, lookup);
 }
 
 function updateMinimapViewport() {
-    const canvas = document.getElementById('mini-canvas');
-    if (!canvas._patternImg || !patternData) return;
-
-    const area  = document.getElementById('canvas-area');
-    const areaW = area.clientWidth;
-    const areaH = area.clientHeight;
-    const { grid_w, grid_h } = patternData;
-    const gutX = gX(), gutY = gY();
-
-    // Visible canvas-pixel region
-    const visLeft = -panX / scale;
-    const visTop  = -panY / scale;
-    const visW    = areaW / scale;
-    const visH    = areaH / scale;
-
-    // Convert to stitch coordinates (subtract gutter, divide by cellPx)
-    const sX = (visLeft - gutX) / cellPx;
-    const sY = (visTop  - gutY) / cellPx;
-    const sW = visW / cellPx;
-    const sH = visH / cellPx;
-
-    // Auto-hide minimap when viewport covers entire pattern
-    const wrap = document.getElementById('minimap-wrap');
-    if (sX <= 0 && sY <= 0 && sW >= grid_w && sH >= grid_h) {
-        wrap.style.display = 'none'; return;
-    } else { wrap.style.display = ''; }
-
-    // Convert to minimap display coordinates
-    const ms = canvas._mmS * MM_CELL; // minimap px per stitch
-    const rx = sX * ms;
-    const ry = sY * ms;
-    const rw = sW * ms;
-    const rh = sH * ms;
-
-    // Restore clean pattern pixels, then draw viewport rect on top
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(canvas._patternImg, 0, 0);
-
-    ctx.strokeStyle = 'rgba(200,145,58,0.9)';
-    ctx.lineWidth   = 1.5;
-    ctx.fillStyle   = 'rgba(200,145,58,0.15)';
-    const rx2 = Math.max(0, rx);
-    const ry2 = Math.max(0, ry);
-    const rw2 = Math.min(rw, canvas.width  - rx2);
-    const rh2 = Math.min(rh, canvas.height - ry2);
-    if (rw2 > 0 && rh2 > 0) {
-        ctx.fillRect(rx2, ry2, rw2, rh2);
-        ctx.strokeRect(rx2, ry2, rw2, rh2);
-    }
+    if (!patternData) return;
+    updateMinimapRect(patternData.grid_w, patternData.grid_h, scale, panX, panY, cellPx, gX(), gY());
 }
 
 /* ——— HIGHLIGHT ——— */
@@ -609,16 +429,20 @@ function toggleColorComplete(dmc) {
     _scheduleProgressSave();
 }
 
+function _buildProgressPayload() {
+    return JSON.stringify({ progress_data: {
+        completed_dmcs: [...completedDmcs],
+        stitched_cells: [...stitchedCells].sort((a, b) => a - b),
+        accumulated_seconds: _timerCurrentSeconds()
+    }});
+}
+
 function _scheduleProgressSave() {
     clearTimeout(_progressTimer);
     _progressTimer = setTimeout(() => {
         fetch('/api/saved-patterns/' + PATTERN_SLUG, {
             method: 'PATCH', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ progress_data: {
-                completed_dmcs: [...completedDmcs],
-                stitched_cells: [...stitchedCells].sort((a, b) => a - b),
-                accumulated_seconds: _timerCurrentSeconds()
-            }})
+            body: _buildProgressPayload()
         });
     }, 800);
 }
@@ -645,9 +469,8 @@ function toggleCellMarkMode() {
 }
 
 function _updateCellProgressBar() {
-    const { grid, grid_w, grid_h } = patternData;
-    let total = 0;
-    for (const dmc of grid) { if (dmc !== 'BG') total++; }
+    const { grid } = patternData;
+    const total = _totalStitchableCount;
     let done = 0;
     for (const idx of stitchedCells) { if (grid[idx] !== 'BG') done++; }
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
@@ -762,6 +585,7 @@ function _timerStart() {
     if (_timerSessionStart !== null) return;
     _timerSessionStart = Date.now();
     _timerInterval = setInterval(_timerTick, 1000);
+    if (!_timerFlushInterval) _timerFlushInterval = setInterval(function() { if (_timerDirty) _timerFlush(); }, 30000);
 }
 
 function _timerPause() {
@@ -770,6 +594,8 @@ function _timerPause() {
     _timerSessionStart = null;
     clearInterval(_timerInterval);
     _timerInterval = null;
+    clearInterval(_timerFlushInterval);
+    _timerFlushInterval = null;
     _timerDirty = true;
 }
 
@@ -804,19 +630,12 @@ function _timerFlush() {
     fetch('/api/saved-patterns/' + PATTERN_SLUG, {
         method: 'PATCH', headers: {'Content-Type':'application/json'},
         keepalive: true,
-        body: JSON.stringify({ progress_data: {
-            completed_dmcs: [...completedDmcs],
-            stitched_cells: [...stitchedCells].sort((a, b) => a - b),
-            accumulated_seconds: _timerCurrentSeconds()
-        }})
+        body: _buildProgressPayload()
     }).catch(() => { _timerDirty = true; });
 }
 
 function _timerInit(accSeconds) {
     _timerAccumSecs = accSeconds || 0;
-    _timerFlushInterval = setInterval(function() {
-        if (_timerDirty) _timerFlush();
-    }, 30000);
     _timerStart();
     _renderTimerDisplay();
 }
@@ -885,11 +704,6 @@ function filterLegend() {
     renderLegend();
 }
 
-function _dmcSortKey(dmc) {
-    const n = parseInt(dmc, 10);
-    return isNaN(n) ? Infinity : n;
-}
-
 function renderLegend() {
     const { legend, grid } = patternData;
     const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
@@ -907,7 +721,7 @@ function renderLegend() {
 
     const sorted = [...legend].sort(legendSort === 'stitches'
         ? (a, b) => (b.stitches || 0) - (a.stitches || 0)
-        : (a, b) => _dmcSortKey(a.dmc) - _dmcSortKey(b.dmc) || String(a.dmc).localeCompare(String(b.dmc))
+        : (a, b) => dmcSortKey(a.dmc) - dmcSortKey(b.dmc) || String(a.dmc).localeCompare(String(b.dmc))
     );
     const q = legendFilter.toLowerCase();
     const filtered = q
@@ -1053,7 +867,7 @@ function _initEditor() {
             const y = gutYv + row * cellPx;
             const dmc = patternData.grid[row * patternData.grid_w + col];
             if (viewMode === 'thread') {
-                const fabColor = '#F5F0E8';
+                const fabColor = FABRIC_COLOR;
                 ctx.fillStyle = fabColor;
                 ctx.fillRect(x, y, cellPx, cellPx);
                 if (dmc !== 'BG') {
@@ -1220,35 +1034,6 @@ async function confirmFork() {
     }
 }
 
-function generateThumbnail() {
-    if (!patternData) return null;
-    const { grid, grid_w, grid_h, legend } = patternData;
-    const rgbLookup = {};
-    for (const e of legend) rgbLookup[e.dmc] = hexToRgb(e.hex || '#888888');
-    const bgRgb = [255, 255, 255];
-    const maxW = 120, maxH = 120;
-    const sc = Math.min(maxW / grid_w, maxH / grid_h, 1);
-    const outW = Math.max(1, Math.round(grid_w * sc));
-    const outH = Math.max(1, Math.round(grid_h * sc));
-    const canvas = document.createElement('canvas');
-    canvas.width = outW; canvas.height = outH;
-    const ctx = canvas.getContext('2d');
-    const imgData = ctx.createImageData(outW, outH);
-    const d = imgData.data;
-    for (let py = 0; py < outH; py++) {
-        for (let px = 0; px < outW; px++) {
-            const gx = Math.min(grid_w - 1, Math.floor(px / sc));
-            const gy = Math.min(grid_h - 1, Math.floor(py / sc));
-            const gVal = grid[gy * grid_w + gx];
-            const rgb = gVal === 'BG' ? bgRgb : (rgbLookup[gVal] || bgRgb);
-            const i = (py * outW + px) * 4;
-            d[i] = rgb[0]; d[i+1] = rgb[1]; d[i+2] = rgb[2]; d[i+3] = 255;
-        }
-    }
-    ctx.putImageData(imgData, 0, 0);
-    return canvas.toDataURL('image/png');
-}
-
 async function savePattern() {
     if (!editMode || !isForked) return;
     const saveBtn = document.getElementById('save-btn');
@@ -1256,7 +1041,7 @@ async function savePattern() {
     saveBtn.textContent = 'Saving\u2026';
     saveBtn.disabled = true;
     try {
-        const thumbnail = generateThumbnail();
+        const thumbnail = generateThumbnail(patternData);
         const resp = await fetch('/api/saved-patterns/' + PATTERN_SLUG, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -1470,26 +1255,17 @@ document.getElementById('canvas-area').addEventListener('touchend', function() {
 })();
 
 /* ——— ZOOM +/- BUTTONS ——— */
-document.getElementById('zoom-in-btn').addEventListener('click', function() {
+function _zoomByFactor(factor) {
     const area = document.getElementById('canvas-area');
     const cx = area.clientWidth / 2, cy = area.clientHeight / 2;
-    const factor = 1.3;
     panX = cx - (cx - panX) * factor;
     panY = cy - (cy - panY) * factor;
     scale = Math.max(0.05, Math.min(MAX_CELL_PX / cellPx, scale * factor));
     applyTransform();
     scheduleSnap();
-});
-document.getElementById('zoom-out-btn').addEventListener('click', function() {
-    const area = document.getElementById('canvas-area');
-    const cx = area.clientWidth / 2, cy = area.clientHeight / 2;
-    const factor = 1 / 1.3;
-    panX = cx - (cx - panX) * factor;
-    panY = cy - (cy - panY) * factor;
-    scale = Math.max(0.05, Math.min(MAX_CELL_PX / cellPx, scale * factor));
-    applyTransform();
-    scheduleSnap();
-});
+}
+document.getElementById('zoom-in-btn').addEventListener('click', () => _zoomByFactor(1.3));
+document.getElementById('zoom-out-btn').addEventListener('click', () => _zoomByFactor(1 / 1.3));
 
 /* ——— ZEN / FULLSCREEN MODE ——— */
 let zenMode = false;
@@ -1503,11 +1279,8 @@ function toggleZenMode() {
 function enterZenMode() {
     zenMode = true;
     clearTimeout(_zenMoveTimer);
-    // Close any open dropdowns
-    document.getElementById('calc-menu').classList.remove('open');
-    document.getElementById('calc-toggle').classList.remove('open');
-    document.getElementById('zen-menu').classList.remove('open');
-    document.getElementById('zen-menu-btn').classList.remove('open');
+    _closeDropdown('calc-menu', 'calc-toggle');
+    _closeDropdown('zen-menu', 'zen-menu-btn');
     document.body.classList.add('zen-mode');
     // Try browser fullscreen (may be denied, that's OK — zen mode still works)
     if (document.documentElement.requestFullscreen) {
@@ -1539,13 +1312,9 @@ function _updateZenUI() {
         btn.title = zenMode ? 'Exit Zen (F)' : 'Zen Mode (F)';
     }
     // Drive zen menu button visibility
-    var menuBtn = document.getElementById('zen-menu-btn');
+    const menuBtn = document.getElementById('zen-menu-btn');
     if (menuBtn) menuBtn.classList.toggle('visible', zenMode);
-    // Close menu if exiting
-    if (!zenMode) {
-        document.getElementById('zen-menu').classList.remove('open');
-        if (menuBtn) menuBtn.classList.remove('open');
-    }
+    if (!zenMode) _closeDropdown('zen-menu', 'zen-menu-btn');
 }
 
 // Sync zen mode with browser fullscreen state changes
@@ -1567,15 +1336,15 @@ document.addEventListener('webkitfullscreenchange', _onFullscreenChange);
 // Show zen toolbar on mouse movement, auto-hide after 2s idle
 document.addEventListener('mousemove', function() {
     if (!zenMode) return;
-    var menuBtn = document.getElementById('zen-menu-btn');
+    const menuBtn = document.getElementById('zen-menu-btn');
     if (menuBtn) menuBtn.classList.add('visible');
     clearTimeout(_zenMoveTimer);
     _zenMoveTimer = setTimeout(function() {
         if (!zenMode) return;
         // Don't hide while menu is open
         if (document.getElementById('zen-menu').classList.contains('open')) return;
-        var menuBtn = document.getElementById('zen-menu-btn');
-        if (menuBtn) menuBtn.classList.remove('visible');
+        const btn = document.getElementById('zen-menu-btn');
+        if (btn) btn.classList.remove('visible');
     }, 2000);
 });
 
@@ -1762,6 +1531,8 @@ async function init() {
             beads:         data.beads         || [],
             brand:         patternBrand,
         };
+        _totalStitchableCount = 0;
+        for (const dmc of patternData.grid) { if (dmc !== 'BG') _totalStitchableCount++; }
 
         // Update brand-dependent UI labels
         const sortNumBtn = document.getElementById('sort-btn-number');

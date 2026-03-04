@@ -481,35 +481,6 @@
     }
 
     /* ——— SAVE ——— */
-    function generateThumbnail() {
-        if (!patternData) return null;
-        const { grid, grid_w, grid_h, legend } = patternData;
-        const hexLookup = {};
-        for (const e of legend) hexLookup[e.dmc] = e.hex || '#888888';
-
-        const maxW = 120, maxH = 120;
-        const scale = Math.min(maxW / grid_w, maxH / grid_h, 1);
-        const outW = Math.max(1, Math.round(grid_w * scale));
-        const outH = Math.max(1, Math.round(grid_h * scale));
-
-        const canvas = document.createElement('canvas');
-        canvas.width  = outW;
-        canvas.height = outH;
-        const ctx = canvas.getContext('2d');
-
-        for (let py = 0; py < outH; py++) {
-            for (let px = 0; px < outW; px++) {
-                const gx = Math.min(grid_w - 1, Math.floor(px / scale));
-                const gy = Math.min(grid_h - 1, Math.floor(py / scale));
-                const dmc = grid[gy * grid_w + gx];
-                if (dmc === 'BG' || !hexLookup[dmc]) continue;
-                ctx.fillStyle = hexLookup[dmc];
-                ctx.fillRect(px, py, 1, 1);
-            }
-        }
-        return canvas.toDataURL('image/png');
-    }
-
     async function savePattern() {
         const name = document.getElementById('pattern-name').value.trim() || 'Imported Pattern';
         const saveBtn = document.getElementById('save-btn');
@@ -529,7 +500,7 @@
             backstitches:     patternData.backstitches  || [],
             knots:            patternData.knots          || [],
             beads:            patternData.beads           || [],
-            thumbnail:        generateThumbnail(),
+            thumbnail:        generateThumbnail(patternData),
         };
 
         let res;

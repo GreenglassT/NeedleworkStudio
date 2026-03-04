@@ -209,6 +209,214 @@ function fmtStitches(n) {
     return int.toLocaleString() + '.' + frac;
 }
 
+const STATUS_LABEL = { own: 'Owned', need: 'Need', dont_own: "Don't Own", not_found: 'Not Found' };
+const STATUS_CLASS = { own: 'status-own', need: 'status-need', dont_own: 'status-dont_own', not_found: 'status-not_found' };
+
+function dmcSortKey(dmc) {
+    const n = parseInt(dmc, 10);
+    return isNaN(n) ? Infinity : n;
+}
+
+function generateThumbnail(patternData) {
+    if (!patternData) return null;
+    const { grid, grid_w, grid_h, legend } = patternData;
+    const rgbLookup = {};
+    for (const e of legend) rgbLookup[e.dmc] = hexToRgb(e.hex || '#888888');
+    const bgRgb = [255, 255, 255];
+    const maxW = 120, maxH = 120;
+    const sc = Math.min(maxW / grid_w, maxH / grid_h, 1);
+    const outW = Math.max(1, Math.round(grid_w * sc));
+    const outH = Math.max(1, Math.round(grid_h * sc));
+    const canvas = document.createElement('canvas');
+    canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(outW, outH);
+    const d = imgData.data;
+    for (let py = 0; py < outH; py++) {
+        for (let px = 0; px < outW; px++) {
+            const gx = Math.min(grid_w - 1, Math.floor(px / sc));
+            const gy = Math.min(grid_h - 1, Math.floor(py / sc));
+            const gVal = grid[gy * grid_w + gx];
+            const rgb = gVal === 'BG' ? bgRgb : (rgbLookup[gVal] || bgRgb);
+            const i = (py * outW + px) * 4;
+            d[i] = rgb[0]; d[i+1] = rgb[1]; d[i+2] = rgb[2]; d[i+3] = 255;
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+}
+
+function createAutosaver(key, getPatternData, onRecover) {
+    let timer = null;
+    function getKey() { return typeof key === 'function' ? key() : key; }
+
+    function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            const pd = getPatternData();
+            if (!pd) return;
+            try {
+                localStorage.setItem(getKey(), JSON.stringify({
+                    grid: pd.grid, legend: pd.legend,
+                    grid_w: pd.grid_w, grid_h: pd.grid_h,
+                    part_stitches: pd.part_stitches || [],
+                    backstitches: pd.backstitches || [],
+                    knots: pd.knots || [], beads: pd.beads || [],
+                    timestamp: Date.now()
+                }));
+            } catch (e) { /* localStorage full */ }
+        }, 5000);
+    }
+
+    function clear() {
+        clearTimeout(timer);
+        localStorage.removeItem(getKey());
+    }
+
+    function checkRecovery() {
+        const k = getKey();
+        const raw = localStorage.getItem(k);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            const age = Date.now() - data.timestamp;
+            if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(k); return; }
+            toast('Unsaved edits found from ' + new Date(data.timestamp).toLocaleString(), {
+                type: 'info', duration: 0,
+                actions: [
+                    { label: 'Recover', onClick: () => {
+                        const pd = getPatternData();
+                        pd.grid = data.grid;
+                        pd.legend = data.legend;
+                        pd.grid_w = data.grid_w;
+                        pd.grid_h = data.grid_h;
+                        pd.part_stitches = data.part_stitches || [];
+                        pd.backstitches = data.backstitches || [];
+                        pd.knots = data.knots || [];
+                        pd.beads = data.beads || [];
+                        onRecover(data);
+                        toast('Edits recovered.', { type: 'success' });
+                    }},
+                    { label: 'Discard', onClick: () => { localStorage.removeItem(k); } }
+                ]
+            });
+        } catch (e) { localStorage.removeItem(k); }
+    }
+
+    return { schedule, clear, checkRecovery };
+}
+
+const MM_CELL = 2; // px per stitch in minimap (before display scaling)
+
+function renderMinimapCanvas(grid, gridW, gridH, colorLookup) {
+    const mmW = gridW * MM_CELL, mmH = gridH * MM_CELL;
+    const mmS = Math.min(200 / mmW, 120 / mmH, 1.0);
+    const dispW = Math.max(1, Math.round(mmW * mmS));
+    const dispH = Math.max(1, Math.round(mmH * mmS));
+    const canvas = document.getElementById('mini-canvas');
+    canvas.width = dispW; canvas.height = dispH;
+    canvas._mmS = mmS;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dispW, dispH);
+    const cellDisp = MM_CELL * mmS;
+    for (let row = 0; row < gridH; row++) {
+        for (let col = 0; col < gridW; col++) {
+            const dmc = grid[row * gridW + col];
+            if (dmc === 'BG') continue;
+            const info = colorLookup[dmc] || { hex: '#888888' };
+            ctx.fillStyle = info.hex;
+            ctx.fillRect(Math.floor(col * cellDisp), Math.floor(row * cellDisp), Math.ceil(cellDisp), Math.ceil(cellDisp));
+        }
+    }
+    canvas._patternImg = ctx.getImageData(0, 0, dispW, dispH);
+}
+
+function updateMinimapRect(gridW, gridH, vScale, vPanX, vPanY, vCellPx, gutX, gutY) {
+    const canvas = document.getElementById('mini-canvas');
+    if (!canvas._patternImg) return;
+    const area = document.getElementById('canvas-area');
+    const areaW = area.clientWidth, areaH = area.clientHeight;
+    const visLeft = -vPanX / vScale, visTop = -vPanY / vScale;
+    const visW = areaW / vScale, visH = areaH / vScale;
+    const sX = (visLeft - gutX) / vCellPx, sY = (visTop - gutY) / vCellPx;
+    const sW = visW / vCellPx, sH = visH / vCellPx;
+    const wrap = document.getElementById('minimap-wrap');
+    if (sX <= 0 && sY <= 0 && sW >= gridW && sH >= gridH) { wrap.style.display = 'none'; return; }
+    else { wrap.style.display = ''; }
+    const ms = canvas._mmS * MM_CELL;
+    const rx = sX * ms, ry = sY * ms, rw = sW * ms, rh = sH * ms;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(canvas._patternImg, 0, 0);
+    ctx.strokeStyle = 'rgba(200,145,58,0.9)'; ctx.lineWidth = 1.5;
+    ctx.fillStyle = 'rgba(200,145,58,0.15)';
+    const rx2 = Math.max(0, rx), ry2 = Math.max(0, ry);
+    const rw2 = Math.min(rw, canvas.width - rx2), rh2 = Math.min(rh, canvas.height - ry2);
+    if (rw2 > 0 && rh2 > 0) { ctx.fillRect(rx2, ry2, rw2, rh2); ctx.strokeRect(rx2, ry2, rw2, rh2); }
+}
+
+function renderRulers(gridW, gridH, cellPx, scale, panX, panY) {
+    const area = document.getElementById('canvas-area');
+    const areaW = area.clientWidth;
+    const areaH = area.clientHeight;
+    const isDark = document.documentElement.dataset.theme !== 'light';
+    const dpr = window.devicePixelRatio || 1;
+
+    const effectiveCell = cellPx * scale;
+    let step = 10;
+    if (effectiveCell < 3) step = 50;
+    else if (effectiveCell < 6) step = 20;
+
+    const bgColor = isDark ? 'rgba(28,26,24,0.88)' : 'rgba(252,250,247,0.88)';
+    const textColor = isDark ? '#8a8580' : '#999';
+    const lineColor = isDark ? 'rgba(138,133,128,0.25)' : 'rgba(136,136,136,0.2)';
+
+    const RULER_H = 18, RULER_W = 26;
+
+    const topC = document.getElementById('ruler-top');
+    topC.width = areaW * dpr;
+    topC.height = RULER_H * dpr;
+    topC.style.width = areaW + 'px';
+    topC.style.height = RULER_H + 'px';
+    const tCtx = topC.getContext('2d');
+    tCtx.scale(dpr, dpr);
+    tCtx.fillStyle = bgColor;
+    tCtx.fillRect(0, 0, areaW, RULER_H);
+    tCtx.strokeStyle = lineColor;
+    tCtx.lineWidth = 1;
+    tCtx.beginPath(); tCtx.moveTo(0, RULER_H - 0.5); tCtx.lineTo(areaW, RULER_H - 0.5); tCtx.stroke();
+    tCtx.font = '9px "IBM Plex Mono", monospace';
+    tCtx.fillStyle = textColor;
+    tCtx.textAlign = 'center';
+    tCtx.textBaseline = 'bottom';
+    for (let col = step; col <= gridW; col += step) {
+        const screenX = panX + (col - 0.5) * cellPx * scale;
+        if (screenX < RULER_W || screenX > areaW + 20) continue;
+        tCtx.fillText(col.toString(), screenX, RULER_H - 3);
+    }
+
+    const leftC = document.getElementById('ruler-left');
+    leftC.width = RULER_W * dpr;
+    leftC.height = areaH * dpr;
+    leftC.style.width = RULER_W + 'px';
+    leftC.style.height = areaH + 'px';
+    const lCtx = leftC.getContext('2d');
+    lCtx.scale(dpr, dpr);
+    lCtx.fillStyle = bgColor;
+    lCtx.fillRect(0, 0, RULER_W, areaH);
+    lCtx.strokeStyle = lineColor;
+    lCtx.lineWidth = 1;
+    lCtx.beginPath(); lCtx.moveTo(RULER_W - 0.5, 0); lCtx.lineTo(RULER_W - 0.5, areaH); lCtx.stroke();
+    lCtx.font = '9px "IBM Plex Mono", monospace';
+    lCtx.fillStyle = textColor;
+    lCtx.textAlign = 'right';
+    lCtx.textBaseline = 'middle';
+    for (let row = step; row <= gridH; row += step) {
+        const screenY = panY + (row - 0.5) * cellPx * scale;
+        if (screenY < RULER_H || screenY > areaH + 10) continue;
+        lCtx.fillText(row.toString(), RULER_W - 4, screenY);
+    }
+}
+
 function downloadBlob(content, filename, mimeType) {
     const blob = new Blob([content], { type: mimeType });
     const url  = URL.createObjectURL(blob);

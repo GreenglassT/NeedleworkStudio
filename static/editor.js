@@ -100,8 +100,8 @@ function createPatternEditor(config) {
 
     /* ——— CSS (injected once) ——— */
     const EDITOR_CSS = `
-.editor-toolbar{position:absolute;top:24px;left:50%;transform:translateX(-50%);z-index:15;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 2px 12px rgba(0,0,0,.4);max-width:calc(100% - 24px)}
-.toolbar-row{display:flex;align-items:center;gap:2px;flex-wrap:wrap;justify-content:center}
+.editor-toolbar{position:absolute;top:24px;left:50%;transform:translateX(-50%);z-index:15;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 2px 12px rgba(0,0,0,.4);max-width:95vw}
+.toolbar-row{display:flex;align-items:center;gap:2px;white-space:nowrap}
 .tool-group{display:flex;gap:1px}
 .tool-btn{font-size:18px;min-width:40px;padding:5px 3px 3px;border:1px solid transparent;border-radius:var(--r);background:transparent;color:var(--text-muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background var(--t),color var(--t),border-color var(--t);line-height:1}
 .tool-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.02em;line-height:1;white-space:nowrap;pointer-events:none}
@@ -310,9 +310,15 @@ function createPatternEditor(config) {
         _rebuildLookup();
     }
 
+    function _debounce(fn, ms) { let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); }; }
+
     function _markDirty() {
         editorDirty = true;
         if (onDirty) onDirty();
+    }
+
+    function _commitEdit() {
+        _recountStitches(); renderAll(); renderLegend(); _markDirty();
     }
 
     /* ═══════════════════════════════════════════
@@ -509,6 +515,26 @@ function createPatternEditor(config) {
         return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
     }
 
+    /** BFS flood — returns Set of grid indices matching targetColor from startIdx */
+    function _bfsRegion(grid, grid_w, grid_h, startIdx, targetColor) {
+        const region  = new Set();
+        const visited = new Uint8Array(grid_w * grid_h);
+        const queue   = [startIdx];
+        let   head    = 0;
+        visited[startIdx] = 1;
+        while (head < queue.length) {
+            const i = queue[head++];
+            region.add(i);
+            const c = i % grid_w;
+            const r = (i - c) / grid_w;
+            if (c > 0          && !visited[i - 1]      && grid[i - 1]      === targetColor) { visited[i - 1]      = 1; queue.push(i - 1); }
+            if (c < grid_w - 1 && !visited[i + 1]      && grid[i + 1]      === targetColor) { visited[i + 1]      = 1; queue.push(i + 1); }
+            if (r > 0          && !visited[i - grid_w]  && grid[i - grid_w]  === targetColor) { visited[i - grid_w]  = 1; queue.push(i - grid_w); }
+            if (r < grid_h - 1 && !visited[i + grid_w]  && grid[i + grid_w]  === targetColor) { visited[i + grid_w]  = 1; queue.push(i + grid_w); }
+        }
+        return region;
+    }
+
     function floodFill(col, row) {
         if (!activeDmc) return;
         const pd = getPatternData();
@@ -517,24 +543,8 @@ function createPatternEditor(config) {
         const target = grid[idx];
         if (target === activeDmc) return;
         pushUndo();
-        const visited = new Uint8Array(grid_w * grid_h);
-        const queue   = [idx];
-        let   head    = 0;
-        visited[idx]  = 1;
-        while (head < queue.length) {
-            const i = queue[head++];
-            grid[i] = activeDmc;
-            const c = i % grid_w;
-            const r = (i - c) / grid_w;
-            if (c > 0          && !visited[i - 1]      && grid[i - 1]      === target) { visited[i - 1]      = 1; queue.push(i - 1); }
-            if (c < grid_w - 1 && !visited[i + 1]      && grid[i + 1]      === target) { visited[i + 1]      = 1; queue.push(i + 1); }
-            if (r > 0          && !visited[i - grid_w]  && grid[i - grid_w]  === target) { visited[i - grid_w]  = 1; queue.push(i - grid_w); }
-            if (r < grid_h - 1 && !visited[i + grid_w]  && grid[i + grid_w]  === target) { visited[i + grid_w]  = 1; queue.push(i + grid_w); }
-        }
-        _recountStitches();
-        renderAll();
-        renderLegend();
-        _markDirty();
+        for (const i of _bfsRegion(grid, grid_w, grid_h, idx, target)) grid[i] = activeDmc;
+        _commitEdit();
     }
 
     function bresenhamLine(x0, y0, x1, y1) {
@@ -642,24 +652,11 @@ function createPatternEditor(config) {
         if (!activeDmc) return;
         const pd = getPatternData();
         const { grid, grid_w, grid_h } = pd;
-        const idx    = row * grid_w + col;
+        const idx = row * grid_w + col;
         if (idx < 0 || idx >= grid.length) return;
         const target = grid[idx];
         if (target === activeDmc) return;
-        const visited = new Uint8Array(grid_w * grid_h);
-        const queue   = [idx];
-        let   head    = 0;
-        visited[idx]  = 1;
-        while (head < queue.length) {
-            const i = queue[head++];
-            grid[i] = activeDmc;
-            const c = i % grid_w;
-            const r = (i - c) / grid_w;
-            if (c > 0          && !visited[i - 1]      && grid[i - 1]      === target) { visited[i - 1]      = 1; queue.push(i - 1); }
-            if (c < grid_w - 1 && !visited[i + 1]      && grid[i + 1]      === target) { visited[i + 1]      = 1; queue.push(i + 1); }
-            if (r > 0          && !visited[i - grid_w]  && grid[i - grid_w]  === target) { visited[i - grid_w]  = 1; queue.push(i - grid_w); }
-            if (r < grid_h - 1 && !visited[i + grid_w]  && grid[i + grid_w]  === target) { visited[i + grid_w]  = 1; queue.push(i + grid_w); }
-        }
+        for (const i of _bfsRegion(grid, grid_w, grid_h, idx, target)) grid[i] = activeDmc;
     }
 
     /* ── Selection helpers ── */
@@ -755,10 +752,7 @@ function createPatternEditor(config) {
         _selBuffer = null;
         _selRect = null;
         _selOffset = { dc: 0, dr: 0 };
-        _recountStitches();
-        renderAll();
-        renderLegend();
-        _markDirty();
+        _commitEdit();
         _stopMarchingAnts();
         _redrawOverlay();
     }
@@ -880,10 +874,7 @@ function createPatternEditor(config) {
             });
         }
 
-        _recountStitches();
-        renderAll();
-        renderLegend();
-        _markDirty();
+        _commitEdit();
     }
 
     function _outlineRegionAt(col, row) {
@@ -893,28 +884,7 @@ function createPatternEditor(config) {
         const outlineColor = targetColor === 'BG' ? activeDmc : targetColor;
         if (targetColor === 'BG' && !activeDmc) return;
 
-        // BFS flood fill to find contiguous region
-        const regionSet = new Set();
-        const startIdx = row * grid_w + col;
-        const queue = [startIdx];
-        const visited = new Uint8Array(grid_w * grid_h);
-        visited[startIdx] = 1;
-        let head = 0;
-        while (head < queue.length) {
-            const i = queue[head++];
-            regionSet.add(i);
-            const c = i % grid_w;
-            const r = (i - c) / grid_w;
-            for (const [nc, nr] of [[c-1,r],[c+1,r],[c,r-1],[c,r+1]]) {
-                if (nc < 0 || nc >= grid_w || nr < 0 || nr >= grid_h) continue;
-                const ni = nr * grid_w + nc;
-                if (visited[ni]) continue;
-                if ((grid[ni] || 'BG') === targetColor) {
-                    visited[ni] = 1;
-                    queue.push(ni);
-                }
-            }
-        }
+        const regionSet = _bfsRegion(grid, grid_w, grid_h, row * grid_w + col, targetColor);
 
         if (!pd.backstitches) pd.backstitches = [];
         const existing = new Set();
@@ -951,7 +921,7 @@ function createPatternEditor(config) {
         }
 
         if (added > 0) {
-            _recountStitches(); renderAll(); renderLegend(); _markDirty();
+            _commitEdit();
         }
     }
 
@@ -1315,10 +1285,7 @@ function createPatternEditor(config) {
             }
         }
         _hideTextPanel();
-        _recountStitches();
-        renderAll();
-        renderLegend();
-        _markDirty();
+        _commitEdit();
         _redrawOverlay();
     }
 
@@ -1492,10 +1459,10 @@ function createPatternEditor(config) {
         }
 
         // Rectangle preview
-        if (_rectPreview) _drawRectPreview(ctx, offset, cp);
+        if (_rectPreview) _drawShapePreview(ctx, offset, cp, _rectPreview, _getRectCells);
 
         // Ellipse preview
-        if (_ellipsePreview) _drawEllipsePreview(ctx, offset, cp);
+        if (_ellipsePreview) _drawShapePreview(ctx, offset, cp, _ellipsePreview, _getEllipseCells);
 
         // Text preview
         if (activeTool === 'text') _drawTextPreview(ctx, offset, cp);
@@ -1603,31 +1570,16 @@ function createPatternEditor(config) {
         ctx.restore();
     }
 
-    function _drawRectPreview(ctx, offset, cp) {
-        const cells = _getRectCells(_rectPreview.c1, _rectPreview.r1,
-                                     _rectPreview.c2, _rectPreview.r2, !_rectPreview.outline);
+    function _drawShapePreview(ctx, offset, cp, preview, getCellsFn) {
+        const cells = getCellsFn(preview.c1, preview.r1, preview.c2, preview.r2, !preview.outline);
         ctx.fillStyle = activeHex + 'aa';
         for (const { col, row } of cells) {
             ctx.fillRect(offset.x + col * cp, offset.y + row * cp, cp, cp);
         }
-        const w = Math.abs(_rectPreview.c2 - _rectPreview.c1) + 1;
-        const h = Math.abs(_rectPreview.r2 - _rectPreview.r1) + 1;
-        const lx = offset.x + (Math.max(_rectPreview.c1, _rectPreview.c2) + 1) * cp + 4;
-        const ly = offset.y + (Math.max(_rectPreview.r1, _rectPreview.r2) + 1) * cp;
-        _drawDimLabel(ctx, `${w}×${h}`, lx, ly);
-    }
-
-    function _drawEllipsePreview(ctx, offset, cp) {
-        const cells = _getEllipseCells(_ellipsePreview.c1, _ellipsePreview.r1,
-                                        _ellipsePreview.c2, _ellipsePreview.r2, !_ellipsePreview.outline);
-        ctx.fillStyle = activeHex + 'aa';
-        for (const { col, row } of cells) {
-            ctx.fillRect(offset.x + col * cp, offset.y + row * cp, cp, cp);
-        }
-        const w = Math.abs(_ellipsePreview.c2 - _ellipsePreview.c1) + 1;
-        const h = Math.abs(_ellipsePreview.r2 - _ellipsePreview.r1) + 1;
-        const lx = offset.x + (Math.max(_ellipsePreview.c1, _ellipsePreview.c2) + 1) * cp + 4;
-        const ly = offset.y + (Math.max(_ellipsePreview.r1, _ellipsePreview.r2) + 1) * cp;
+        const w = Math.abs(preview.c2 - preview.c1) + 1;
+        const h = Math.abs(preview.r2 - preview.r1) + 1;
+        const lx = offset.x + (Math.max(preview.c1, preview.c2) + 1) * cp + 4;
+        const ly = offset.y + (Math.max(preview.r1, preview.r2) + 1) * cp;
         _drawDimLabel(ctx, `${w}×${h}`, lx, ly);
     }
 
@@ -1673,10 +1625,12 @@ function createPatternEditor(config) {
 
     function _startMarchingAnts() {
         _stopMarchingAnts();
+        let _marchFrameCount = 0;
         function step() {
+            _marchRAF = requestAnimationFrame(step);
+            if (++_marchFrameCount % 6 !== 0) return; // ~10fps instead of 60fps
             _marchPhase = (_marchPhase + 1) % 16;
             _redrawOverlay();
-            _marchRAF = requestAnimationFrame(step);
         }
         _marchRAF = requestAnimationFrame(step);
     }
@@ -1757,6 +1711,65 @@ function createPatternEditor(config) {
     }
 
     /* ═══════════════════════════════════════════
+       Shared Thread Helpers
+       ═══════════════════════════════════════════ */
+
+    async function _ensureThreadsLoaded() {
+        if (allDmcThreads) return true;
+        try {
+            const resp = await fetch('/api/threads?brand=' + encodeURIComponent(_brand));
+            allDmcThreads = await resp.json();
+            return true;
+        } catch (err) { toast('Could not load thread list.', { type: 'error' }); return false; }
+    }
+
+    function _renderThreadList(listEl, searchEl, { excludeDmc, selectedDmc } = {}) {
+        if (!allDmcThreads || !listEl) return;
+        const q = (searchEl ? searchEl.value.trim().toLowerCase() : '');
+        const pd = getPatternData();
+        const inPalette = new Set(pd.legend.map(e => String(e.dmc)));
+        const matches = allDmcThreads.filter(t => {
+            if (excludeDmc && String(t.number) === excludeDmc) return false;
+            if (!q) return true;
+            return String(t.number).toLowerCase().includes(q) ||
+                   (t.name || '').toLowerCase().includes(q);
+        });
+        listEl.innerHTML = matches.map(t => {
+            const num = String(t.number);
+            const badge = inPalette.has(num) ? '<span class="rtr-badge">in palette</span>' : '';
+            const sel = selectedDmc && num === selectedDmc ? ' selected' : '';
+            return `<div class="replace-target-row${sel}" data-dmc="${escHtml(num)}">
+                <div class="rtr-sw" style="background:${t.hex_color || '#888'}"></div>
+                <span class="rtr-num">${escHtml(num)}</span>
+                <span class="rtr-name">${escHtml(t.name || '')}</span>
+                ${badge}
+            </div>`;
+        }).join('');
+    }
+
+    /** Add a DMC color to the palette if not already present. Returns true if added or already exists. */
+    function _ensureColorInPalette(dmcNumber) {
+        const pd = getPatternData();
+        const dmc = String(dmcNumber);
+        if (pd.legend.find(e => String(e.dmc) === dmc)) return true;
+        const thread = allDmcThreads ? allDmcThreads.find(t => String(t.number) === dmc) : null;
+        if (!thread) return false;
+        const usedSymbols = new Set(pd.legend.map(e => e.symbol));
+        let sym = '?';
+        for (const s of symbolSet) { if (!usedSymbols.has(s)) { sym = s; break; } }
+        const newEntry = {
+            dmc, name: thread.name || '', hex: thread.hex_color || '#888888',
+            symbol: sym, stitches: 0, status: thread.status || 'dont_own',
+            category: thread.category || ''
+        };
+        pd.legend.push(newEntry);
+        const lu = getLookup();
+        lu[dmc] = { hex: newEntry.hex, symbol: newEntry.symbol, name: newEntry.name, count: 0 };
+        setLookup(lu);
+        return true;
+    }
+
+    /* ═══════════════════════════════════════════
        Add Color Modal
        ═══════════════════════════════════════════ */
 
@@ -1767,12 +1780,7 @@ function createPatternEditor(config) {
             return;
         }
         _closeReplaceDropdown();
-        if (!allDmcThreads) {
-            try {
-                const resp = await fetch('/api/threads?brand=' + encodeURIComponent(_brand));
-                allDmcThreads = await resp.json();
-            } catch (err) { toast('Could not load thread list.', { type: 'error' }); return; }
-        }
+        if (!await _ensureThreadsLoaded()) return;
         _addColorDropdown.classList.add('open');
         if (_addColorSearch) { _addColorSearch.value = ''; _addColorSearch.focus(); }
         _filterAddColorList();
@@ -1783,55 +1791,11 @@ function createPatternEditor(config) {
     }
 
     function _filterAddColorList() {
-        if (!allDmcThreads || !_addColorList) return;
-        const q = (_addColorSearch ? _addColorSearch.value.trim().toLowerCase() : '');
-        const pd = getPatternData();
-        const inPalette = new Set(pd.legend.map(e => String(e.dmc)));
-        const matches = allDmcThreads.filter(t => {
-            if (!q) return true;
-            return String(t.number).toLowerCase().includes(q) ||
-                   (t.name || '').toLowerCase().includes(q);
-        });
-        _addColorList.innerHTML = matches.map(t => {
-            const num = String(t.number);
-            const badge = inPalette.has(num) ? '<span class="rtr-badge">in palette</span>' : '';
-            return `<div class="replace-target-row" data-dmc="${escHtml(num)}">
-                <div class="rtr-sw" style="background:${t.hex_color || '#888'}"></div>
-                <span class="rtr-num">${escHtml(num)}</span>
-                <span class="rtr-name">${escHtml(t.name || '')}</span>
-                ${badge}
-            </div>`;
-        }).join('');
+        _renderThreadList(_addColorList, _addColorSearch);
     }
 
     function _addDmcColor(number) {
-        const pd = getPatternData();
-        // Already in palette — just select it
-        if (pd.legend.find(e => String(e.dmc) === String(number))) {
-            _setActiveColor(number);
-            _closeAddColorDropdown();
-            return;
-        }
-        const thread = allDmcThreads.find(t => String(t.number) === String(number));
-        if (!thread) return;
-        const usedSymbols = new Set(pd.legend.map(e => e.symbol));
-        let sym = '?';
-        for (const s of symbolSet) {
-            if (!usedSymbols.has(s)) { sym = s; break; }
-        }
-        const newEntry = {
-            dmc:      String(number),
-            name:     thread.name || '',
-            hex:      thread.hex_color || '#888888',
-            symbol:   sym,
-            stitches: 0,
-            status:   thread.status || 'dont_own',
-            category: thread.category || ''
-        };
-        pd.legend.push(newEntry);
-        const lu = getLookup();
-        lu[newEntry.dmc] = { hex: newEntry.hex, symbol: newEntry.symbol, name: newEntry.name, count: 0 };
-        setLookup(lu);
+        if (!_ensureColorInPalette(number)) return;
         renderLegend();
         _setActiveColor(number);
         _closeAddColorDropdown();
@@ -1843,13 +1807,7 @@ function createPatternEditor(config) {
        ═══════════════════════════════════════════ */
 
     async function _populateReplaceTarget() {
-        // Load threads for current brand (shared with add-color modal)
-        if (!allDmcThreads) {
-            try {
-                const resp = await fetch('/api/threads?brand=' + encodeURIComponent(_brand));
-                allDmcThreads = await resp.json();
-            } catch (err) { toast('Could not load thread list.', { type: 'error' }); return; }
-        }
+        if (!await _ensureThreadsLoaded()) return;
         // Reset selection
         _replaceTargetDmc = null;
         if (_replaceTargetSw) _replaceTargetSw.style.background = '#444';
@@ -1859,27 +1817,7 @@ function createPatternEditor(config) {
     }
 
     function _filterReplaceTargets() {
-        if (!allDmcThreads || !_replaceTargetList) return;
-        const q = (_replaceTargetSearch ? _replaceTargetSearch.value.trim().toLowerCase() : '');
-        const pd = getPatternData();
-        const inPalette = new Set(pd.legend.map(e => String(e.dmc)));
-        const matches = allDmcThreads.filter(t => {
-            if (String(t.number) === activeDmc) return false; // exclude source color
-            if (!q) return true;
-            return String(t.number).toLowerCase().includes(q) ||
-                   (t.name || '').toLowerCase().includes(q);
-        });
-        _replaceTargetList.innerHTML = matches.map(t => {
-            const num = String(t.number);
-            const badge = inPalette.has(num) ? '<span class="rtr-badge">in palette</span>' : '';
-            const sel = num === _replaceTargetDmc ? ' selected' : '';
-            return `<div class="replace-target-row${sel}" data-dmc="${escHtml(num)}">
-                <div class="rtr-sw" style="background:${t.hex_color || '#888'}"></div>
-                <span class="rtr-num">${escHtml(num)}</span>
-                <span class="rtr-name">${escHtml(t.name || '')}</span>
-                ${badge}
-            </div>`;
-        }).join('');
+        _renderThreadList(_replaceTargetList, _replaceTargetSearch, { excludeDmc: activeDmc, selectedDmc: _replaceTargetDmc });
     }
 
     function _selectReplaceTarget(dmc) {
@@ -1916,28 +1854,8 @@ function createPatternEditor(config) {
 
         pushUndo();
 
-        // If target color is not yet in the palette, add it
-        if (!pd.legend.find(e => String(e.dmc) === targetDmc)) {
-            const thread = allDmcThreads ? allDmcThreads.find(t => String(t.number) === targetDmc) : null;
-            if (!thread) return;
-            const usedSymbols = new Set(pd.legend.map(e => e.symbol));
-            let sym = '?';
-            for (const s of symbolSet) {
-                if (!usedSymbols.has(s)) { sym = s; break; }
-            }
-            pd.legend.push({
-                dmc:      targetDmc,
-                name:     thread.name || '',
-                hex:      thread.hex_color || '#888888',
-                symbol:   sym,
-                stitches: 0,
-                status:   thread.status || 'dont_own',
-                category: thread.category || ''
-            });
-            const lu = getLookup();
-            lu[targetDmc] = { hex: thread.hex_color || '#888888', symbol: sym, name: thread.name || '', count: 0 };
-            setLookup(lu);
-        }
+        // Ensure target color is in the palette
+        if (!_ensureColorInPalette(targetDmc)) return;
         for (let i = 0; i < pd.grid.length; i++) {
             if (String(pd.grid[i]) === activeDmc) pd.grid[i] = targetDmc;
         }
@@ -1962,10 +1880,7 @@ function createPatternEditor(config) {
             }
         }
         _setActiveColor(targetDmc);
-        _recountStitches();
-        renderAll();
-        renderLegend();
-        _markDirty();
+        _commitEdit();
         _replaceTargetDmc = null;
         if (_replaceTargetSw) _replaceTargetSw.style.background = '#444';
         if (_replaceTargetLabel) _replaceTargetLabel.textContent = 'Pick color\u2026';
@@ -2010,7 +1925,7 @@ function createPatternEditor(config) {
                         _floodFillNoUndo(col, pd.grid_h - 1 - row);
                     if (_mirrorMode === 'both')
                         _floodFillNoUndo(pd.grid_w - 1 - col, pd.grid_h - 1 - row);
-                    _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                    _commitEdit();
                 }
                 break;
             case 'eyedropper': {
@@ -2030,10 +1945,7 @@ function createPatternEditor(config) {
                     for (const c of cells) _withMirror(c.col, c.row, pencilAt);
                     lineStart = null;
                     _lineEnd = null;
-                    _recountStitches();
-                    renderAll();
-                    renderLegend();
-                    _markDirty();
+                    _commitEdit();
                     _redrawOverlay();
                 }
                 break;
@@ -2066,20 +1978,21 @@ function createPatternEditor(config) {
                                 _placePartStitch(p.col, p.row, 'half', { direction: d });
                             }
                         }
-                        _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                        _commitEdit();
                         break;
                     }
-                    case 'quarter': {
+                    case 'quarter':
+                    case 'petite': {
                         const q = _cellQuadrant(gc.gx, gc.gy);
                         if (q.col >= 0 && q.col < pd.grid_w && q.row >= 0 && q.row < pd.grid_h) {
                             pushUndo();
                             for (const bc of _getBrushCells(q.col, q.row)) {
                                 for (const p of _mirrorCellPositions(bc.col, bc.row)) {
                                     const c = p.axis ? _mirrorCorner(q.corner, p.axis) : q.corner;
-                                    _placePartStitch(p.col, p.row, 'quarter', { corner: c });
+                                    _placePartStitch(p.col, p.row, activeStitchMode, { corner: c });
                                 }
                             }
-                            _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                            _commitEdit();
                         }
                         break;
                     }
@@ -2094,21 +2007,7 @@ function createPatternEditor(config) {
                                     _placePartStitch(p.col, p.row, 'three_quarter', { halfDir: hd, shortCorner: mc });
                                 }
                             }
-                            _recountStitches(); renderAll(); renderLegend(); _markDirty();
-                        }
-                        break;
-                    }
-                    case 'petite': {
-                        const pq = _cellQuadrant(gc.gx, gc.gy);
-                        if (pq.col >= 0 && pq.col < pd.grid_w && pq.row >= 0 && pq.row < pd.grid_h) {
-                            pushUndo();
-                            for (const bc of _getBrushCells(pq.col, pq.row)) {
-                                for (const p of _mirrorCellPositions(bc.col, bc.row)) {
-                                    const c = p.axis ? _mirrorCorner(pq.corner, p.axis) : pq.corner;
-                                    _placePartStitch(p.col, p.row, 'petite', { corner: c });
-                                }
-                            }
-                            _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                            _commitEdit();
                         }
                         break;
                     }
@@ -2130,7 +2029,7 @@ function createPatternEditor(config) {
                                         ox + dx * inter.ix, oy + dy * inter.iy
                                     );
                                 }
-                                _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                                _commitEdit();
                             }
                             _bsStart = null;
                             _bsPreviewEnd = null;
@@ -2144,7 +2043,7 @@ function createPatternEditor(config) {
                         for (const p of _mirrorIntersectionPositions(ki.ix, ki.iy)) {
                             _placeKnot(p.ix, p.iy);
                         }
-                        _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                        _commitEdit();
                         break;
                     }
                     case 'bead': {
@@ -2154,7 +2053,7 @@ function createPatternEditor(config) {
                                 _placeBead(p.col, p.row);
                             }
                         }
-                        _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                        _commitEdit();
                         break;
                     }
                 }
@@ -2223,26 +2122,12 @@ function createPatternEditor(config) {
         }
 
         // Rectangle preview
-        if (activeTool === 'rect' && _rectStart) {
+        // Rect/ellipse preview
+        const _shapeStart = activeTool === 'rect' ? _rectStart : activeTool === 'ellipse' ? _ellipseStart : null;
+        if (_shapeStart) {
             if (hoverStitch) {
-                _rectPreview = {
-                    c1: _rectStart.col, r1: _rectStart.row,
-                    c2: hoverStitch.col, r2: hoverStitch.row,
-                    outline: e.shiftKey
-                };
-            }
-            _redrawOverlay();
-            return;
-        }
-
-        // Ellipse preview
-        if (activeTool === 'ellipse' && _ellipseStart) {
-            if (hoverStitch) {
-                _ellipsePreview = {
-                    c1: _ellipseStart.col, r1: _ellipseStart.row,
-                    c2: hoverStitch.col, r2: hoverStitch.row,
-                    outline: e.shiftKey
-                };
+                const preview = { c1: _shapeStart.col, r1: _shapeStart.row, c2: hoverStitch.col, r2: hoverStitch.row, outline: e.shiftKey };
+                if (activeTool === 'rect') _rectPreview = preview; else _ellipsePreview = preview;
             }
             _redrawOverlay();
             return;
@@ -2289,36 +2174,18 @@ function createPatternEditor(config) {
     }
 
     function _handleToolMouseUp() {
-        // Rectangle commit
-        if (activeTool === 'rect' && _rectStart && _rectPreview) {
+        // Rectangle / Ellipse commit
+        const _shapeCommit = activeTool === 'rect' ? { start: _rectStart, preview: _rectPreview, getCells: _getRectCells }
+                           : activeTool === 'ellipse' ? { start: _ellipseStart, preview: _ellipsePreview, getCells: _getEllipseCells }
+                           : null;
+        if (_shapeCommit && _shapeCommit.start && _shapeCommit.preview) {
             pushUndo();
-            const filled = !_rectPreview.outline;
-            const cells = _getRectCells(_rectPreview.c1, _rectPreview.r1,
-                                         _rectPreview.c2, _rectPreview.r2, filled);
+            const p = _shapeCommit.preview;
+            const cells = _shapeCommit.getCells(p.c1, p.r1, p.c2, p.r2, !p.outline);
             for (const c of cells) _withMirror(c.col, c.row, pencilAt);
-            _rectStart = null;
-            _rectPreview = null;
-            _recountStitches();
-            renderAll();
-            renderLegend();
-            _markDirty();
-            _redrawOverlay();
-            return;
-        }
-
-        // Ellipse commit
-        if (activeTool === 'ellipse' && _ellipseStart && _ellipsePreview) {
-            pushUndo();
-            const filled = !_ellipsePreview.outline;
-            const cells = _getEllipseCells(_ellipsePreview.c1, _ellipsePreview.r1,
-                                            _ellipsePreview.c2, _ellipsePreview.r2, filled);
-            for (const c of cells) _withMirror(c.col, c.row, pencilAt);
-            _ellipseStart = null;
-            _ellipsePreview = null;
-            _recountStitches();
-            renderAll();
-            renderLegend();
-            _markDirty();
+            _rectStart = null; _rectPreview = null;
+            _ellipseStart = null; _ellipsePreview = null;
+            _commitEdit();
             _redrawOverlay();
             return;
         }
@@ -2344,10 +2211,7 @@ function createPatternEditor(config) {
         if (_painting) {
             _painting = false;
             _lastPaintCell = null;
-            _recountStitches();
-            renderAll();
-            renderLegend();
-            _markDirty();
+            _commitEdit();
         }
     }
 
@@ -2457,10 +2321,7 @@ function createPatternEditor(config) {
                 _selRect = null; _selBuffer = null;
                 _selOffset = { dc: 0, dr: 0 };
                 _stopMarchingAnts();
-                _recountStitches();
-                renderAll();
-                renderLegend();
-                _markDirty();
+                _commitEdit();
                 _redrawOverlay();
                 return true;
             }
@@ -2489,7 +2350,7 @@ function createPatternEditor(config) {
                         }
                     }
                 }
-                _recountStitches(); renderAll(); renderLegend(); _markDirty();
+                _commitEdit();
                 return true;
             }
         }
@@ -2723,7 +2584,7 @@ function createPatternEditor(config) {
             e.stopPropagation();
             _toggleReplaceDropdown();
         });
-        _replaceTargetSearch.addEventListener('input', _filterReplaceTargets);
+        _replaceTargetSearch.addEventListener('input', _debounce(_filterReplaceTargets, 150));
         _replaceTargetSearch.addEventListener('click', (e) => e.stopPropagation());
         _replaceTargetList.addEventListener('click', (e) => {
             const row = e.target.closest('.replace-target-row');
@@ -2733,7 +2594,7 @@ function createPatternEditor(config) {
         _replaceTargetDropdown.addEventListener('wheel', (e) => e.stopPropagation());
 
         // Event listeners — add color dropdown
-        _addColorSearch.addEventListener('input', _filterAddColorList);
+        _addColorSearch.addEventListener('input', _debounce(_filterAddColorList, 150));
         _addColorSearch.addEventListener('click', (e) => e.stopPropagation());
         _addColorList.addEventListener('click', (e) => {
             const row = e.target.closest('.replace-target-row');

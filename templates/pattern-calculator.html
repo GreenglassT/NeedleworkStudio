@@ -142,7 +142,8 @@
             min-width: 130px;
         }
 
-        .settings-field label {
+        .settings-field label,
+        .input-field label {
             display: block;
             font-family: 'IBM Plex Mono', monospace;
             font-size: 9px;
@@ -488,16 +489,6 @@
             min-width: 120px;
         }
 
-        .input-field label {
-            display: block;
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: .1em;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-
         .input-field input {
             width: 100%;
             background: var(--surface-2);
@@ -600,6 +591,14 @@
 
         .f-results-card { display: none; }
 
+        .fabric-footnote {
+            margin-top: 16px;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--text-dim);
+            font-size: 15px;
+            font-style: italic;
+        }
+
         /* ——— RESPONSIVE ——— */
         @media (max-width: 700px) {
             .main-wrap { padding: 16px; }
@@ -677,17 +676,7 @@
             <div class="settings-row">
                 <div class="settings-field">
                     <label for="fabric-count">Fabric Count</label>
-                    <select id="fabric-count" class="ctrl-select" onchange="recalculate()">
-                        <option value="11">11 Count</option>
-                        <option value="14" selected>14 Count</option>
-                        <option value="16">16 Count</option>
-                        <option value="18">18 Count</option>
-                        <option value="20">20 Count</option>
-                        <option value="22">22 Count</option>
-                        <option value="25">25 Count</option>
-                        <option value="28">28 Count</option>
-                        <option value="32">32 Count</option>
-                    </select>
+                    <select id="fabric-count" class="ctrl-select" onchange="recalculate()"></select>
                 </div>
                 <div class="settings-field">
                     <label for="strands">Strands</label>
@@ -842,17 +831,7 @@
                     </div>
                     <div class="input-field f-original-count-field" id="f-original-count-container">
                         <label for="f-original-count">Original Fabric Count</label>
-                        <select id="f-original-count" class="ctrl-select" onchange="calculateFabricSize()">
-                            <option value="11">11 Count</option>
-                            <option value="14" selected>14 Count</option>
-                            <option value="16">16 Count</option>
-                            <option value="18">18 Count</option>
-                            <option value="20">20 Count</option>
-                            <option value="22">22 Count</option>
-                            <option value="25">25 Count</option>
-                            <option value="28">28 Count</option>
-                            <option value="32">32 Count</option>
-                        </select>
+                        <select id="f-original-count" class="ctrl-select" onchange="calculateFabricSize()"></select>
                     </div>
                 </div>
             </div>
@@ -893,7 +872,16 @@
         let quickEfficiency = 'average';
         let fabricUnit = 'stitches';   // 'stitches' | 'inches'
 
+        const DEFAULT_SKEIN_LENGTH = 8.7;
+        const FABRIC_MARGIN = 6;
+        const THREAD_INCHES_PER_YARD = 36;
         const efficiencyFactors = { inefficient: 1.3, average: 1.15, efficient: 1.0 };
+
+        function _setActiveBtn(selector, attr, value) {
+            document.querySelectorAll(selector).forEach(btn => {
+                btn.classList.toggle('active', btn.dataset[attr] === value);
+            });
+        }
 
         const fabricCounts = [
             { count: 11, name: '11 Count', type: 'Aida' },
@@ -910,9 +898,7 @@
         /* ——— MODE SWITCHER ——— */
         function setMode(mode) {
             currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
+            _setActiveBtn('.mode-btn', 'mode', mode);
             const main = document.querySelector('.main-wrap');
             main.classList.remove('mode-stitch', 'mode-fabric');
             if (mode === 'stitch') main.classList.add('mode-stitch');
@@ -931,28 +917,27 @@
         /* ——— STITCH COUNT MODE ——— */
         function setQuickEfficiency(eff) {
             quickEfficiency = eff;
-            document.querySelectorAll('.q-eff-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.qeff === eff);
-            });
+            _setActiveBtn('.q-eff-btn', 'qeff', eff);
             calculateQuickEstimate();
         }
 
+        const FRACTIONS = [
+            { frac: 0, display: '' },
+            { frac: 0.125, display: '\u215b' },
+            { frac: 0.25, display: '\u00bc' },
+            { frac: 0.375, display: '\u215c' },
+            { frac: 0.5, display: '\u00bd' },
+            { frac: 0.625, display: '\u215d' },
+            { frac: 0.75, display: '\u00be' },
+            { frac: 0.875, display: '\u215e' }
+        ];
+
         function toFraction(decimal) {
-            const fractions = [
-                { frac: 0, display: '' },
-                { frac: 0.125, display: '\u215b' },
-                { frac: 0.25, display: '\u00bc' },
-                { frac: 0.375, display: '\u215c' },
-                { frac: 0.5, display: '\u00bd' },
-                { frac: 0.625, display: '\u215d' },
-                { frac: 0.75, display: '\u00be' },
-                { frac: 0.875, display: '\u215e' }
-            ];
             const whole = Math.floor(decimal);
             const remainder = decimal - whole;
-            let closest = fractions[0];
-            let minDiff = Math.abs(remainder - fractions[0].frac);
-            for (const f of fractions) {
+            let closest = FRACTIONS[0];
+            let minDiff = Math.abs(remainder);
+            for (const f of FRACTIONS) {
                 const diff = Math.abs(remainder - f.frac);
                 if (diff < minDiff) { minDiff = diff; closest = f; }
             }
@@ -997,9 +982,7 @@
         /* ——— FABRIC SIZE MODE ——— */
         function setFabricUnit(unit) {
             fabricUnit = unit;
-            document.querySelectorAll('.f-unit-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.funit === unit);
-            });
+            _setActiveBtn('.f-unit-btn', 'funit', unit);
             document.getElementById('f-original-count-container').classList.toggle('visible', unit === 'inches');
             const w = document.getElementById('f-width');
             const h = document.getElementById('f-height');
@@ -1039,8 +1022,8 @@
             fabricCounts.forEach(fabric => {
                 const designWidth = widthStitches / fabric.count;
                 const designHeight = heightStitches / fabric.count;
-                const suggestedWidth = designWidth + 6;
-                const suggestedHeight = designHeight + 6;
+                const suggestedWidth = designWidth + FABRIC_MARGIN;
+                const suggestedHeight = designHeight + FABRIC_MARGIN;
 
                 html += '<tr>'
                     + '<td><span class="fabric-type">' + fabric.name + '</span>'
@@ -1053,7 +1036,7 @@
             html += '</tbody></table>';
 
             if (fabricUnit === 'inches') {
-                html += '<p style="margin-top:16px;font-family:\'Cormorant Garamond\',serif;color:var(--text-dim);font-size:15px;font-style:italic">'
+                html += '<p class="fabric-footnote">'
                     + 'Pattern size: ' + Math.round(widthStitches) + ' &times; ' + Math.round(heightStitches)
                     + ' stitches (based on ' + originalCount + '-count fabric)</p>';
             }
@@ -1061,8 +1044,21 @@
             resultsDiv.innerHTML = html;
         }
 
+        function _populateFabricSelect(sel, defaultVal) {
+            fabricCounts.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.count;
+                opt.textContent = f.name;
+                if (f.count === defaultVal) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
         /* ——— INIT ——— */
         async function init() {
+            _populateFabricSelect(document.getElementById('fabric-count'), 14);
+            _populateFabricSelect(document.getElementById('f-original-count'), 14);
+
             // Populate saved patterns dropdown
             try {
                 const resp = await fetch('/api/saved-patterns');
@@ -1133,7 +1129,7 @@
             patternName = file.name.replace(/\.pdf$/i, '');
             clearError();
             showSpinner(true);
-            hideResults();
+            toggleResults(false);
 
             const formData = new FormData();
             formData.append('pdf', file);
@@ -1168,7 +1164,7 @@
                 }
 
                 showSpinner(false);
-                showResults();
+                toggleResults(true);
                 recalculate();
             } catch (err) {
                 showError('Network error: ' + err.message);
@@ -1179,14 +1175,14 @@
         /* ——— LOAD SAVED PATTERN ——— */
         async function loadSavedPattern() {
             const id = document.getElementById('pattern-select').value;
-            if (!id) { hideResults(); return; }
+            if (!id) { toggleResults(false); return; }
 
             // Clear file input
             document.getElementById('pdf-input').value = '';
 
             clearError();
             showSpinner(true);
-            hideResults();
+            toggleResults(false);
 
             try {
                 const resp = await fetch('/api/saved-patterns/' + id);
@@ -1229,7 +1225,7 @@
                     }));
 
                 showSpinner(false);
-                showResults();
+                toggleResults(true);
                 recalculate();
             } catch (err) {
                 showSpinner(false);
@@ -1240,16 +1236,14 @@
         /* ——— EFFICIENCY ——— */
         function setEfficiency(eff) {
             currentEfficiency = eff;
-            document.querySelectorAll('.efficiency-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.eff === eff);
-            });
+            _setActiveBtn('.efficiency-btn', 'eff', eff);
             recalculate();
         }
 
         /* ——— CALCULATION ——— */
         function calcSkeins(stitches, fabricCount, strands, efficiency, skeinLength) {
             const threadPerStitch = (3.8 / fabricCount) * (strands / 2) * efficiencyFactors[efficiency];
-            return stitches * threadPerStitch / 36 / skeinLength;
+            return stitches * threadPerStitch / THREAD_INCHES_PER_YARD / skeinLength;
         }
 
         function recalculate() {
@@ -1257,7 +1251,7 @@
 
             const fabricCount = parseInt(document.getElementById('fabric-count').value);
             const strands = parseInt(document.getElementById('strands').value);
-            const skeinLength = parseFloat(document.getElementById('skein-length').value) || 8.7;
+            const skeinLength = parseFloat(document.getElementById('skein-length').value) || DEFAULT_SKEIN_LENGTH;
 
             allRows = patternData.map(c => {
                 const skeinsNeeded = calcSkeins(c.stitches, fabricCount, strands, currentEfficiency, skeinLength);
@@ -1305,9 +1299,6 @@
                 return;
             }
 
-            const statusLabel = { own: 'Owned', need: 'Need', dont_own: "Don't Own", not_found: 'Not Found' };
-            const statusClass = { own: 'status-own', need: 'status-need', dont_own: 'status-dont_own', not_found: 'status-not_found' };
-
             const si = (key) => {
                 if (sortKey !== key) return '';
                 return sortDir === -1 ? ' \u2193' : ' \u2191';
@@ -1340,7 +1331,7 @@
                     + ' data-dmc="' + escHtml(r.dmc) + '" data-tid="' + tid + '"'
                     + ' onchange="updateOwned(this)"' + (tid ? '' : ' disabled title="Not in inventory"') + '></td>'
                     + '<td><span class="' + buyClass + '">' + r.toBuy + '</span></td>'
-                    + '<td><span class="status-badge ' + (statusClass[r.status] || 'status-dont_own') + '">' + (statusLabel[r.status] || r.status || "Don't Own") + '</span></td>'
+                    + '<td><span class="status-badge ' + (STATUS_CLASS[r.status] || 'status-dont_own') + '">' + (STATUS_LABEL[r.status] || r.status || "Don't Own") + '</span></td>'
                     + '</tr>';
             }
 
@@ -1361,18 +1352,19 @@
                 vpLink.style.display = 'none';
             }
 
-            const totalStitches = rows.reduce((s, r) => s + r.stitches, 0);
-            const haveEnough = rows.filter(r => r.toBuy === 0).length;
-            const needToBuy = rows.filter(r => r.toBuy > 0).length;
-            const totalSkeinsToBuy = rows.reduce((s, r) => s + r.toBuy, 0);
+            let totalStitches = 0, haveEnough = 0, needToBuy = 0, totalSkeinsToBuy = 0, hasUnowned = false;
+            for (const r of rows) {
+                totalStitches += r.stitches;
+                totalSkeinsToBuy += r.toBuy;
+                if (r.toBuy === 0) haveEnough++; else needToBuy++;
+                if (r.status === 'dont_own') hasUnowned = true;
+            }
 
             document.getElementById('stat-colors').textContent = rows.length;
             document.getElementById('stat-stitches').textContent = fmtStitches(Math.round(totalStitches));
             document.getElementById('stat-have').textContent = haveEnough;
             document.getElementById('stat-buy').textContent = needToBuy;
             document.getElementById('stat-skeins').textContent = totalSkeinsToBuy;
-
-            const hasUnowned = rows.some(r => r.status === 'dont_own');
             document.getElementById('mark-need-btn').disabled = !hasUnowned;
         }
 
@@ -1403,9 +1395,7 @@
         /* ——— VIEW TOGGLE ——— */
         function setView(view) {
             currentView = view;
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.view === view);
-            });
+            _setActiveBtn('.view-btn', 'view', view);
             recalculate();
         }
 
@@ -1447,9 +1437,7 @@
                 }
 
                 patternData.forEach(c => {
-                    if (c.status === 'dont_own' && unowned.includes(c.dmc)) {
-                        c.status = 'need';
-                    }
+                    if (c.status === 'dont_own') c.status = 'need';
                 });
 
                 btn.textContent = 'Marked ' + data.updated + ' as Need';
@@ -1473,11 +1461,11 @@
             const buyRows = allRows.filter(r => r.toBuy > 0);
             if (!buyRows.length) return;
 
-            let csv = patternBrand + ',Name,Stitches,Skeins Needed,Owned,To Buy\n';
+            let csv = patternBrand + ',Name,Stitches,Skeins Needed,Owned,To Buy\r\n';
             for (const r of buyRows) {
                 csv += '"' + r.dmc + '","' + (r.name || '').replace(/"/g, '""') + '",'
                     + r.stitches + ',' + r.skeinsNeeded.toFixed(2) + ','
-                    + r.owned + ',' + r.toBuy + '\n';
+                    + r.owned + ',' + r.toBuy + '\r\n';
             }
 
             downloadBlob(csv, (patternName || 'floss') + '-shopping-list.csv', 'text/csv');
@@ -1488,18 +1476,9 @@
             document.getElementById('spinner').classList.toggle('visible', on);
         }
 
-        function showResults() {
-            document.getElementById('settings-bar').classList.add('visible');
-            document.getElementById('summary-bar').classList.add('visible');
-            document.getElementById('view-bar').classList.add('visible');
-            document.getElementById('results-card').classList.add('visible');
-        }
-
-        function hideResults() {
-            document.getElementById('settings-bar').classList.remove('visible');
-            document.getElementById('summary-bar').classList.remove('visible');
-            document.getElementById('view-bar').classList.remove('visible');
-            document.getElementById('results-card').classList.remove('visible');
+        const _resultEls = ['settings-bar', 'summary-bar', 'view-bar', 'results-card'];
+        function toggleResults(show) {
+            _resultEls.forEach(id => document.getElementById(id).classList.toggle('visible', show));
         }
 
         function showError(msg) {

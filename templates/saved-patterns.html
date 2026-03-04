@@ -789,6 +789,51 @@
             });
         }
 
+        /* ——— SHARED HELPERS ——— */
+        function _exportData(p) {
+            return {
+                grid: p.grid_data, grid_w: p.grid_w, grid_h: p.grid_h,
+                legend: p.legend_data, brand: p.brand || 'DMC',
+                part_stitches: p.part_stitches || [],
+                backstitches: p.backstitches || [],
+                knots: p.knots || [],
+                beads: p.beads || [],
+            };
+        }
+
+        async function _withExport(patternId, btn, label, fn) {
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '…';
+            try {
+                const resp = await fetch('/api/saved-patterns/' + patternId);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const p = await resp.json();
+                await fn(p);
+                toast(label + ' exported.', { type: 'success' });
+            } catch (err) {
+                toast('Could not export ' + label + ': ' + err.message, { type: 'error' });
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        }
+
+        function _bumpToTop(p) {
+            p.updated_at = new Date().toISOString();
+            allPatterns.splice(allPatterns.indexOf(p), 1);
+            allPatterns.unshift(p);
+        }
+
+        function _calcProgress(p, status) {
+            const total = p.color_count || 0;
+            const done = status === 'completed' ? total : (p.completed_count || 0);
+            const pct = total ? Math.round(done / total * 100) : 0;
+            const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
+            const textClass = done >= total && total > 0 ? 'pt-done' : '';
+            return { total, done, pct, fillClass, textClass };
+        }
+
         function renderCard(p) {
             const thumbHtml = p.thumbnail
                 ? `<img class="thumb-img" src="${escHtml(p.thumbnail)}" alt="">`
@@ -796,11 +841,7 @@
             const dateStr = p.updated_at ? p.updated_at.slice(0, 10) : (p.created_at ? p.created_at.slice(0, 10) : '');
             const st = p.project_status || 'not_started';
             const sel = (v) => st === v ? ' selected' : '';
-            const total = p.color_count || 0;
-            const done = st === 'completed' ? total : (p.completed_count || 0);
-            const pct = total ? Math.round(done / total * 100) : 0;
-            const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
-            const textClass = done >= total && total > 0 ? 'pt-done' : '';
+            const { total, done, pct, fillClass, textClass } = _calcProgress(p, st);
             const progressHtml = total > 0 ? `
                         <div class="progress-badge">
                             <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
@@ -869,26 +910,20 @@
                 card.dataset.status = newStatus;
                 selectEl.className = `status-select ps-${newStatus}`;
 
-                // Update progress bar to reflect new status
                 const badge = card.querySelector('.progress-badge');
                 if (badge && p) {
-                    const total = p.color_count || 0;
-                    const done = newStatus === 'completed' ? total : (p.completed_count || 0);
-                    const pct = total ? Math.round(done / total * 100) : 0;
-                    const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
-                    const textClass = done >= total && total > 0 ? 'pt-done' : '';
+                    const { done, pct, fillClass, textClass } = _calcProgress(p, newStatus);
                     const fill = badge.querySelector('.progress-fill');
                     fill.className = `progress-fill ${fillClass}`;
                     fill.style.width = pct + '%';
                     const txt = badge.querySelector('.progress-text');
                     txt.className = `progress-text ${textClass}`;
-                    txt.textContent = `${done}/${total}`;
+                    txt.textContent = `${done}/${p.color_count || 0}`;
                 }
 
                 if (activeFilter && newStatus !== activeFilter) {
                     card.style.opacity = '0';
                     card.style.transition = 'opacity 200ms';
-                    setTimeout(() => _applyFilter(), 210);
                 }
             }
 
@@ -898,11 +933,7 @@
                 body: JSON.stringify({ project_status: newStatus }),
             }).then(function(r) {
                 if (r.ok) {
-                    if (p) {
-                        p.updated_at = new Date().toISOString();
-                        allPatterns.splice(allPatterns.indexOf(p), 1);
-                        allPatterns.unshift(p);
-                    }
+                    if (p) _bumpToTop(p);
                     _applyFilter();
                     toast('Status updated.', { type: 'success' });
                 }
@@ -948,12 +979,7 @@
                 const data = await resp.json();
                 if (resp.ok) {
                     const p = allPatterns.find(x => x.slug === patternId);
-                    if (p) {
-                        p.name = data.name;
-                        p.updated_at = new Date().toISOString();
-                        allPatterns.splice(allPatterns.indexOf(p), 1);
-                        allPatterns.unshift(p);
-                    }
+                    if (p) { p.name = data.name; _bumpToTop(p); }
                     _applyFilter();
                     toast('Pattern renamed.', { type: 'success' });
                 }
@@ -999,7 +1025,6 @@
                 await alertDialog('jsPDF not loaded — refresh and try again.', { type: 'error' });
                 return;
             }
-            // Show progress on the visible "Export ▾" parent button, not the hidden dropdown item
             const exportBtn = btn.closest('.card-dropdown-wrap')?.querySelector('.card-dropdown-btn');
             const target = exportBtn || btn;
             const origHTML = target.innerHTML;
@@ -1009,17 +1034,7 @@
                 const resp = await fetch('/api/saved-patterns/' + patternId);
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const p = await resp.json();
-                await generatePatternPDF(p.name, {
-                    grid: p.grid_data,
-                    grid_w: p.grid_w,
-                    grid_h: p.grid_h,
-                    legend: p.legend_data,
-                    brand: p.brand || 'DMC',
-                    part_stitches: p.part_stitches || [],
-                    backstitches: p.backstitches || [],
-                    knots: p.knots || [],
-                    beads: p.beads || [],
-                }, {
+                await generatePatternPDF(p.name, _exportData(p), {
                     onProgress(done, total) {
                         target.innerHTML = '<i class="ti ti-loader-2 spin"></i> ' + done + '/' + total;
                     }
@@ -1032,104 +1047,36 @@
             }
         }
 
-        /* ——— JSON EXPORT ——— */
-        async function exportJSON(patternId, btn) {
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '…';
-            try {
-                const resp = await fetch('/api/saved-patterns/' + patternId);
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const p = await resp.json();
+        /* ——— SVG / OXS / JSON EXPORT ——— */
+        function exportSVG(patternId, btn) {
+            return _withExport(patternId, btn, 'SVG', p => generatePatternSVG(p.name, _exportData(p)));
+        }
 
-                const legend = p.legend_data.map(function (e) {
-                    return {
-                        dmc: e.dmc, hex: e.hex, name: e.name,
-                        symbol: e.symbol, stitches: e.stitches, category: e.category,
-                    };
-                });
+        function exportOXS(patternId, btn) {
+            return _withExport(patternId, btn, 'OXS', p => generatePatternOXS(p.name, _exportData(p)));
+        }
 
+        function exportJSON(patternId, btn) {
+            return _withExport(patternId, btn, 'JSON', p => {
+                const legend = p.legend_data.map(e => ({
+                    dmc: e.dmc, hex: e.hex, name: e.name,
+                    symbol: e.symbol, stitches: e.stitches, category: e.category,
+                }));
                 const payload = {
-                    format: 'needlework-studio',
-                    version: 1,
+                    format: 'needlework-studio', version: 1,
                     exported_at: new Date().toISOString(),
-                    name: p.name,
-                    brand: p.brand || 'DMC',
-                    grid_w: p.grid_w,
-                    grid_h: p.grid_h,
-                    grid_data: p.grid_data,
-                    legend_data: legend,
+                    name: p.name, brand: p.brand || 'DMC',
+                    grid_w: p.grid_w, grid_h: p.grid_h,
+                    grid_data: p.grid_data, legend_data: legend,
                     part_stitches: p.part_stitches || [],
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
                     beads: p.beads || [],
                 };
-
-                const filename = patternSlug(p.name) + '_' + p.grid_w + 'x' + p.grid_h + '.json';
-
-                downloadBlob(JSON.stringify(payload, null, 2), filename, 'application/json');
-
-                toast('JSON exported.', { type: 'success' });
-            } catch (err) {
-                toast('Could not export JSON: ' + err.message, { type: 'error' });
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
-        }
-
-        /* ——— SVG EXPORT ——— */
-        async function exportSVG(patternId, btn) {
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '…';
-            try {
-                const resp = await fetch('/api/saved-patterns/' + patternId);
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const p = await resp.json();
-                generatePatternSVG(p.name, {
-                    grid: p.grid_data, grid_w: p.grid_w,
-                    grid_h: p.grid_h, legend: p.legend_data,
-                    brand: p.brand || 'DMC',
-                    part_stitches: p.part_stitches || [],
-                    backstitches: p.backstitches || [],
-                    knots: p.knots || [],
-                    beads: p.beads || [],
-                });
-                toast('SVG exported.', { type: 'success' });
-            } catch (err) {
-                toast('Could not export SVG: ' + err.message, { type: 'error' });
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
-        }
-
-        /* ——— OXS EXPORT ——— */
-        async function exportOXS(patternId, btn) {
-            const origText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '…';
-            try {
-                const resp = await fetch('/api/saved-patterns/' + patternId);
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const p = await resp.json();
-                generatePatternOXS(p.name, {
-                    grid: p.grid_data, grid_w: p.grid_w,
-                    grid_h: p.grid_h, legend: p.legend_data,
-                    brand: p.brand || 'DMC',
-                    part_stitches: p.part_stitches || [],
-                    backstitches: p.backstitches || [],
-                    knots: p.knots || [],
-                    beads: p.beads || [],
-                });
-                toast('OXS exported.', { type: 'success' });
-            } catch (err) {
-                toast('Could not export OXS: ' + err.message, { type: 'error' });
-            } finally {
-                btn.disabled = false;
-                btn.textContent = origText;
-            }
+                downloadBlob(JSON.stringify(payload, null, 2),
+                    patternSlug(p.name) + '_' + p.grid_w + 'x' + p.grid_h + '.json',
+                    'application/json');
+            });
         }
 
         /* ——— SHOPPING MODAL ——— */
@@ -1252,7 +1199,11 @@
             _applyFilter();
         });
 
-        document.getElementById('pattern-search').addEventListener('input', () => _applyFilter());
+        let _searchTimer;
+        document.getElementById('pattern-search').addEventListener('input', () => {
+            clearTimeout(_searchTimer);
+            _searchTimer = setTimeout(_applyFilter, 200);
+        });
         document.getElementById('sort-select').addEventListener('change', () => {
             localStorage.setItem('dmc-pat-sort', document.getElementById('sort-select').value);
             _applyFilter();
@@ -1308,7 +1259,7 @@
                 toast('Could not duplicate: ' + err.message, { type: 'error' });
             }
             btn.disabled = false;
-            btn.textContent = 'Dupe';
+            btn.textContent = 'Duplicate';
         }
 
         /* ——— SELECTION MODE ——— */
@@ -1455,14 +1406,7 @@
                     for (let i = 0; i < patterns.length; i++) {
                         const p = patterns[i];
                         if (bulkBtn) bulkBtn.innerHTML = '<i class="ti ti-loader-2 spin"></i> ' + (i + 1) + '/' + patterns.length;
-                        const data = {
-                            grid: p.grid_data, grid_w: p.grid_w, grid_h: p.grid_h,
-                            legend: p.legend_data, brand: p.brand || 'DMC',
-                            part_stitches: p.part_stitches || [],
-                            backstitches: p.backstitches || [],
-                            knots: p.knots || [],
-                            beads: p.beads || [],
-                        };
+                        const data = _exportData(p);
                         if (format === 'pdf') await generatePatternPDF(p.name, data);
                         else if (format === 'svg') generatePatternSVG(p.name, data);
                         else if (format === 'oxs') generatePatternOXS(p.name, data);
