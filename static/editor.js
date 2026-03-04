@@ -59,6 +59,10 @@ function createPatternEditor(config) {
     let _ellipsePreview = null;  // { c1, r1, c2, r2, outline } or null
     let _mirrorMode    = 'off';  // 'off' | 'horizontal' | 'vertical' | 'both'
 
+    /* Brush size state */
+    let _brushSize = 1;                          // 1 | 2 | 3 | 5 | 9
+    const _BRUSH_SIZES = [1, 2, 3, 5, 9];
+
     /* Selection state */
     let _selStart      = null;
     let _selRect       = null;   // { c1, r1, c2, r2 } normalized
@@ -91,6 +95,7 @@ function createPatternEditor(config) {
     let _addColorDropdown = null, _addColorSearch = null, _addColorList = null;
     let _outsideClickHandler = null;
     let _dirToggle = null;
+    let _brushBtns = null;
     let _styleEl = null;
 
     /* ——— CSS (injected once) ——— */
@@ -185,6 +190,11 @@ function createPatternEditor(config) {
 .ed-text-hint{color:var(--text-muted);font-size:9px;margin-top:2px}
 .stitch-dir-toggle{border-color:var(--border-2) !important;background:var(--surface-2) !important;color:var(--text-muted) !important}
 .stitch-dir-toggle:hover{border-color:var(--gold-dim) !important;color:var(--text) !important}
+.brush-size-group{display:flex;gap:1px;align-items:center}
+.brush-pill{font-family:'IBM Plex Mono',monospace;font-size:10px;min-width:24px;height:24px;padding:0 4px;border:1px solid transparent;border-radius:var(--r);background:transparent;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--t),color var(--t),border-color var(--t);line-height:1}
+.brush-pill:hover{background:var(--surface-2);color:var(--text)}
+.brush-pill.active{background:var(--gold);color:#1a1208;border-color:var(--gold)}
+.brush-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--text-muted);margin-right:2px;white-space:nowrap}
 `;
 
     /* ═══════════════════════════════════════════
@@ -594,6 +604,38 @@ function createPatternEditor(config) {
         return out;
     }
 
+    /* ── Brush size helpers ── */
+    /** Expand a single cell to the NxN brush area, bounds-checked. */
+    function _getBrushCells(col, row) {
+        if (_brushSize === 1) return [{ col, row }];
+        const pd = getPatternData();
+        const cells = [];
+        const half = Math.floor(_brushSize / 2);
+        // Even sizes (2): click = top-left; Odd sizes: click = center
+        const start = (_brushSize % 2 === 0) ? 0 : -half;
+        const end = start + _brushSize;
+        for (let dr = start; dr < end; dr++) {
+            for (let dc = start; dc < end; dc++) {
+                const c = col + dc, r = row + dr;
+                if (c >= 0 && c < pd.grid_w && r >= 0 && r < pd.grid_h) {
+                    cells.push({ col: c, row: r });
+                }
+            }
+        }
+        return cells;
+    }
+
+    /** Does the current tool+mode combo use the brush size? */
+    function _toolUsesBrush() {
+        if (activeTool === 'pencil' || activeTool === 'eraser') return true;
+        if (activeTool === 'stitch') {
+            return activeStitchMode === 'half' || activeStitchMode === 'quarter' ||
+                   activeStitchMode === 'three_quarter' || activeStitchMode === 'petite' ||
+                   activeStitchMode === 'bead';
+        }
+        return false;
+    }
+
     /* ── Flood fill without undo/render (for mirrored fills) ── */
     function _floodFillNoUndo(col, row) {
         if (!activeDmc) return;
@@ -735,6 +777,32 @@ function createPatternEditor(config) {
         const icons = { off: 'ti-flip-horizontal', horizontal: 'ti-flip-horizontal', vertical: 'ti-flip-vertical', both: 'ti-arrows-maximize' };
         btn.innerHTML = '<i class="ti ' + (icons[_mirrorMode] || 'ti-flip-horizontal') + '"></i><span class="tool-lbl">Mirror</span>';
         btn.title = 'Mirror: ' + _mirrorMode + ' (M)';
+    }
+
+    /* ── Brush size controls ── */
+    function _setBrushSize(size) {
+        if (!_BRUSH_SIZES.includes(size)) return;
+        _brushSize = size;
+        _updateBrushButtons();
+        _redrawOverlay();
+    }
+
+    function _cycleBrushSize(direction) {
+        const idx = _BRUSH_SIZES.indexOf(_brushSize);
+        let next;
+        if (direction > 0) {
+            next = idx < _BRUSH_SIZES.length - 1 ? _BRUSH_SIZES[idx + 1] : _BRUSH_SIZES[0];
+        } else {
+            next = idx > 0 ? _BRUSH_SIZES[idx - 1] : _BRUSH_SIZES[_BRUSH_SIZES.length - 1];
+        }
+        _setBrushSize(next);
+    }
+
+    function _updateBrushButtons() {
+        if (!_brushBtns) return;
+        _brushBtns.forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.brush) === _brushSize);
+        });
     }
 
     /* ═══════════════════════════════════════════
@@ -1323,6 +1391,13 @@ function createPatternEditor(config) {
         if (tool !== 'text') _hideTextPanel();
         if (!isStitch) { _bsStart = null; _bsPreviewEnd = null; }
         _hideEyedropTip();
+        // Dim brush size group for tools that don't use it
+        const _brushGroup = _toolbar ? _toolbar.querySelector('.brush-size-group') : null;
+        if (_brushGroup) {
+            const _usesBrush = _toolUsesBrush();
+            _brushGroup.style.opacity = _usesBrush ? '' : '0.35';
+            _brushGroup.style.pointerEvents = _usesBrush ? '' : 'none';
+        }
         _redrawOverlay();
     }
 
@@ -1464,11 +1539,17 @@ function createPatternEditor(config) {
 
         // Hover cell highlight (always on top)
         if (_hoverCell && activeTool !== 'pan') {
-            const x = offset.x + _hoverCell.col * cp;
-            const y = offset.y + _hoverCell.row * cp;
             ctx.strokeStyle = 'rgba(200, 145, 58, 0.7)';
             ctx.lineWidth = 2;
-            ctx.strokeRect(x + 1, y + 1, cp - 2, cp - 2);
+            if (_brushSize > 1 && _toolUsesBrush()) {
+                for (const bc of _getBrushCells(_hoverCell.col, _hoverCell.row)) {
+                    ctx.strokeRect(offset.x + bc.col * cp + 1, offset.y + bc.row * cp + 1, cp - 2, cp - 2);
+                }
+            } else {
+                const x = offset.x + _hoverCell.col * cp;
+                const y = offset.y + _hoverCell.row * cp;
+                ctx.strokeRect(x + 1, y + 1, cp - 2, cp - 2);
+            }
         }
 
         // Intersection hover for backstitch/knot modes
@@ -1905,13 +1986,13 @@ function createPatternEditor(config) {
                 pushUndo();
                 _painting = true;
                 _lastPaintCell = `${col},${row}`;
-                _withMirror(col, row, pencilAt);
+                for (const bc of _getBrushCells(col, row)) _withMirror(bc.col, bc.row, pencilAt);
                 break;
             case 'eraser':
                 pushUndo();
                 _painting = true;
                 _lastPaintCell = `${col},${row}`;
-                _withMirror(col, row, eraserAt);
+                for (const bc of _getBrushCells(col, row)) _withMirror(bc.col, bc.row, eraserAt);
                 break;
             case 'auto-outline':
                 _outlineRegionAt(col, row);
@@ -1978,9 +2059,11 @@ function createPatternEditor(config) {
                 switch (activeStitchMode) {
                     case 'half': {
                         pushUndo();
-                        for (const p of _mirrorCellPositions(col, row)) {
-                            const d = p.axis ? _mirrorHalfDir(_halfDir, p.axis) : _halfDir;
-                            _placePartStitch(p.col, p.row, 'half', { direction: d });
+                        for (const bc of _getBrushCells(col, row)) {
+                            for (const p of _mirrorCellPositions(bc.col, bc.row)) {
+                                const d = p.axis ? _mirrorHalfDir(_halfDir, p.axis) : _halfDir;
+                                _placePartStitch(p.col, p.row, 'half', { direction: d });
+                            }
                         }
                         _recountStitches(); renderAll(); renderLegend(); _markDirty();
                         break;
@@ -1989,9 +2072,11 @@ function createPatternEditor(config) {
                         const q = _cellQuadrant(gc.gx, gc.gy);
                         if (q.col >= 0 && q.col < pd.grid_w && q.row >= 0 && q.row < pd.grid_h) {
                             pushUndo();
-                            for (const p of _mirrorCellPositions(q.col, q.row)) {
-                                const c = p.axis ? _mirrorCorner(q.corner, p.axis) : q.corner;
-                                _placePartStitch(p.col, p.row, 'quarter', { corner: c });
+                            for (const bc of _getBrushCells(q.col, q.row)) {
+                                for (const p of _mirrorCellPositions(bc.col, bc.row)) {
+                                    const c = p.axis ? _mirrorCorner(q.corner, p.axis) : q.corner;
+                                    _placePartStitch(p.col, p.row, 'quarter', { corner: c });
+                                }
                             }
                             _recountStitches(); renderAll(); renderLegend(); _markDirty();
                         }
@@ -2001,10 +2086,12 @@ function createPatternEditor(config) {
                         const tq = _cellQuadrant(gc.gx, gc.gy);
                         if (tq.col >= 0 && tq.col < pd.grid_w && tq.row >= 0 && tq.row < pd.grid_h) {
                             pushUndo();
-                            for (const p of _mirrorCellPositions(tq.col, tq.row)) {
-                                const mc = p.axis ? _mirrorCorner(tq.corner, p.axis) : tq.corner;
-                                const hd = p.axis ? _mirrorHalfDir(_halfDir, p.axis) : _halfDir;
-                                _placePartStitch(p.col, p.row, 'three_quarter', { halfDir: hd, shortCorner: mc });
+                            for (const bc of _getBrushCells(tq.col, tq.row)) {
+                                for (const p of _mirrorCellPositions(bc.col, bc.row)) {
+                                    const mc = p.axis ? _mirrorCorner(tq.corner, p.axis) : tq.corner;
+                                    const hd = p.axis ? _mirrorHalfDir(_halfDir, p.axis) : _halfDir;
+                                    _placePartStitch(p.col, p.row, 'three_quarter', { halfDir: hd, shortCorner: mc });
+                                }
                             }
                             _recountStitches(); renderAll(); renderLegend(); _markDirty();
                         }
@@ -2014,9 +2101,11 @@ function createPatternEditor(config) {
                         const pq = _cellQuadrant(gc.gx, gc.gy);
                         if (pq.col >= 0 && pq.col < pd.grid_w && pq.row >= 0 && pq.row < pd.grid_h) {
                             pushUndo();
-                            for (const p of _mirrorCellPositions(pq.col, pq.row)) {
-                                const c = p.axis ? _mirrorCorner(pq.corner, p.axis) : pq.corner;
-                                _placePartStitch(p.col, p.row, 'petite', { corner: c });
+                            for (const bc of _getBrushCells(pq.col, pq.row)) {
+                                for (const p of _mirrorCellPositions(bc.col, bc.row)) {
+                                    const c = p.axis ? _mirrorCorner(pq.corner, p.axis) : pq.corner;
+                                    _placePartStitch(p.col, p.row, 'petite', { corner: c });
+                                }
                             }
                             _recountStitches(); renderAll(); renderLegend(); _markDirty();
                         }
@@ -2059,8 +2148,10 @@ function createPatternEditor(config) {
                     }
                     case 'bead': {
                         pushUndo();
-                        for (const p of _mirrorCellPositions(col, row)) {
-                            _placeBead(p.col, p.row);
+                        for (const bc of _getBrushCells(col, row)) {
+                            for (const p of _mirrorCellPositions(bc.col, bc.row)) {
+                                _placeBead(p.col, p.row);
+                            }
                         }
                         _recountStitches(); renderAll(); renderLegend(); _markDirty();
                         break;
@@ -2188,8 +2279,11 @@ function createPatternEditor(config) {
         const key = `${stitch.col},${stitch.row}`;
         if (key === _lastPaintCell) return;
         _lastPaintCell = key;
-        if (activeTool === 'pencil')      _withMirror(stitch.col, stitch.row, pencilAt);
-        else if (activeTool === 'eraser') _withMirror(stitch.col, stitch.row, eraserAt);
+        if (activeTool === 'pencil') {
+            for (const bc of _getBrushCells(stitch.col, stitch.row)) _withMirror(bc.col, bc.row, pencilAt);
+        } else if (activeTool === 'eraser') {
+            for (const bc of _getBrushCells(stitch.col, stitch.row)) _withMirror(bc.col, bc.row, eraserAt);
+        }
         _redrawOverlay();
     }
 
@@ -2426,6 +2520,8 @@ function createPatternEditor(config) {
         if (k === 'h') { _setTool('pan');         return true; }
         if (k === 'w') { _setTool('pencil');        return true; }
         if (k === 'm') { _cycleMirror();          return true; }
+        if (e.key === '[') { _cycleBrushSize(-1); return true; }
+        if (e.key === ']') { _cycleBrushSize(1);  return true; }
         // Stitch type shortcuts (1-5) — always available
         const _stitchKeys = ['stitch-half', 'stitch-quarter', 'stitch-threequarter', 'stitch-petite', 'stitch-back', 'stitch-knot', 'stitch-bead'];
         const _skIdx = parseInt(e.key) - 1;
@@ -2463,6 +2559,7 @@ function createPatternEditor(config) {
         _halfDir = 'fwd';
         _hideTextPanel();
         _mirrorMode = 'off';
+        _brushSize = 1;
         _hoverCell = null;
         _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
         _selDragging = false; _selMoving = false;
@@ -2471,6 +2568,7 @@ function createPatternEditor(config) {
         if (_redoBtn) _redoBtn.disabled = true;
         _updateActiveIndicator();
         _updateMirrorButton();
+        _updateBrushButtons();
     }
 
     /* ═══════════════════════════════════════════
@@ -2521,6 +2619,15 @@ function createPatternEditor(config) {
             <div class="tool-sep"></div>
             <button class="tool-btn ed-undo-btn" title="Undo (Ctrl+Z)" disabled><i class="ti ti-arrow-back-up"></i><span class="tool-lbl">Undo</span></button>
             <button class="tool-btn ed-redo-btn" title="Redo (Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i><span class="tool-lbl">Redo</span></button>
+            <div class="tool-sep"></div>
+            <div class="brush-size-group">
+                <span class="brush-lbl">Brush</span>
+                <button class="brush-pill active" data-brush="1" title="Brush 1×1 ([ / ])">1</button>
+                <button class="brush-pill" data-brush="2" title="Brush 2×2 ([ / ])">2</button>
+                <button class="brush-pill" data-brush="3" title="Brush 3×3 ([ / ])">3</button>
+                <button class="brush-pill" data-brush="5" title="Brush 5×5 ([ / ])">5</button>
+                <button class="brush-pill" data-brush="9" title="Brush 9×9 ([ / ])">9</button>
+            </div>
             <div class="tool-sep"></div>
             <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
             <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
@@ -2596,6 +2703,15 @@ function createPatternEditor(config) {
         _toolbar.querySelector('.ed-mirror-btn').addEventListener('click', _cycleMirror);
         _toolbar.querySelector('.ed-resize-btn').addEventListener('click', _showResizeModal);
 
+        // Brush size pills
+        _brushBtns = _toolbar.querySelectorAll('.brush-pill[data-brush]');
+        _brushBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _setBrushSize(parseInt(btn.dataset.brush));
+            });
+        });
+
         // Event listeners — replace panel
         _replacePanel.querySelector('.ed-replace-apply-btn').addEventListener('click', _doColorReplace);
         _replaceTargetTrigger.addEventListener('click', (e) => {
@@ -2640,6 +2756,7 @@ function createPatternEditor(config) {
         _uiInjected = false;
         _toolbar = _replacePanel = null;
         _dirToggle = null;
+        _brushBtns = null;
         _undoBtn = _redoBtn = _activeSwatch = _activeLabel = null;
         _replaceSrcSwatch = null;
         _replaceTargetPicker = _replaceTargetTrigger = _replaceTargetDropdown = null;
@@ -2687,6 +2804,8 @@ function createPatternEditor(config) {
         redo,
         getActiveDmc:      () => activeDmc,
         getMirrorMode:     () => _mirrorMode,
+        getBrushSize:      () => _brushSize,
+        setBrushSize:      _setBrushSize,
         startReplace,
         setBrand(b) { _brand = b; allDmcThreads = null; },
         injectUI,
