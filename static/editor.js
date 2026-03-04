@@ -100,7 +100,8 @@ function createPatternEditor(config) {
 
     /* ——— CSS (injected once) ——— */
     const EDITOR_CSS = `
-.editor-toolbar{position:absolute;top:24px;left:50%;transform:translateX(-50%);z-index:15;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:4px 8px;display:flex;align-items:center;gap:2px;box-shadow:0 2px 12px rgba(0,0,0,.4);flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px)}
+.editor-toolbar{position:absolute;top:24px;left:50%;transform:translateX(-50%);z-index:15;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 2px 12px rgba(0,0,0,.4);max-width:calc(100% - 24px)}
+.toolbar-row{display:flex;align-items:center;gap:2px;flex-wrap:wrap;justify-content:center}
 .tool-group{display:flex;gap:1px}
 .tool-btn{font-size:18px;min-width:40px;padding:5px 3px 3px;border:1px solid transparent;border-radius:var(--r);background:transparent;color:var(--text-muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background var(--t),color var(--t),border-color var(--t);line-height:1}
 .tool-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.02em;line-height:1;white-space:nowrap;pointer-events:none}
@@ -153,7 +154,7 @@ function createPatternEditor(config) {
 .replace-target-row .rtr-badge{font-size:8px;color:var(--gold);white-space:nowrap}
 .ed-replace-apply-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border-2);background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
 .ed-replace-apply-btn:hover{background:var(--surface-2);color:var(--text)}
-@media(max-width:600px){.editor-toolbar{max-width:95vw}.tool-lbl{font-size:7px}}
+@media(max-width:600px){.editor-toolbar{max-width:95vw}.toolbar-row{gap:1px}.tool-lbl{font-size:7px}}
 .ed-resize-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:200}
 .ed-resize-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r-lg);padding:20px;z-index:201;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:240px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)}
 .ed-resize-modal h3{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin:0 0 12px;color:var(--text)}
@@ -2590,60 +2591,64 @@ function createPatternEditor(config) {
         _toolbar.className = 'editor-toolbar';
         _toolbar.style.display = 'none';
         _toolbar.innerHTML = `
-            <button class="tool-btn active" data-tool="pan" title="Pan / Hand (H)"><i class="ti ti-hand-grab"></i><span class="tool-lbl">Pan</span></button>
-            <div class="tool-sep"></div>
-            <div class="tool-group">
-                <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="ti ti-eraser"></i><span class="tool-lbl">Erase</span></button>
-                <button class="tool-btn" data-tool="fill" title="Flood Fill (F)"><i class="ti ti-paint-filled"></i><span class="tool-lbl">Fill</span></button>
-                <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><i class="ti ti-color-picker"></i><span class="tool-lbl">Pick</span></button>
-                <button class="tool-btn" data-tool="line" title="Line (L)"><i class="ti ti-line"></i><span class="tool-lbl">Line</span></button>
-                <button class="tool-btn" data-tool="rect" title="Rectangle (T)"><i class="ti ti-rectangle"></i><span class="tool-lbl">Rect</span></button>
-                <button class="tool-btn" data-tool="ellipse" title="Ellipse (O)"><i class="ti ti-circle"></i><span class="tool-lbl">Oval</span></button>
-                <button class="tool-btn" data-tool="text" title="Text (X)"><i class="ti ti-typography"></i><span class="tool-lbl">Text</span></button>
-                <button class="tool-btn" data-tool="replace" title="Color Replace (R)"><i class="ti ti-replace"></i><span class="tool-lbl">Swap</span></button>
-            </div>
-            <div class="tool-sep"></div>
-            <button class="tool-btn" data-tool="select" title="Selection (S)"><i class="ti ti-marquee-2"></i><span class="tool-lbl">Select</span></button>
-            <div class="tool-sep"></div>
-            <div class="tool-group">
-                <button class="tool-btn" data-tool="pencil" title="Full Stitch (P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg><span class="tool-lbl">Full</span></button>
-                <button class="tool-btn" data-tool="stitch-half" title="Half Stitch (1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="4"/></svg><span class="tool-lbl">Half</span></button>
-                <button class="tool-btn" data-tool="stitch-quarter" title="Quarter Stitch (2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="12" y2="12"/></svg><span class="tool-lbl">Qtr</span></button>
-                <button class="tool-btn" data-tool="stitch-threequarter" title="Three-Quarter Stitch (3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="4" x2="20" y2="20"/><line x1="4" y1="20" x2="12" y2="12"/></svg><span class="tool-lbl">3/4</span></button>
-                <button class="tool-btn" data-tool="stitch-petite" title="Petite Stitch (4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg><span class="tool-lbl">Petite</span></button>
-                <button class="tool-btn" data-tool="stitch-back" title="Backstitch (5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="3" y1="18" x2="21" y2="6"/><circle cx="3" cy="18" r="2" fill="currentColor"/><circle cx="21" cy="6" r="2" fill="currentColor"/></svg><span class="tool-lbl">Back</span></button>
-                <button class="tool-btn" data-tool="stitch-knot" title="French Knot (6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8 C14 6, 16 8, 14 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg><span class="tool-lbl">Knot</span></button>
-                <button class="tool-btn" data-tool="stitch-bead" title="Bead (7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/></svg><span class="tool-lbl">Bead</span></button>
-                <button class="tool-btn stitch-dir-toggle" title="Toggle direction (\`)" style="display:none"><span style="font-size:16px">/</span><span class="tool-lbl">Dir</span></button>
-            </div>
-            <div class="tool-sep"></div>
-            <button class="tool-btn ed-undo-btn" title="Undo (Ctrl+Z)" disabled><i class="ti ti-arrow-back-up"></i><span class="tool-lbl">Undo</span></button>
-            <button class="tool-btn ed-redo-btn" title="Redo (Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i><span class="tool-lbl">Redo</span></button>
-            <div class="tool-sep"></div>
-            <div class="brush-size-group">
-                <span class="brush-lbl">Brush</span>
-                <button class="brush-pill active" data-brush="1" title="Brush 1×1 ([ / ])">1</button>
-                <button class="brush-pill" data-brush="2" title="Brush 2×2 ([ / ])">2</button>
-                <button class="brush-pill" data-brush="3" title="Brush 3×3 ([ / ])">3</button>
-                <button class="brush-pill" data-brush="5" title="Brush 5×5 ([ / ])">5</button>
-                <button class="brush-pill" data-brush="9" title="Brush 9×9 ([ / ])">9</button>
-            </div>
-            <div class="tool-sep"></div>
-            <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
-            <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
-            <button class="tool-btn" data-tool="auto-outline" title="Auto Outline (Ctrl+Shift+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="5" y="5" width="14" height="14" rx="1" stroke-dasharray="3 2"/></svg><span class="tool-lbl">Outline</span></button>
-            <div class="tool-sep"></div>
-            <div class="active-color-ind">
-                <div class="active-sw ed-active-swatch"></div>
-                <span class="active-lbl ed-active-label">No color</span>
-            </div>
-            <div class="tool-sep"></div>
-            <div class="add-color-wrapper">
-                <button class="tool-btn ed-add-color-btn" title="Add ${_brand} Color (+)"><i class="ti ti-plus"></i><span class="tool-lbl">Add</span></button>
-                <div class="add-color-dropdown">
-                    <input type="text" class="replace-target-search" placeholder="Search ${_brand} #/name…">
-                    <div class="replace-target-list"></div>
+            <div class="toolbar-row">
+                <button class="tool-btn active" data-tool="pan" title="Pan / Hand (H)"><i class="ti ti-hand-grab"></i><span class="tool-lbl">Pan</span></button>
+                <div class="tool-sep"></div>
+                <div class="tool-group">
+                    <button class="tool-btn" data-tool="pencil" title="Full Stitch (P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg><span class="tool-lbl">Full</span></button>
+                    <button class="tool-btn" data-tool="stitch-half" title="Half Stitch (1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="4"/></svg><span class="tool-lbl">Half</span></button>
+                    <button class="tool-btn" data-tool="stitch-quarter" title="Quarter Stitch (2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="20" x2="12" y2="12"/></svg><span class="tool-lbl">Qtr</span></button>
+                    <button class="tool-btn" data-tool="stitch-threequarter" title="Three-Quarter Stitch (3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="4" x2="20" y2="20"/><line x1="4" y1="20" x2="12" y2="12"/></svg><span class="tool-lbl">3/4</span></button>
+                    <button class="tool-btn" data-tool="stitch-petite" title="Petite Stitch (4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg><span class="tool-lbl">Petite</span></button>
+                    <button class="tool-btn" data-tool="stitch-back" title="Backstitch (5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="3" y1="18" x2="21" y2="6"/><circle cx="3" cy="18" r="2" fill="currentColor"/><circle cx="21" cy="6" r="2" fill="currentColor"/></svg><span class="tool-lbl">Back</span></button>
+                    <button class="tool-btn" data-tool="stitch-knot" title="French Knot (6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8 C14 6, 16 8, 14 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg><span class="tool-lbl">Knot</span></button>
+                    <button class="tool-btn" data-tool="stitch-bead" title="Bead (7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/></svg><span class="tool-lbl">Bead</span></button>
+                    <button class="tool-btn stitch-dir-toggle" title="Toggle direction (\`)" style="display:none"><span style="font-size:16px">/</span><span class="tool-lbl">Dir</span></button>
                 </div>
+                <div class="tool-sep"></div>
+                <div class="tool-group">
+                    <button class="tool-btn" data-tool="line" title="Line (L)"><i class="ti ti-line"></i><span class="tool-lbl">Line</span></button>
+                    <button class="tool-btn" data-tool="rect" title="Rectangle (T)"><i class="ti ti-rectangle"></i><span class="tool-lbl">Rect</span></button>
+                    <button class="tool-btn" data-tool="ellipse" title="Ellipse (O)"><i class="ti ti-circle"></i><span class="tool-lbl">Oval</span></button>
+                    <button class="tool-btn" data-tool="fill" title="Flood Fill (F)"><i class="ti ti-paint-filled"></i><span class="tool-lbl">Fill</span></button>
+                </div>
+                <div class="tool-sep"></div>
+                <div class="tool-group">
+                    <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="ti ti-eraser"></i><span class="tool-lbl">Erase</span></button>
+                    <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><i class="ti ti-color-picker"></i><span class="tool-lbl">Pick</span></button>
+                    <button class="tool-btn" data-tool="text" title="Text (X)"><i class="ti ti-typography"></i><span class="tool-lbl">Text</span></button>
+                    <button class="tool-btn" data-tool="replace" title="Color Replace (R)"><i class="ti ti-replace"></i><span class="tool-lbl">Swap</span></button>
+                    <button class="tool-btn" data-tool="select" title="Selection (S)"><i class="ti ti-marquee-2"></i><span class="tool-lbl">Select</span></button>
+                </div>
+            </div>
+            <div class="toolbar-row">
+                <div class="active-color-ind">
+                    <div class="active-sw ed-active-swatch"></div>
+                    <span class="active-lbl ed-active-label">No color</span>
+                </div>
+                <div class="add-color-wrapper">
+                    <button class="tool-btn ed-add-color-btn" title="Add ${_brand} Color (+)"><i class="ti ti-plus"></i><span class="tool-lbl">Add</span></button>
+                    <div class="add-color-dropdown">
+                        <input type="text" class="replace-target-search" placeholder="Search ${_brand} #/name…">
+                        <div class="replace-target-list"></div>
+                    </div>
+                </div>
+                <div class="tool-sep"></div>
+                <div class="brush-size-group">
+                    <span class="brush-lbl">Brush</span>
+                    <button class="brush-pill active" data-brush="1" title="Brush 1×1 ([ / ])">1</button>
+                    <button class="brush-pill" data-brush="2" title="Brush 2×2 ([ / ])">2</button>
+                    <button class="brush-pill" data-brush="3" title="Brush 3×3 ([ / ])">3</button>
+                    <button class="brush-pill" data-brush="5" title="Brush 5×5 ([ / ])">5</button>
+                    <button class="brush-pill" data-brush="9" title="Brush 9×9 ([ / ])">9</button>
+                </div>
+                <div class="tool-sep"></div>
+                <button class="tool-btn ed-undo-btn" title="Undo (Ctrl+Z)" disabled><i class="ti ti-arrow-back-up"></i><span class="tool-lbl">Undo</span></button>
+                <button class="tool-btn ed-redo-btn" title="Redo (Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i><span class="tool-lbl">Redo</span></button>
+                <div class="tool-sep"></div>
+                <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
+                <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
+                <button class="tool-btn" data-tool="auto-outline" title="Auto Outline (Ctrl+Shift+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="5" y="5" width="14" height="14" rx="1" stroke-dasharray="3 2"/></svg><span class="tool-lbl">Outline</span></button>
             </div>
         `;
         container.appendChild(_toolbar);
