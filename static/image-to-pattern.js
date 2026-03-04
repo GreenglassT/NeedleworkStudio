@@ -27,6 +27,64 @@ let genController    = null;
 let dimMode          = 'stitches'; // 'stitches' | 'inches'
 let dimFabricIdx     = 1;          // index into FABRIC_COUNTS (default 14-count Aida)
 
+/* ——— AUTOSAVE / RECOVERY ——— */
+let _autosaveTimer = null;
+function _autosaveKey() { return 'ns-autosave-itp-' + (loadedPatternSlug || 'new'); }
+
+function _scheduleAutosave() {
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer = setTimeout(() => {
+        if (!patternData) return;
+        try {
+            localStorage.setItem(_autosaveKey(), JSON.stringify({
+                grid: patternData.grid, legend: patternData.legend,
+                grid_w: patternData.grid_w, grid_h: patternData.grid_h,
+                part_stitches: patternData.part_stitches || [],
+                backstitches: patternData.backstitches || [],
+                knots: patternData.knots || [], beads: patternData.beads || [],
+                timestamp: Date.now()
+            }));
+        } catch (e) { /* localStorage full */ }
+    }, 5000);
+}
+
+function _clearAutosave() {
+    clearTimeout(_autosaveTimer);
+    localStorage.removeItem(_autosaveKey());
+}
+
+function _checkAutosaveRecovery() {
+    const key = _autosaveKey();
+    const saved = localStorage.getItem(key);
+    if (!saved) return;
+    try {
+        const data = JSON.parse(saved);
+        const age = Date.now() - data.timestamp;
+        if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(key); return; }
+        toast('Unsaved edits found from ' + new Date(data.timestamp).toLocaleString() + '.', {
+            type: 'info', duration: 0,
+            actions: [
+                { label: 'Recover', onClick: () => {
+                    patternData.grid = data.grid;
+                    patternData.legend = data.legend;
+                    patternData.grid_w = data.grid_w;
+                    patternData.grid_h = data.grid_h;
+                    patternData.part_stitches = data.part_stitches || [];
+                    patternData.backstitches = data.backstitches || [];
+                    patternData.knots = data.knots || [];
+                    patternData.beads = data.beads || [];
+                    legendData = patternData.legend;
+                    _lookupDirty = true;
+                    renderCanvas();
+                    if (editorInstance && editorInstance.isActive()) renderEditLegend(); else renderKey();
+                    toast('Edits recovered.', { type: 'success' });
+                }},
+                { label: 'Discard', onClick: () => { localStorage.removeItem(key); } }
+            ]
+        });
+    } catch (e) { localStorage.removeItem(key); }
+}
+
 /* ——— STEP NAVIGATION ——— */
 function showStep(name) {
     // Abort any in-flight generation when leaving generate step
@@ -1128,7 +1186,7 @@ function ensureEditor() {
         getOverlayCanvas: () => document.getElementById('overlay-canvas'),
         getCellPx:        () => canvasCellPx,
         getGridOffset:    () => ({ x: 0, y: 0 }),
-        onDirty:          () => {},
+        onDirty:          () => { _scheduleAutosave(); },
         onClean:          () => {},
         onSave:           null,
         symbolSet:        "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※",
@@ -1614,6 +1672,7 @@ async function confirmSave() {
         }
 
         closeSaveDialog();
+        _clearAutosave();   // clear before slug changes (key is based on current slug)
         loadedPatternSlug = data.slug;
         savedPatternName = name;
         if (editorInstance) editorInstance.clearDirty();
@@ -1782,6 +1841,7 @@ async function maybeLoadSavedPattern() {
             canvasCellPx = 19;
             renderCanvas();
             renderKey();
+            _checkAutosaveRecovery();
         }
 
     } catch (err) {

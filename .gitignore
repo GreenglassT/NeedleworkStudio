@@ -21,6 +21,8 @@ uploads/*
 
 # Playwright MCP (dev tooling)
 .playwright-mcp/
+test-results/
+tests/.auth-state.json
 
 # IDE / tool config
 .claude/
@@ -39,6 +41,11 @@ cookies.txt
 # PyInstaller
 build/
 dist/
+
+# Node (test runner)
+node_modules/
+package.json
+package-lock.json
 
 # Electron
 electron/node_modules/

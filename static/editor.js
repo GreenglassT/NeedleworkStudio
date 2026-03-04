@@ -641,6 +641,45 @@ function createPatternEditor(config) {
         _selBuffer = { w, h, data };
     }
 
+    function _rotateBufferCW() {
+        if (!_selBuffer) _captureSelectionBuffer();
+        if (!_selBuffer) return;
+        const { w, h, data } = _selBuffer;
+        const nW = h, nH = w;
+        const nd = new Array(nW * nH);
+        for (let r = 0; r < h; r++)
+            for (let c = 0; c < w; c++)
+                nd[c * nW + (h - 1 - r)] = data[r * w + c];
+        _selBuffer = { w: nW, h: nH, data: nd };
+        _selRect.c2 = _selRect.c1 + nW - 1;
+        _selRect.r2 = _selRect.r1 + nH - 1;
+        _redrawOverlay();
+    }
+
+    function _flipBufferH() {
+        if (!_selBuffer) _captureSelectionBuffer();
+        if (!_selBuffer) return;
+        const { w, h, data } = _selBuffer;
+        const nd = new Array(w * h);
+        for (let r = 0; r < h; r++)
+            for (let c = 0; c < w; c++)
+                nd[r * w + (w - 1 - c)] = data[r * w + c];
+        _selBuffer = { w, h, data: nd };
+        _redrawOverlay();
+    }
+
+    function _flipBufferV() {
+        if (!_selBuffer) _captureSelectionBuffer();
+        if (!_selBuffer) return;
+        const { w, h, data } = _selBuffer;
+        const nd = new Array(w * h);
+        for (let r = 0; r < h; r++)
+            for (let c = 0; c < w; c++)
+                nd[(h - 1 - r) * w + c] = data[r * w + c];
+        _selBuffer = { w, h, data: nd };
+        _redrawOverlay();
+    }
+
     function _clearSelectionSource() {
         const pd = getPatternData();
         const { c1, r1, c2, r2 } = _selRect;
@@ -2335,6 +2374,11 @@ function createPatternEditor(config) {
                 _captureSelectionBuffer();
                 return true;
             }
+            // Rotate / flip selection (R/H/V intercepted before tool-switch shortcuts)
+            const sk = e.key.toLowerCase();
+            if (sk === 'r') { e.preventDefault(); _rotateBufferCW(); return true; }
+            if (sk === 'h') { e.preventDefault(); _flipBufferH(); return true; }
+            if (sk === 'v') { e.preventDefault(); _flipBufferV(); return true; }
             if ((e.ctrlKey || e.metaKey) && e.key === 'v' && _selBuffer) {
                 e.preventDefault();
                 pushUndo();
@@ -2365,7 +2409,7 @@ function createPatternEditor(config) {
             if (e.key === 'y') { e.preventDefault(); redo(); return true; }
             if (e.key === 's' && onSave) { e.preventDefault(); onSave(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault(); _showResizeModal(); return true; }
-            if (e.shiftKey && e.key.toUpperCase() === 'O') { e.preventDefault(); _autoOutline(); return true; }
+            if (e.shiftKey && e.key.toUpperCase() === 'O') { e.preventDefault(); _setTool('auto-outline'); return true; }
             return false;
         }
         const k = e.key.toLowerCase();

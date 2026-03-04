@@ -61,6 +61,18 @@
 
 .toast-msg { flex: 1; line-height: 1.4; }
 
+/* Toast action buttons */
+.toast-actions { display: flex; gap: 6px; margin-top: 8px; }
+.toast-action-btn {
+    padding: 4px 12px; border-radius: var(--r);
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    cursor: pointer; border: 1px solid var(--border-2);
+    background: transparent; color: var(--text-muted);
+    transition: all var(--t);
+}
+.toast-action-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.toast-action-btn:first-child { border-color: var(--gold-dim); color: var(--gold); }
+
 /* ——— DIALOG OVERLAY ——— */
 .notify-overlay {
     position: fixed;

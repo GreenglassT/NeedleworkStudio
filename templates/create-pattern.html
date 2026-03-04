@@ -179,6 +179,13 @@
     .ruler-top { top: 0; left: 0; width: 100%; height: 18px; }
     .ruler-left { top: 0; left: 0; width: 26px; height: 100%; }
 
+    .minimap-wrap {
+        position: absolute; bottom: 14px; right: 14px;
+        background: var(--surface); border: 1px solid var(--border-2);
+        border-radius: var(--r); overflow: hidden; cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,.5); z-index: 10;
+    }
+    #mini-canvas { display: block; }
     .zoom-controls {
         position: absolute; bottom: 14px; left: 14px;
         display: flex; flex-direction: column; gap: 4px; z-index: 10;
@@ -430,6 +437,9 @@
                     <span class="zoom-level" id="zoom-level">100%</span>
                     <button class="zoom-btn" id="zoom-out-btn" title="Zoom Out" aria-label="Zoom out"><i class="ti ti-zoom-out"></i></button>
                 </div>
+                <div class="minimap-wrap" id="minimap-wrap" style="display:none">
+                    <canvas id="mini-canvas" aria-hidden="true"></canvas>
+                </div>
             </div>
             <div class="canvas-info" id="canvas-info"></div>
         </div>
@@ -584,6 +594,7 @@
         initEditor();
         updateBrandLabels();
         requestAnimationFrame(() => { fitCanvasToView(); renderRulers(); });
+        _checkAutosaveRecovery();
     }
 
     /* ═══════════════════════════════════════════
@@ -736,6 +747,7 @@
         document.getElementById('canvas-info').textContent =
             `${grid_w} × ${grid_h} stitches · ${(grid_w * grid_h).toLocaleString()} total · ${legend.length} colors`;
 
+        renderMinimap();
         if (needsFit && !skipFit) fitCanvasToView();
         else renderRulers();
     }
@@ -895,9 +907,84 @@
         const wrapper = document.getElementById('canvas-wrapper');
         if (wrapper) wrapper.style.transform = `translate(${cvPanX}px,${cvPanY}px) scale(${cvScale})`;
         renderRulers();
+        updateMinimapViewport();
         const zl = document.getElementById('zoom-level');
         if (zl) zl.textContent = Math.round(canvasCellPx * cvScale / 19 * 100) + '%';
     }
+
+    /* ═══════════════════════════════════════════
+       Minimap
+       ═══════════════════════════════════════════ */
+    const MM_CELL = 2;
+    function renderMinimap() {
+        if (!patternData) return;
+        const { grid, grid_w, grid_h } = patternData;
+        const mmW = grid_w * MM_CELL, mmH = grid_h * MM_CELL;
+        const mmS = Math.min(200 / mmW, 120 / mmH, 1.0);
+        const dispW = Math.max(1, Math.round(mmW * mmS));
+        const dispH = Math.max(1, Math.round(mmH * mmS));
+        const canvas = document.getElementById('mini-canvas');
+        canvas.width = dispW; canvas.height = dispH;
+        canvas._mmS = mmS;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dispW, dispH);
+        const cellDisp = MM_CELL * mmS;
+        for (let row = 0; row < grid_h; row++) {
+            for (let col = 0; col < grid_w; col++) {
+                const dmc = grid[row * grid_w + col];
+                if (dmc === 'BG') continue;
+                const info = lookup[dmc] || { hex: '#888888' };
+                ctx.fillStyle = info.hex;
+                ctx.fillRect(Math.floor(col * cellDisp), Math.floor(row * cellDisp), Math.ceil(cellDisp), Math.ceil(cellDisp));
+            }
+        }
+        canvas._patternImg = ctx.getImageData(0, 0, dispW, dispH);
+    }
+    function updateMinimapViewport() {
+        const canvas = document.getElementById('mini-canvas');
+        if (!canvas._patternImg || !patternData) return;
+        const area = document.getElementById('canvas-area');
+        const areaW = area.clientWidth, areaH = area.clientHeight;
+        const { grid_w, grid_h } = patternData;
+        const cellPx = canvasCellPx;
+        const visW = areaW / cvScale, visH = areaH / cvScale;
+        const visLeft = -cvPanX / cvScale, visTop = -cvPanY / cvScale;
+        const sX = visLeft / cellPx, sY = visTop / cellPx;
+        const sW = visW / cellPx, sH = visH / cellPx;
+        const wrap = document.getElementById('minimap-wrap');
+        if (sX <= 0 && sY <= 0 && sW >= grid_w && sH >= grid_h) { wrap.style.display = 'none'; return; }
+        else { wrap.style.display = ''; }
+        const ms = canvas._mmS * MM_CELL;
+        const rx = sX * ms, ry = sY * ms, rw = sW * ms, rh = sH * ms;
+        const ctx = canvas.getContext('2d');
+        ctx.putImageData(canvas._patternImg, 0, 0);
+        ctx.strokeStyle = 'rgba(200,145,58,0.9)'; ctx.lineWidth = 1.5;
+        ctx.fillStyle = 'rgba(200,145,58,0.15)';
+        const rx2 = Math.max(0, rx), ry2 = Math.max(0, ry);
+        const rw2 = Math.min(rw, canvas.width - rx2), rh2 = Math.min(rh, canvas.height - ry2);
+        if (rw2 > 0 && rh2 > 0) { ctx.fillRect(rx2, ry2, rw2, rh2); ctx.strokeRect(rx2, ry2, rw2, rh2); }
+    }
+    // Minimap drag-to-pan
+    (function() {
+        const wrap = document.getElementById('minimap-wrap');
+        let mmDrag = false;
+        function mmJump(e) {
+            const canvas = document.getElementById('mini-canvas');
+            if (!canvas._mmS || !patternData) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const ms = canvas._mmS * MM_CELL;
+            const sX = mx / ms, sY = my / ms;
+            const area = document.getElementById('canvas-area');
+            const cellPx = canvasCellPx;
+            cvPanX = area.clientWidth / 2 - sX * cellPx * cvScale;
+            cvPanY = area.clientHeight / 2 - sY * cellPx * cvScale;
+            applyCanvasTransform();
+        }
+        wrap.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); mmDrag = true; mmJump(e); });
+        window.addEventListener('mousemove', function(e) { if (mmDrag) mmJump(e); });
+        window.addEventListener('mouseup', function() { mmDrag = false; });
+    })();
 
     function fitCanvasToView() {
         const area   = document.getElementById('canvas-area');
@@ -1030,6 +1117,7 @@
             onDirty:          () => {
                 const btn = document.getElementById('btn-save');
                 btn.innerHTML = '<i class="ti ti-device-floppy"></i> ● Save';
+                _scheduleAutosave();
             },
             onClean:          () => {
                 const btn = document.getElementById('btn-save');
@@ -1131,6 +1219,7 @@
 
             closeSaveDialog();
             savedId = data.slug;
+            _clearAutosave();
             if (editorInstance) editorInstance.clearDirty();
             window.location.href = '/view/' + data.slug;
 
@@ -1142,6 +1231,65 @@
             btn.disabled = false;
             btn.textContent = 'Save';
         }
+    }
+
+    /* ═══════════════════════════════════════════
+       Autosave / Recovery
+       ═══════════════════════════════════════════ */
+    const _AUTOSAVE_KEY = 'ns-autosave-create';
+    let _autosaveTimer = null;
+
+    function _scheduleAutosave() {
+        clearTimeout(_autosaveTimer);
+        _autosaveTimer = setTimeout(() => {
+            if (!patternData) return;
+            try {
+                localStorage.setItem(_AUTOSAVE_KEY, JSON.stringify({
+                    grid: patternData.grid, legend: patternData.legend,
+                    grid_w: patternData.grid_w, grid_h: patternData.grid_h,
+                    part_stitches: patternData.part_stitches || [],
+                    backstitches: patternData.backstitches || [],
+                    knots: patternData.knots || [], beads: patternData.beads || [],
+                    timestamp: Date.now()
+                }));
+            } catch (e) { /* localStorage full — ignore */ }
+        }, 5000);
+    }
+
+    function _clearAutosave() {
+        clearTimeout(_autosaveTimer);
+        localStorage.removeItem(_AUTOSAVE_KEY);
+    }
+
+    function _checkAutosaveRecovery() {
+        const saved = localStorage.getItem(_AUTOSAVE_KEY);
+        if (!saved) return;
+        try {
+            const data = JSON.parse(saved);
+            const age = Date.now() - data.timestamp;
+            if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(_AUTOSAVE_KEY); return; }
+            toast('Unsaved work found from ' + new Date(data.timestamp).toLocaleString() + '.', {
+                type: 'info', duration: 0,
+                actions: [
+                    { label: 'Recover', onClick: () => {
+                        patternData.grid = data.grid;
+                        patternData.legend = data.legend;
+                        patternData.grid_w = data.grid_w;
+                        patternData.grid_h = data.grid_h;
+                        patternData.part_stitches = data.part_stitches || [];
+                        patternData.backstitches = data.backstitches || [];
+                        patternData.knots = data.knots || [];
+                        patternData.beads = data.beads || [];
+                        lookup = {};
+                        patternData.legend.forEach(e => { lookup[e.dmc] = e; });
+                        renderCanvas();
+                        renderEditLegend();
+                        toast('Work recovered.', { type: 'success' });
+                    }},
+                    { label: 'Discard', onClick: () => { localStorage.removeItem(_AUTOSAVE_KEY); } }
+                ]
+            });
+        } catch (e) { localStorage.removeItem(_AUTOSAVE_KEY); }
     }
 
     /* ═══════════════════════════════════════════

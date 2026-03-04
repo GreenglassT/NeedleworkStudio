@@ -17,12 +17,13 @@
     /**
      * toast(message, opts?)
      *   opts.type     — 'success' | 'error' | 'info'  (default 'info')
-     *   opts.duration — ms before auto-dismiss          (default 3000)
+     *   opts.duration — ms before auto-dismiss          (default 3000, 0 = persistent)
+     *   opts.actions  — [{label, onClick}] action buttons (auto-dismiss on click)
      */
     window.toast = function (message, opts) {
         opts = opts || {};
         var type = opts.type || 'info';
-        var duration = opts.duration || 3000;
+        var duration = opts.duration !== undefined ? opts.duration : 3000;
 
         var c = ensureContainer();
         var el = document.createElement('div');
@@ -31,13 +32,33 @@
             '<span class="toast-icon">' + (ICONS[type] || '') + '</span>' +
             '<span class="toast-msg">' + escHtml(message) + '</span>';
 
-        el.addEventListener('click', function () { dismiss(); });
+        // Action buttons
+        if (opts.actions && opts.actions.length) {
+            var actWrap = document.createElement('div');
+            actWrap.className = 'toast-actions';
+            opts.actions.forEach(function(a) {
+                var btn = document.createElement('button');
+                btn.className = 'toast-action-btn';
+                btn.textContent = a.label;
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dismiss();
+                    if (a.onClick) a.onClick();
+                });
+                actWrap.appendChild(btn);
+            });
+            el.appendChild(actWrap);
+            el.style.cursor = 'default';
+        } else {
+            el.addEventListener('click', function () { dismiss(); });
+        }
+
         c.appendChild(el);
 
-        var timer = setTimeout(dismiss, duration);
+        var timer = duration > 0 ? setTimeout(dismiss, duration) : null;
 
         function dismiss() {
-            clearTimeout(timer);
+            if (timer) clearTimeout(timer);
             if (!el.parentNode) return;
             el.classList.add('toast-out');
             setTimeout(function () { el.remove(); }, 220);

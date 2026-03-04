@@ -1162,10 +1162,11 @@ def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither
 
     quantized = img.quantize(colors=num_colors, dither=Image.Dither.FLOYDSTEINBERG if dither else Image.Dither.NONE)
     palette_raw = quantized.getpalette()  # flat [r,g,b,r,g,b,...]
+    actual_colors = len(palette_raw) // 3  # may be fewer than num_colors
 
     # Map each palette index to its nearest thread in active_palette
     palette_map = {}  # palette_index -> thread_number
-    for i in range(num_colors):
+    for i in range(actual_colors):
         pr = palette_raw[i * 3]
         pg = palette_raw[i * 3 + 1]
         pb = palette_raw[i * 3 + 2]

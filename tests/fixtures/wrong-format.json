@@ -1,0 +1,8 @@
+{
+  "format": "wrong-format",
+  "version": 1,
+  "grid_w": 2,
+  "grid_h": 2,
+  "grid_data": ["BG","BG","BG","BG"],
+  "legend_data": [{"dmc":"310","name":"Black","hex":"#000000","symbol":"+","stitches":0}]
+}

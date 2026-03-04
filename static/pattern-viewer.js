@@ -102,6 +102,66 @@ let _cellDragToggle  = null;        // bool: true=marking, false=unmarking
 let _cellDragStart   = null;        // {col, row} for rectangle start
 let _cellDragEnd     = null;        // {col, row} for rectangle end
 
+/* ——— AUTOSAVE ——— */
+let _autosaveTimer = null;
+const _AUTOSAVE_KEY = 'ns-autosave-' + PATTERN_SLUG;
+
+function _scheduleAutosave() {
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer = setTimeout(() => {
+        if (!patternData) return;
+        try {
+            localStorage.setItem(_AUTOSAVE_KEY, JSON.stringify({
+                grid: patternData.grid, legend: patternData.legend,
+                grid_w: patternData.grid_w, grid_h: patternData.grid_h,
+                part_stitches: patternData.part_stitches || [],
+                backstitches: patternData.backstitches || [],
+                knots: patternData.knots || [], beads: patternData.beads || [],
+                timestamp: Date.now()
+            }));
+        } catch (e) { /* localStorage full — silently skip */ }
+    }, 5000);
+}
+
+function _clearAutosave() {
+    clearTimeout(_autosaveTimer);
+    localStorage.removeItem(_AUTOSAVE_KEY);
+}
+
+function _checkAutosaveRecovery() {
+    const raw = localStorage.getItem(_AUTOSAVE_KEY);
+    if (!raw) return;
+    try {
+        const saved = JSON.parse(raw);
+        const age = Date.now() - saved.timestamp;
+        if (age > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(_AUTOSAVE_KEY); return; }
+        const when = new Date(saved.timestamp).toLocaleString();
+        toast('Unsaved edits found from ' + when, {
+            type: 'info', duration: 0,
+            actions: [
+                { label: 'Recover', onClick: () => {
+                    patternData.grid = saved.grid;
+                    patternData.legend = saved.legend;
+                    patternData.grid_w = saved.grid_w;
+                    patternData.grid_h = saved.grid_h;
+                    patternData.part_stitches = saved.part_stitches || [];
+                    patternData.backstitches = saved.backstitches || [];
+                    patternData.knots = saved.knots || [];
+                    patternData.beads = saved.beads || [];
+                    lookup = {};
+                    for (const e of patternData.legend) {
+                        lookup[e.dmc] = { hex: e.hex || '#888888', symbol: e.symbol || '?', name: e.name || '', count: e.stitches || 0, dashIdx: 0 };
+                    }
+                    _recountLegend();
+                    renderMain(); renderMinimap(); updateMinimapViewport(); renderLegend();
+                    toast('Edits recovered.', { type: 'success' });
+                }},
+                { label: 'Discard', onClick: () => { localStorage.removeItem(_AUTOSAVE_KEY); }}
+            ]
+        });
+    } catch (e) { localStorage.removeItem(_AUTOSAVE_KEY); }
+}
+
 /* ——— SESSION TIMER ——— */
 let _timerAccumSecs   = 0;     // total seconds loaded from DB
 let _timerSessionStart = null; // Date.now() when current session started, null if paused
@@ -404,6 +464,12 @@ function updateMinimapViewport() {
     const sY = (visTop  - gutY) / cellPx;
     const sW = visW / cellPx;
     const sH = visH / cellPx;
+
+    // Auto-hide minimap when viewport covers entire pattern
+    const wrap = document.getElementById('minimap-wrap');
+    if (sX <= 0 && sY <= 0 && sW >= grid_w && sH >= grid_h) {
+        wrap.style.display = 'none'; return;
+    } else { wrap.style.display = ''; }
 
     // Convert to minimap display coordinates
     const ms = canvas._mmS * MM_CELL; // minimap px per stitch
@@ -1048,6 +1114,7 @@ function _initEditor() {
         onDirty:          () => {
             const saveBtn = document.getElementById('save-btn');
             if (saveBtn && !saveBtn.textContent.includes('\u25cf')) saveBtn.textContent = '\u25cf Save';
+            _scheduleAutosave();
         },
         onClean:          () => { document.getElementById('save-btn').textContent = 'Save'; },
         onOverlayClear:   () => { if (highlightDmc !== null) _drawHighlight(highlightDmc); },
@@ -1208,6 +1275,7 @@ async function savePattern() {
         const data = await resp.json();
         if (data.error) throw new Error(data.error);
         editor.clearDirty();
+        _clearAutosave();
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
         toggleEditMode();
@@ -1380,21 +1448,26 @@ document.getElementById('canvas-area').addEventListener('touchend', function() {
     _tStartDist = 0;
 }, { passive: true });
 
-/* ——— MINIMAP CLICK — jump pan ——— */
-document.getElementById('minimap-wrap').addEventListener('click', function(e) {
-    const canvas = document.getElementById('mini-canvas');
-    if (!canvas._mmS || !patternData) return;
-    const rect  = canvas.getBoundingClientRect();
-    const mx    = e.clientX - rect.left;
-    const my    = e.clientY - rect.top;
-    const ms    = canvas._mmS * MM_CELL; // minimap px per stitch
-    const sX    = mx / ms;              // stitch coordinate
-    const sY    = my / ms;
-    const area  = document.getElementById('canvas-area');
-    panX = area.clientWidth  / 2 - (gX() + sX * cellPx) * scale;
-    panY = area.clientHeight / 2 - (gY() + sY * cellPx) * scale;
-    applyTransform();
-});
+/* ——— MINIMAP CLICK/DRAG — jump/pan ——— */
+(function() {
+    const wrap = document.getElementById('minimap-wrap');
+    let mmDragging = false;
+    function mmJumpTo(e) {
+        const canvas = document.getElementById('mini-canvas');
+        if (!canvas._mmS || !patternData) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const ms = canvas._mmS * MM_CELL;
+        const sX = mx / ms, sY = my / ms;
+        const area = document.getElementById('canvas-area');
+        panX = area.clientWidth / 2 - (gX() + sX * cellPx) * scale;
+        panY = area.clientHeight / 2 - (gY() + sY * cellPx) * scale;
+        applyTransform();
+    }
+    wrap.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); mmDragging = true; mmJumpTo(e); });
+    window.addEventListener('mousemove', function(e) { if (mmDragging) mmJumpTo(e); });
+    window.addEventListener('mouseup', function() { mmDragging = false; });
+})();
 
 /* ——— ZOOM +/- BUTTONS ——— */
 document.getElementById('zoom-in-btn').addEventListener('click', function() {
@@ -1736,6 +1809,9 @@ async function init() {
 
         // Initialise shared editor module
         _initEditor();
+
+        // Check for autosave recovery
+        _checkAutosaveRecovery();
 
         // Delegated legend click handler (set up once here)
         document.getElementById('legend-scroll').addEventListener('click', function(e) {
