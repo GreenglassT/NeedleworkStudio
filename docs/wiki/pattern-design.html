@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
-    <script src="../js/main.js"></script>
+    <script src="../js/main.js?v=2"></script>
 </head>
 <body>
 
@@ -27,8 +27,8 @@
                     <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
                     <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
                 </g>
-                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
-                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="var(--text)" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="var(--gold)" letter-spacing="0.5">Studio</text>
             </svg>
         </a>
         <button class="hamburger" aria-label="Menu">&#9776;</button>
@@ -96,58 +96,58 @@
         <h2>Drawing Tools</h2>
         <p>The pattern editor provides <strong>11 drawing tools</strong> in the toolbar. Select a tool by clicking its icon or pressing the corresponding keyboard shortcut.</p>
 
-        <h3>Pencil</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg> Pencil</h3>
         <p>The primary drawing tool. Click or click-and-drag to place stitches of the currently selected color on the grid. The pencil respects the current brush size setting, allowing you to draw single stitches or larger blocks at once.</p>
 
-        <h3>Eraser</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.8 1.4c.8-.8 2-.8 2.8 0l3 3c.8.8.8 2 0 2.8L9 18.8"/><path d="m6 13 4 4"/></svg> Eraser</h3>
         <p>Removes stitches from the grid. Click or drag to erase stitches. Like the pencil, the eraser respects the current brush size. Erased cells revert to the empty (background) state.</p>
 
-        <h3>Fill (Bucket)</h3>
+        <h3><svg viewBox="0 0 24 24" fill="var(--gold)" stroke="none" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M19 11V7a1 1 0 0 0-1-1h-3.4a1 1 0 0 1-.7-.3L12.7 4.3a1 1 0 0 0-1.4 0L10.1 5.7a1 1 0 0 1-.7.3H6a1 1 0 0 0-1 1v4a1 1 0 0 1-.3.7l-1.4 1.2a1 1 0 0 0 0 1.4l1.2 1.2a1 1 0 0 1 .3.7V20a1 1 0 0 0 1 1h4a1 1 0 0 1 .7.3l1.2 1.4a1 1 0 0 0 1.4 0l1.2-1.4a1 1 0 0 1 .7-.3H18a1 1 0 0 0 1-1v-3.4a1 1 0 0 1 .3-.7l1.4-1.2a1 1 0 0 0 0-1.4L19.3 11.7a1 1 0 0 1-.3-.7z"/></svg> Fill (Bucket)</h3>
         <p>Flood-fills a contiguous region of the same color with the currently selected color. Click on any stitch to replace all connected stitches of that color with the new color. This is useful for quickly recoloring large areas of a pattern.</p>
 
-        <h3>Line</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/></svg> Line</h3>
         <p>Draws a straight line of stitches between two points. Click to set the start point, then click again to set the end point. The line is rendered using the current color and brush size. Lines snap to pixel-aligned angles for clean results.</p>
 
-        <h3>Rectangle</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><rect x="4" y="4" width="16" height="16" rx="1"/></svg> Rectangle</h3>
         <p>Draws a rectangular outline or filled rectangle. Click to set one corner, then click again to set the opposite corner. You can toggle between outline-only and filled modes. Useful for borders, frames, and geometric designs.</p>
 
-        <h3>Ellipse</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" width="18" height="18" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="8"/></svg> Ellipse</h3>
         <p>Draws an elliptical or circular shape. Click to set the center, then drag to set the radius. Like the rectangle tool, you can toggle between outline and filled modes. On a stitch grid, circles and ellipses are approximated to the nearest whole stitches.</p>
 
-        <h3>Eyedropper</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M11 7l6 6"/><path d="M4 12l1.5 1.5a2.12 2.12 0 0 0 3 0L17 5"/><path d="M12 21v-3a2 2 0 0 1 2-2h3"/></svg> Eyedropper</h3>
         <p>Samples the color of a stitch on the canvas and sets it as the active color. Click any stitch to pick up its color. This is a quick way to switch to a color that is already in use in your pattern without searching through the color palette.</p>
 
-        <h3>Replace Color</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M3 6h3m4 0h11"/><path d="M3 12h7m4 0h7"/><path d="M3 18h11m4 0h3"/><path d="M8.5 6v.01"/><path d="M15.5 12v.01"/><path d="M16.5 18v.01"/></svg> Replace Color</h3>
         <p>Replaces every instance of one color with another across the entire pattern. Select the replacement color, then click on any stitch of the color you want to replace. Every stitch of the target color in the pattern will change to the new color. This is a global operation and is useful for swapping thread colors throughout a design.</p>
 
-        <h3>Select</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="4 2"/></svg> Select</h3>
         <p>Selects a rectangular region of the canvas for moving, copying, or deleting. Click and drag to define the selection area. Once selected, you can move the selection to a new position on the canvas. This tool is essential for rearranging elements of your design.</p>
 
-        <h3>Stitch</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><polyline points="4 7 4 4 7 4"/><polyline points="20 7 20 4 17 4"/><polyline points="4 17 4 20 7 20"/><polyline points="20 17 20 20 17 20"/><line x1="4" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="20" y2="12"/><line x1="12" y1="4" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="20"/></svg> Stitch</h3>
         <p>Places specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, the stitch tool lets you place the six different stitch types described in the section below. Select the desired stitch type from the stitch picker before placing.</p>
 
-        <h3>Text</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M17.5 4H6.5a2.5 2.5 0 0 0 0 5h11a2.5 2.5 0 0 1 0 5H4"/><path d="M14 4L8 20"/></svg> Text</h3>
         <p>Renders text onto the canvas using system fonts. Type your text, choose a font from the fonts installed on your system, set the size, and click to place it on the grid. The text is rasterized to stitches and becomes part of the pattern. This is particularly useful for adding names, dates, messages, or decorative lettering to your designs.</p>
 
         <h2>Stitch Types</h2>
         <p>Needlework Studio supports <strong>six stitch types</strong> that correspond to the standard stitches used in counted cross-stitch embroidery.</p>
 
-        <h3>Full Stitch</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg> Full Stitch</h3>
         <p>The standard cross-stitch &mdash; an X shape that covers one square of the fabric grid. This is the most common stitch type and the default for the pencil tool. Full stitches are displayed as solid colored squares on the chart.</p>
 
-        <h3>Half Stitch</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/></svg> Half Stitch</h3>
         <p>A single diagonal line covering half of a grid square, going either from bottom-left to top-right or from top-left to bottom-right. Half stitches are used for lighter coverage, backgrounds, and blending effects. They use approximately half the thread of a full stitch.</p>
 
-        <h3>Quarter Stitch</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="12" y2="12"/></svg> Quarter Stitch</h3>
         <p>A small diagonal stitch that covers one quarter of a grid square. Quarter stitches start from a corner and end at the center of the square. They are used for fine detail work and smooth diagonal edges, especially in realistic or photographic patterns.</p>
 
-        <h3>Three-Quarter Stitch</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="4" x2="20" y2="20"/><line x1="4" y1="20" x2="12" y2="12"/></svg> Three-Quarter Stitch</h3>
         <p>A combination of a half stitch and a quarter stitch, covering three-quarters of a grid square. This stitch type is commonly used to create smoother curves and diagonal lines than full stitches alone can achieve. It is especially useful for lettering and organic shapes.</p>
 
-        <h3>Backstitch</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="3" y1="18" x2="21" y2="6"/><circle cx="3" cy="18" r="2" fill="var(--gold)"/><circle cx="21" cy="6" r="2" fill="var(--gold)"/></svg> Backstitch</h3>
         <p>A straight line stitch used for outlines, borders, and fine detail. Backstitches run along the edges of grid squares (rather than filling them) and can be placed horizontally, vertically, or diagonally. They are typically stitched after all cross-stitches are complete and are essential for defining shapes and adding crispness to a design.</p>
 
-        <h3>French Knot</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" width="18" height="18" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="4" fill="var(--gold)"/><path d="M12 8 C14 6, 16 8, 14 10" stroke="var(--gold)" stroke-width="1.5" fill="none"/></svg> French Knot</h3>
         <p>A small raised dot placed at the intersection of grid lines. French knots are used for eyes, flower centers, decorative dots, and other small accent details. They are represented on the chart as small circles or dots at grid intersections.</p>
 
         <h2>Brush Sizes</h2>

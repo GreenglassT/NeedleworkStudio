@@ -46,6 +46,8 @@ body {
 a { color: var(--gold); text-decoration: none; transition: color var(--t); }
 a:hover { color: var(--gold-hover); }
 
+html { scroll-padding-top: 80px; }
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
@@ -164,7 +166,7 @@ a:hover { color: var(--gold-hover); }
     background: radial-gradient(ellipse at 50% 0%, rgba(200,145,58,.06) 0%, transparent 70%);
 }
 
-.hero-logo { height: 72px; width: auto; margin-bottom: 24px; }
+.hero-logo { height: 180px; width: auto; margin-bottom: 24px; display: block; margin-left: auto; margin-right: auto; }
 
 .hero-tagline {
     font-size: 22px;
@@ -179,6 +181,19 @@ a:hover { color: var(--gold-hover); }
     gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
+}
+
+.hero-screenshot-wrap {
+    max-width: 960px;
+    margin: 48px auto 0;
+}
+
+.hero-screenshot {
+    width: 100%;
+    border: 2px solid var(--border-2);
+    border-radius: var(--r-lg);
+    display: block;
+    box-shadow: 0 8px 40px rgba(0,0,0,.35);
 }
 
 /* ——— BUTTONS ——— */
@@ -240,10 +255,20 @@ a:hover { color: var(--gold-hover); }
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
     padding: 28px 24px;
+    text-align: center;
     transition: border-color var(--t);
 }
 
 .feature-card:hover { border-color: var(--border-2); }
+
+.feature-thumb {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    margin-bottom: 16px;
+    display: block;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
 
 svg.feature-icon {
     width: 28px;
@@ -448,6 +473,29 @@ svg.download-icon {
 .sidebar-link:hover { color: var(--text); }
 .sidebar-link.active { color: var(--gold); border-right: 2px solid var(--gold); }
 
+.sidebar-sub {
+    padding: 4px 0 4px 12px;
+    border-left: 1px solid var(--border);
+    margin: 2px 0 6px 6px;
+}
+
+.sidebar-sublink {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 3px 8px;
+    border-radius: var(--r);
+    transition: color var(--t), background var(--t);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-sublink:hover { color: var(--text-muted); background: var(--surface-2); }
+.sidebar-sublink.active { color: var(--gold); }
+
 .wiki-content {
     flex: 1;
     min-width: 0;
@@ -498,10 +546,11 @@ svg.download-icon {
 
 .wiki-content .screenshot {
     width: 100%;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border-2);
     border-radius: var(--r-lg);
     margin: 20px 0;
     display: block;
+    box-shadow: 0 2px 12px rgba(0,0,0,.25);
 }
 
 .wiki-content .screenshot-caption {

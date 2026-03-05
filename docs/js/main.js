@@ -75,6 +75,72 @@
     });
 })();
 
+/* Wiki sidebar section links */
+(function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        var activeLink = document.querySelector('.sidebar-link.active');
+        var content = document.querySelector('.wiki-content');
+        if (!activeLink || !content) return;
+
+        var headings = content.querySelectorAll('h2');
+        if (headings.length === 0) return;
+
+        /* Generate slug IDs and build sub-nav */
+        var subNav = document.createElement('div');
+        subNav.className = 'sidebar-sub';
+
+        headings.forEach(function (h2) {
+            /* Create an id from heading text */
+            var id = h2.id || h2.textContent.trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+            h2.id = id;
+
+            var link = document.createElement('a');
+            link.href = '#' + id;
+            link.className = 'sidebar-sublink';
+            link.textContent = h2.textContent.trim();
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                h2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                history.replaceState(null, '', '#' + id);
+            });
+            subNav.appendChild(link);
+        });
+
+        activeLink.parentNode.insertBefore(subNav, activeLink.nextSibling);
+
+        /* Highlight current section on scroll */
+        var sublinks = subNav.querySelectorAll('.sidebar-sublink');
+        var headingArr = Array.prototype.slice.call(headings);
+        var ticking = false;
+
+        function updateActive() {
+            var scrollY = window.scrollY + 100;
+            var current = null;
+            for (var i = headingArr.length - 1; i >= 0; i--) {
+                if (headingArr[i].offsetTop <= scrollY) {
+                    current = headingArr[i];
+                    break;
+                }
+            }
+            sublinks.forEach(function (sl) {
+                sl.classList.toggle('active', current && sl.getAttribute('href') === '#' + current.id);
+            });
+            ticking = false;
+        }
+
+        window.addEventListener('scroll', function () {
+            if (!ticking) {
+                requestAnimationFrame(updateActive);
+                ticking = true;
+            }
+        });
+        updateActive();
+    });
+})();
+
 /* OS detection for download button */
 (function () {
     document.addEventListener('DOMContentLoaded', function () {
