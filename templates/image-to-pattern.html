@@ -1124,11 +1124,11 @@
                 <div class="canvas-card" id="canvas-card">
                     <div class="canvas-toolbar">
                         <label class="gridlines-label">
-                            <input type="checkbox" id="gridlines-check" checked onchange="renderCanvas()">
+                            <input type="checkbox" id="gridlines-check" checked onchange="localStorage.setItem('dmc-gridlines',this.checked);renderCanvas()">
                             Gridlines
                         </label>
                         <label class="gridlines-label">
-                            <input type="checkbox" id="symbols-check" checked onchange="onSymbolsToggle()">
+                            <input type="checkbox" id="symbols-check" checked onchange="localStorage.setItem('dmc-symbols',this.checked);onSymbolsToggle()">
                             Symbols
                         </label>
                         <label class="gridlines-label">

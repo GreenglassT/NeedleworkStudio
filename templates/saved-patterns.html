@@ -1194,6 +1194,7 @@
             const btn = e.target.closest('.filter-btn');
             if (!btn) return;
             activeFilter = btn.dataset.filter;
+            localStorage.setItem('dmc-pat-status', activeFilter);
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             _applyFilter();
@@ -1421,10 +1422,17 @@
             }
         }
 
-        // Init sort dropdown and restore saved preference
+        // Init sort dropdown and restore saved preferences
         Dropdown.init(document.getElementById('sort-select'), { variant: 'pill' });
         const savedPatSort = localStorage.getItem('dmc-pat-sort');
         if (savedPatSort) document.getElementById('sort-select').value = savedPatSort;
+        const savedPatStatus = localStorage.getItem('dmc-pat-status');
+        if (savedPatStatus) {
+            activeFilter = savedPatStatus;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === savedPatStatus);
+            });
+        }
 
         loadGallery();
     </script>

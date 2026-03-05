@@ -920,7 +920,7 @@
 <script src="{{ url_for('static', filename='brand-toggle.js') }}"></script>
 <script>
     let threads = [];
-    let currentView = 'list';
+    let currentView = localStorage.getItem('dmc-inv-view') || 'list';
     let debounceTimer;
     let selectionMode = false;
     let selectedIds   = new Set();
@@ -1238,6 +1238,7 @@
 
     function switchView(view) {
         currentView = view;
+        localStorage.setItem('dmc-inv-view', view);
         document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
         document.getElementById('thread-grid').classList.toggle('active', view === 'grid');
         document.getElementById('thread-list').classList.toggle('active', view === 'list');
@@ -1250,8 +1251,14 @@
     }
 
     document.getElementById('search').addEventListener('input', debounceSearch);
-    document.getElementById('category-filter').addEventListener('change', loadThreads);
-    document.getElementById('status-filter').addEventListener('change', loadThreads);
+    document.getElementById('category-filter').addEventListener('change', () => {
+        localStorage.setItem('dmc-inv-category', document.getElementById('category-filter').value);
+        loadThreads();
+    });
+    document.getElementById('status-filter').addEventListener('change', () => {
+        localStorage.setItem('dmc-inv-status', document.getElementById('status-filter').value);
+        loadThreads();
+    });
     document.getElementById('sort-filter').addEventListener('change', () => {
         localStorage.setItem('dmc-inv-sort', document.getElementById('sort-filter').value);
         renderThreads(false);
@@ -1385,9 +1392,14 @@
 
     applyZoom(currentZoom);
     Dropdown.initAll('select.ctrl-select');
-    // Restore saved sort preference
+    // Restore saved filter/sort preferences
     const savedInvSort = localStorage.getItem('dmc-inv-sort');
     if (savedInvSort) document.getElementById('sort-filter').value = savedInvSort;
+    const savedInvCategory = localStorage.getItem('dmc-inv-category');
+    if (savedInvCategory) document.getElementById('category-filter').value = savedInvCategory;
+    const savedInvStatus = localStorage.getItem('dmc-inv-status');
+    if (savedInvStatus) document.getElementById('status-filter').value = savedInvStatus;
+    if (currentView !== 'list') switchView(currentView);
     // Restore saved brand and init UI
     setBrand(currentBrand);
     initBrandToggle(document.getElementById('brand-seg'));

@@ -112,7 +112,7 @@ let _timerSessionStart = null; // Date.now() when current session started, null 
 let _timerInterval     = null; // setInterval handle for UI tick (1s)
 let _timerFlushInterval = null; // setInterval handle for DB flush (30s)
 let _timerDirty        = false; // true if unsaved seconds exist
-let legendSort = 'number';        // 'number' | 'stitches'
+let legendSort = localStorage.getItem('dmc-legend-sort') || 'number'; // 'number' | 'stitches'
 let legendFilter = '';            // search query for legend filtering
 const MAX_CELL_PX = 80;           // cap re-render resolution when zooming in
 let _snapTimer = null;
@@ -694,6 +694,7 @@ function toggleLegendPanel() {
 
 function setLegendSort(mode) {
     legendSort = mode;
+    localStorage.setItem('dmc-legend-sort', mode);
     document.getElementById('sort-btn-number').classList.toggle('active', mode === 'number');
     document.getElementById('sort-btn-stitches').classList.toggle('active', mode === 'stitches');
     renderLegend();
@@ -1539,6 +1540,11 @@ async function init() {
         if (sortNumBtn) sortNumBtn.textContent = patternBrand + ' #';
         const searchInput = document.getElementById('legend-search');
         if (searchInput) searchInput.placeholder = 'Search ' + patternBrand + ' # or name\u2026';
+        // Restore saved legend sort
+        if (legendSort !== 'number') {
+            document.getElementById('sort-btn-number')?.classList.remove('active');
+            document.getElementById('sort-btn-stitches')?.classList.add('active');
+        }
 
         // Build lookup
         lookup = {};

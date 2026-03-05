@@ -21,10 +21,10 @@ let editorInstance = null;
 let savedPatternName = null;
 let nativeW        = null;
 let nativeH        = null;
-let paletteBrand   = 'DMC';
+let paletteBrand   = localStorage.getItem('inventoryBrand') || 'DMC';
 let paletteFilter  = 'standard';
 let displayFilter  = 'both';
-let legendSort     = 'number';   // 'number' | 'stitches'
+let legendSort     = localStorage.getItem('dmc-legend-sort') || 'number'; // 'number' | 'stitches'
 let heightLocked     = true;
 let genDebounceTimer = null;
 let genController    = null;
@@ -114,6 +114,17 @@ uploadZone.addEventListener('drop', e => {
     const file = e.dataTransfer.files[0];
     if (file) handleImageSelect(file);
 });
+
+/* ——— Restore UI preferences ——— */
+if (localStorage.getItem('dmc-gridlines') === 'false')
+    document.getElementById('gridlines-check').checked = false;
+if (localStorage.getItem('dmc-symbols') === 'false')
+    document.getElementById('symbols-check').checked = false;
+if (legendSort !== 'number') {
+    document.getElementById('sort-btn-number')?.classList.remove('active');
+    document.getElementById('sort-btn-stitches')?.classList.add('active');
+}
+if (paletteBrand !== 'DMC') setBrand(paletteBrand);
 
 /* ——— FILE SELECT ——— */
 function handleImageSelect(file) {
@@ -612,6 +623,7 @@ function renderCropPreview() {
 /* ——— BRAND / PALETTE / DISPLAY FILTER ——— */
 function setBrand(brand) {
     paletteBrand = brand;
+    localStorage.setItem('inventoryBrand', brand);
     document.querySelectorAll('#brand-toggle .seg-btn').forEach((btn, i) => {
         btn.classList.toggle('active', ['DMC', 'Anchor'][i] === brand);
     });
@@ -1213,6 +1225,7 @@ function filteredLegend() {
 
 function setLegendSort(mode) {
     legendSort = mode;
+    localStorage.setItem('dmc-legend-sort', mode);
     document.getElementById('sort-btn-number')?.classList.toggle('active', mode === 'number');
     document.getElementById('sort-btn-stitches')?.classList.toggle('active', mode === 'stitches');
     if (editorInstance && editorInstance.isActive()) renderEditLegend(); else renderKey();

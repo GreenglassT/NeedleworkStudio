@@ -427,11 +427,11 @@
                     <i class="ti ti-arrow-left"></i> Back
                 </a>
                 <label>
-                    <input type="checkbox" id="gridlines-check" checked onchange="renderCanvas()">
+                    <input type="checkbox" id="gridlines-check" checked onchange="localStorage.setItem('dmc-gridlines',this.checked);renderCanvas()">
                     Gridlines
                 </label>
                 <label style="display:none">
-                    <input type="checkbox" id="symbols-check" checked onchange="renderCanvas()">
+                    <input type="checkbox" id="symbols-check" checked onchange="localStorage.setItem('dmc-symbols',this.checked);renderCanvas()">
                     Symbols
                 </label>
                 <button class="view-mode-btn" id="view-mode-btn" onclick="toggleViewMode()">
@@ -546,12 +546,19 @@
     let cvScale = 1.0, cvPanX = 0, cvPanY = 0;
     let _cvDragging = false, _cvDragSX = 0, _cvDragSY = 0, _cvPanSX = 0, _cvPanSY = 0;
     let _snapTimer = null;
-    let legendSort = 'number';
+    let legendSort = localStorage.getItem('dmc-legend-sort') || 'number';
     let viewMode = localStorage.getItem('cp-viewMode') || 'thread';
-    let patternBrand = 'DMC';
+    let patternBrand = localStorage.getItem('inventoryBrand') || 'DMC';
 
     /* Cached DOM elements (set in createBlankPattern) */
     let _canvasEl, _overlayEl, _gridlinesCheck, _canvasInfoEl;
+
+    // Restore brand toggle in setup modal
+    if (patternBrand !== 'DMC') {
+        document.querySelectorAll('#brand-toggle .seg-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent === patternBrand);
+        });
+    }
 
     function _zoomByFactor(factor) {
         const area = document.getElementById('canvas-area');
@@ -576,6 +583,7 @@
     /* ——— BRAND TOGGLE ——— */
     function setSetupBrand(b) {
         patternBrand = b;
+        localStorage.setItem('inventoryBrand', b);
         document.querySelectorAll('#brand-toggle .seg-btn').forEach(btn => {
             btn.classList.toggle('active', btn.textContent === b);
         });
@@ -621,6 +629,12 @@
         _canvasEl = document.getElementById('pattern-canvas');
         _overlayEl = document.getElementById('overlay-canvas');
         _gridlinesCheck = document.getElementById('gridlines-check');
+        if (localStorage.getItem('dmc-gridlines') === 'false') _gridlinesCheck.checked = false;
+        if (localStorage.getItem('dmc-symbols') === 'false') document.getElementById('symbols-check').checked = false;
+        if (legendSort !== 'number') {
+            document.getElementById('sort-btn-number')?.classList.remove('active');
+            document.getElementById('sort-btn-stitches')?.classList.add('active');
+        }
         _canvasInfoEl = document.getElementById('canvas-info');
 
         patternData = {
@@ -963,6 +977,7 @@
        ═══════════════════════════════════════════ */
     function setLegendSort(mode) {
         legendSort = mode;
+        localStorage.setItem('dmc-legend-sort', mode);
         document.getElementById('sort-btn-number').classList.toggle('active', mode === 'number');
         document.getElementById('sort-btn-stitches').classList.toggle('active', mode === 'stitches');
         renderEditLegend();

@@ -57,11 +57,11 @@ function createPatternEditor(config) {
     let _rectPreview   = null;   // { c1, r1, c2, r2, outline } or null
     let _ellipseStart  = null;   // { col, row } ellipse drag start
     let _ellipsePreview = null;  // { c1, r1, c2, r2, outline } or null
-    let _mirrorMode    = 'off';  // 'off' | 'horizontal' | 'vertical' | 'both'
+    let _mirrorMode    = localStorage.getItem('dmc-ed-mirror') || 'off';  // 'off' | 'horizontal' | 'vertical' | 'both'
 
     /* Brush size state */
-    let _brushSize = 1;                          // 1 | 2 | 3 | 5 | 9
     const _BRUSH_SIZES = [1, 2, 3, 5, 9];
+    let _brushSize = (function() { var v = parseInt(localStorage.getItem('dmc-ed-brush')); return _BRUSH_SIZES.includes(v) ? v : 1; })();
 
     /* Selection state */
     let _selStart      = null;
@@ -794,6 +794,7 @@ function createPatternEditor(config) {
         const modes = ['off', 'horizontal', 'vertical', 'both'];
         const i = modes.indexOf(_mirrorMode);
         _mirrorMode = modes[(i + 1) % modes.length];
+        localStorage.setItem('dmc-ed-mirror', _mirrorMode);
         _updateMirrorButton();
         _redrawOverlay();
     }
@@ -811,6 +812,7 @@ function createPatternEditor(config) {
     function _setBrushSize(size) {
         if (!_BRUSH_SIZES.includes(size)) return;
         _brushSize = size;
+        localStorage.setItem('dmc-ed-brush', size);
         _updateBrushButtons();
         _redrawOverlay();
     }
@@ -2685,7 +2687,6 @@ function createPatternEditor(config) {
         _hideEyedropTip();
         if (_rcModal) { _rcBackdrop?.remove(); _rcModal.remove(); _rcBackdrop = null; _rcModal = null; }
         if (_resizeModal) { _resizeBackdrop?.remove(); _resizeModal.remove(); _resizeBackdrop = null; _resizeModal = null; }
-        _mirrorMode = 'off';
         _hoverCell = null;
         _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
         _selDragging = false; _selMoving = false;
@@ -2854,8 +2855,8 @@ function createPatternEditor(config) {
         activeStitchMode = 'half';
         _halfDir = 'fwd';
         _hideTextPanel();
-        _mirrorMode = 'off';
-        _brushSize = 1;
+        _mirrorMode = localStorage.getItem('dmc-ed-mirror') || 'off';
+        _brushSize = (function() { var v = parseInt(localStorage.getItem('dmc-ed-brush')); return _BRUSH_SIZES.includes(v) ? v : 1; })();
         _hoverCell = null;
         _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
         _selDragging = false; _selMoving = false;

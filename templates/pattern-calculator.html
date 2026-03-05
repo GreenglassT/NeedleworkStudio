@@ -680,7 +680,7 @@
                 </div>
                 <div class="settings-field">
                     <label for="strands">Strands</label>
-                    <select id="strands" class="ctrl-select" onchange="recalculate()">
+                    <select id="strands" class="ctrl-select" onchange="localStorage.setItem('dmc-calc-strands',this.value);document.getElementById('q-strands').value=this.value;recalculate()">
                         <option value="1">1 strand</option>
                         <option value="2" selected>2 strands</option>
                         <option value="3">3 strands</option>
@@ -697,7 +697,7 @@
                 </div>
                 <div class="settings-field" style="max-width: 160px;">
                     <label for="skein-length">Skein Length (yd)</label>
-                    <input type="number" id="skein-length" class="ctrl-input" value="8.7" min="0.1" step="0.1" oninput="recalculate()">
+                    <input type="number" id="skein-length" class="ctrl-input" value="8.7" min="0.1" step="0.1" oninput="localStorage.setItem('dmc-calc-skein-len',this.value);document.getElementById('q-skein-length').value=this.value;recalculate()">
                 </div>
             </div>
         </div>
@@ -767,7 +767,7 @@
                     </div>
                     <div class="input-field">
                         <label for="q-strands">Strands</label>
-                        <select id="q-strands" class="ctrl-select" onchange="calculateQuickEstimate()">
+                        <select id="q-strands" class="ctrl-select" onchange="localStorage.setItem('dmc-calc-strands',this.value);document.getElementById('strands').value=this.value;calculateQuickEstimate()">
                             <option value="1">1 strand</option>
                             <option value="2" selected>2 strands</option>
                             <option value="3">3 strands</option>
@@ -776,7 +776,7 @@
                     </div>
                     <div class="input-field">
                         <label for="q-skein-length">Skein Length (yards)</label>
-                        <input type="number" id="q-skein-length" min="0.1" step="0.1" value="8.7" oninput="calculateQuickEstimate()">
+                        <input type="number" id="q-skein-length" min="0.1" step="0.1" value="8.7" oninput="localStorage.setItem('dmc-calc-skein-len',this.value);document.getElementById('skein-length').value=this.value;calculateQuickEstimate()">
                     </div>
                 </div>
             </div>
@@ -863,14 +863,14 @@
         let patternName = '';
         let patternId = null;       // non-null when loaded from saved pattern
         let patternBrand = 'DMC';   // 'DMC' | 'Anchor'
-        let currentEfficiency = 'average';
+        let currentEfficiency = localStorage.getItem('dmc-calc-efficiency') || 'average';
         let currentView = 'all';
         let sortKey = 'toBuy';
         let sortDir = -1;
         let allRows = [];
         let currentMode = 'pattern';   // 'pattern' | 'stitch' | 'fabric'
-        let quickEfficiency = 'average';
-        let fabricUnit = 'stitches';   // 'stitches' | 'inches'
+        let quickEfficiency = localStorage.getItem('dmc-calc-efficiency') || 'average';
+        let fabricUnit = localStorage.getItem('dmc-calc-fabric-unit') || 'stitches';
 
         const DEFAULT_SKEIN_LENGTH = 8.7;
         const FABRIC_MARGIN = 6;
@@ -898,6 +898,7 @@
         /* ——— MODE SWITCHER ——— */
         function setMode(mode) {
             currentMode = mode;
+            localStorage.setItem('dmc-calc-mode', mode);
             _setActiveBtn('.mode-btn', 'mode', mode);
             const main = document.querySelector('.main-wrap');
             main.classList.remove('mode-stitch', 'mode-fabric');
@@ -917,6 +918,7 @@
         /* ——— STITCH COUNT MODE ——— */
         function setQuickEfficiency(eff) {
             quickEfficiency = eff;
+            localStorage.setItem('dmc-calc-efficiency', eff);
             _setActiveBtn('.q-eff-btn', 'qeff', eff);
             calculateQuickEstimate();
         }
@@ -982,6 +984,7 @@
         /* ——— FABRIC SIZE MODE ——— */
         function setFabricUnit(unit) {
             fabricUnit = unit;
+            localStorage.setItem('dmc-calc-fabric-unit', unit);
             _setActiveBtn('.f-unit-btn', 'funit', unit);
             document.getElementById('f-original-count-container').classList.toggle('visible', unit === 'inches');
             const w = document.getElementById('f-width');
@@ -1073,13 +1076,21 @@
                     sel.appendChild(opt);
                 }
 
+                // Restore saved preferences
+                const _savedStrands = localStorage.getItem('dmc-calc-strands');
+                const _savedSkeinLen = localStorage.getItem('dmc-calc-skein-len');
+                if (_savedStrands) { document.getElementById('strands').value = _savedStrands; document.getElementById('q-strands').value = _savedStrands; }
+                if (_savedSkeinLen) { document.getElementById('skein-length').value = _savedSkeinLen; document.getElementById('q-skein-length').value = _savedSkeinLen; }
+                if (currentEfficiency !== 'average') _setActiveBtn('.efficiency-btn', 'eff', currentEfficiency);
+                if (quickEfficiency !== 'average') _setActiveBtn('.q-eff-btn', 'qeff', quickEfficiency);
+                if (fabricUnit !== 'stitches') setFabricUnit(fabricUnit);
+
                 // Check URL params
                 const params = new URLSearchParams(location.search);
                 const urlMode = params.get('mode');
                 const urlId = params.get('pattern');
 
                 if (urlId && urlMode === 'fabric') {
-                    // Pattern + fabric mode: auto-populate fabric dimensions from pattern
                     const match = patterns.find(p => p.slug === urlId);
                     if (match) {
                         document.getElementById('f-width').value = match.grid_w;
@@ -1090,14 +1101,14 @@
                         setMode('fabric');
                     }
                 } else if (urlId) {
-                    // Pattern mode: auto-load full pattern data
                     setMode('pattern');
                     sel.value = urlId;
                     loadSavedPattern();
                 } else if (urlMode === 'stitch' || urlMode === 'fabric') {
                     setMode(urlMode);
                 } else {
-                    setMode('pattern');
+                    const savedMode = localStorage.getItem('dmc-calc-mode');
+                    setMode(savedMode || 'pattern');
                 }
             } catch (err) {
                 toast('Could not load saved patterns.', { type: 'error' });
@@ -1236,6 +1247,7 @@
         /* ——— EFFICIENCY ——— */
         function setEfficiency(eff) {
             currentEfficiency = eff;
+            localStorage.setItem('dmc-calc-efficiency', eff);
             _setActiveBtn('.efficiency-btn', 'eff', eff);
             recalculate();
         }
