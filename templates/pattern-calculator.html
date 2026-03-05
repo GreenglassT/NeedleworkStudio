@@ -40,7 +40,6 @@
 
         /* ——— UPLOAD ZONE ——— */
         .upload-zone {
-            --uz-pad: 48px 32px;
             --uz-hover-border: var(--gold-dim);
             --uz-icon-size: 36px;
             --uz-icon-mb: 12px;
@@ -729,6 +728,10 @@
                     <span class="stat-value" id="stat-skeins">—</span>
                     <span class="stat-label">Skeins to Buy</span>
                 </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="stat-fabric">—</span>
+                    <span class="stat-label">Fabric Size</span>
+                </div>
             </div>
             <button class="action-btn" id="mark-need-btn" onclick="markAllNeed()">
                 Mark unowned as Need
@@ -862,6 +865,8 @@
         let patternData = [];       // unified: [{dmc, name, hex, stitches, status, skein_qty, thread_id}]
         let patternName = '';
         let patternId = null;       // non-null when loaded from saved pattern
+        let patternGridW = 0;
+        let patternGridH = 0;
         let patternBrand = 'DMC';   // 'DMC' | 'Anchor'
         let currentEfficiency = localStorage.getItem('dmc-calc-efficiency') || 'average';
         let currentView = 'all';
@@ -1166,6 +1171,11 @@
                     thread_id: c.thread_id || null,
                 }));
 
+                // Store grid dimensions from PDF design info
+                const di = data.design_info || {};
+                patternGridW = di.width || 0;
+                patternGridH = di.height || 0;
+
                 // Apply detected settings from PDF
                 if (data.detected.fabric_count) {
                     document.getElementById('fabric-count').value = data.detected.fabric_count;
@@ -1202,6 +1212,8 @@
 
                 patternName = data.name;
                 patternId = data.slug;
+                patternGridW = data.grid_w || 0;
+                patternGridH = data.grid_h || 0;
                 patternBrand = data.brand || 'DMC';
 
                 // Recount stitches from raw data (includes part stitches, backstitches, knots)
@@ -1377,6 +1389,18 @@
             document.getElementById('stat-have').textContent = haveEnough;
             document.getElementById('stat-buy').textContent = needToBuy;
             document.getElementById('stat-skeins').textContent = totalSkeinsToBuy;
+
+            // Fabric size
+            const fabricCount = parseInt(document.getElementById('fabric-count').value);
+            if (patternGridW && patternGridH && fabricCount) {
+                const margin = 3; // inches on each side for framing
+                const w = (patternGridW / fabricCount + margin * 2).toFixed(1);
+                const h = (patternGridH / fabricCount + margin * 2).toFixed(1);
+                document.getElementById('stat-fabric').textContent = `${w}" × ${h}"`;
+            } else {
+                document.getElementById('stat-fabric').textContent = '—';
+            }
+
             document.getElementById('mark-need-btn').disabled = !hasUnowned;
         }
 

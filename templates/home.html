@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard — Needlework Studio{% endblock %}
-{% block brand_eyebrow %}Thread Collection{% endblock %}
+{% block brand_eyebrow %}Dashboard{% endblock %}
 
 {% block head %}
     <style>
@@ -25,6 +25,14 @@
             border: 1px solid var(--border);
             border-radius: var(--r-lg);
             padding: 22px 24px;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color var(--t), background var(--t);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-2);
+            background: var(--surface-2);
         }
 
         .stat-value {
@@ -165,7 +173,7 @@
 
         .pattern-progress-bar {
             flex: 1;
-            height: 3px;
+            height: 5px;
             background: var(--border);
             border-radius: 2px;
             overflow: hidden;
@@ -277,6 +285,27 @@
             .stats-row { grid-template-columns: repeat(2, 1fr); }
         }
 
+        /* ——— Brand toggle as filter buttons ——— */
+        .brand-seg {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            gap: 6px;
+        }
+        .brand-seg-indicator { display: none; }
+        .brand-seg-btn {
+            padding: 5px 12px;
+            border: 1px solid var(--border-2);
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 400;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+        }
+        .brand-seg-btn:hover:not(.active) { color: var(--text); }
+        .brand-seg-btn.active { color: var(--text); background: var(--surface-2); }
+
         @media (max-width: 560px) {
             .section-header { gap: 8px; }
             .brand-seg { order: 3; }
@@ -298,22 +327,22 @@
             <a href="/inventory" class="section-link">View Inventory <i class="ti ti-arrow-right"></i></a>
         </div>
         <div class="stats-row">
-            <div class="stat-card">
+            <a href="/inventory?status=owned" class="stat-card">
                 <span class="stat-value v-owned" id="stat-owned">—</span>
                 <span class="stat-label">Owned</span>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/inventory?status=need" class="stat-card">
                 <span class="stat-value v-need" id="stat-need">—</span>
                 <span class="stat-label">Need</span>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/inventory?status=dont_own" class="stat-card">
                 <span class="stat-value v-skip" id="stat-dont-own">—</span>
                 <span class="stat-label">Don't Own</span>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/saved-patterns" class="stat-card">
                 <span class="stat-value" id="stat-patterns" style="color: var(--gold);">—</span>
                 <span class="stat-label">Saved Patterns</span>
-            </div>
+            </a>
         </div>
 
         <!-- Recent Patterns -->
@@ -407,15 +436,15 @@
                         : `<span class="pattern-thumb-empty"><i class="ti ti-needle"></i></span>`;
                     const meta = `${p.grid_w} × ${p.grid_h} · ${p.color_count} color${p.color_count === 1 ? '' : 's'}`;
                     const st = p.project_status || 'not_started';
-                    const total = p.color_count || 0;
-                    const done = st === 'completed' ? total : (p.completed_count || 0);
+                    const total = (p.grid_w || 0) * (p.grid_h || 0);
+                    const done = st === 'completed' ? total : (p.stitched_cell_count || 0);
                     const pct = total ? Math.round(done / total * 100) : 0;
                     const fillCls = done === 0 ? 'ppf-zero' : (done >= total ? 'ppf-done' : 'ppf-partial');
                     const textCls = done >= total && total > 0 ? 'ppt-done' : '';
                     const progressHtml = total > 0 ? `
                                 <div class="pattern-progress">
                                     <div class="pattern-progress-bar"><div class="pattern-progress-fill ${fillCls}" style="width:${pct}%"></div></div>
-                                    <span class="pattern-progress-text ${textCls}">${done}/${total}</span>
+                                    <span class="pattern-progress-text ${textCls}">${pct}%</span>
                                 </div>` : '';
                     const tags = (p.tags || []).slice(0, 3);
                     const tagOverflow = (p.tags || []).length - 3;

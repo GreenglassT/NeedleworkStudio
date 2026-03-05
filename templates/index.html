@@ -2,7 +2,7 @@
 
 {% block title %}Thread Inventory — Needlework Studio{% endblock %}
 
-{% block brand_eyebrow %}<span id="brand-eyebrow-text">Thread Collection</span>{% endblock %}
+{% block brand_eyebrow %}<span id="brand-eyebrow-text">Needlework Studio</span>{% endblock %}
 {% block brand_name %}Thread Inventory{% endblock %}
 
 {% block head %}
@@ -331,18 +331,18 @@
 
         .sim-btn {
             width: 100%;
-            padding: 5px;
+            padding: 6px;
             border: 1px solid var(--border);
             border-radius: 4px;
             background: transparent;
             color: var(--text-dim);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 10px;
+            font-size: 16px;
             cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: .08em;
             transition: all var(--t);
             margin-bottom: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .sim-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
@@ -450,15 +450,17 @@
         .lbtn.s-skip { background: var(--skip-bg);  border-color: var(--skip);  color: var(--skip);  }
 
         .lbtn-sim {
-            padding: calc(4px * var(--zoom, 1)) calc(9px * var(--zoom, 1));
+            padding: 4px 8px;
             border: 1px solid var(--border);
             border-radius: 4px;
             background: transparent;
             color: var(--text-dim);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: calc(10px * var(--zoom, 1));
+            font-size: 14px;
             cursor: pointer;
-            transition: border-color var(--t), color var(--t);
+            transition: all var(--t);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .lbtn-sim:hover { border-color: var(--gold-dim); color: var(--gold); }
@@ -940,8 +942,7 @@
         _positionIndicator(seg);
         // Update eyebrow text
         const eyebrow = document.getElementById('brand-eyebrow-text');
-        if (eyebrow) eyebrow.textContent = brand === 'DMC' ? 'DMC Collection'
-            : brand === 'Anchor' ? 'Anchor Collection' : 'All Threads';
+        if (eyebrow) eyebrow.textContent = 'Needlework Studio';
         // Reset category filter (brands have different categories)
         const catSel = document.getElementById('category-filter');
         catSel.innerHTML = '<option value="">All</option>';
@@ -1060,7 +1061,7 @@
                     <div class="card-cat">${escHtml(t.category)}${!currentBrand ? '<span class="brand-badge">'+escHtml(t.brand)+'</span>' : ''}</div>
                     ${selectionMode ? '' : `
                     <div class="card-btns">${statusBtns(t.id, t.status, 'sbtn')}</div>
-                    <button class="sim-btn" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Find Similar</button>
+                    <button class="sim-btn" onclick="findSimilar(${t.id},'${escHtml(t.number)}')" title="Find similar colors"><i class="ti ti-palette"></i></button>
                     <textarea class="notes-ta" rows="2" placeholder="Notes…" maxlength="500"
                               onchange="updateNotes(${t.id},this.value)">${escHtml(t.notes||'')}</textarea>
                     <div class="card-skein">
@@ -1092,7 +1093,7 @@
                     ? `<div class="list-select-check"><i class="ti ti-check"></i></div>`
                     : `<div class="list-btns">
                         ${statusBtns(t.id, t.status, 'lbtn')}
-                        <button class="lbtn-sim" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Similar</button>
+                        <button class="lbtn-sim" onclick="findSimilar(${t.id},'${escHtml(t.number)}')" title="Find similar colors"><i class="ti ti-palette"></i></button>
                        </div>`
                 }
                 <input type="number" class="list-skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
@@ -1399,6 +1400,14 @@
     if (savedInvCategory) document.getElementById('category-filter').value = savedInvCategory;
     const savedInvStatus = localStorage.getItem('dmc-inv-status');
     if (savedInvStatus) document.getElementById('status-filter').value = savedInvStatus;
+    // Pre-select status from URL param (e.g., from home stat card links)
+    const urlStatus = new URLSearchParams(window.location.search).get('status');
+    if (urlStatus) {
+        const statusMap = { owned: 'own', need: 'need', dont_own: 'dont_own' };
+        if (statusMap[urlStatus]) {
+            document.getElementById('status-filter').value = statusMap[urlStatus];
+        }
+    }
     if (currentView !== 'list') switchView(currentView);
     // Restore saved brand and init UI
     setBrand(currentBrand);

@@ -125,7 +125,9 @@
         .pattern-card.selected .card-select-check { background: var(--gold); border-color: var(--gold); color: #000; }
         body.selection-mode .pattern-card { cursor: pointer; }
         body.selection-mode .card-actions { display: none; }
-        body.selection-mode .card-name { pointer-events: none; }
+        body.selection-mode .card-name,
+        body.selection-mode .card-thumb,
+        body.selection-mode .card-view-row { pointer-events: none; }
         body.selection-mode .status-select,
         body.selection-mode .dmc-dropdown { pointer-events: none; }
 
@@ -170,6 +172,10 @@
             justify-content: center;
             overflow: hidden;
             border-radius: var(--r-lg) var(--r-lg) 0 0;
+            text-decoration: none;
+            color: inherit;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
         }
 
         .thumb-img {
@@ -185,11 +191,11 @@
         .thumb-placeholder { font-size: 40px; opacity: 0.2; }
 
         .card-body {
-            padding: 14px 16px 10px;
+            padding: 10px 16px 6px;
             flex: 1;
         }
 
-        .card-name-wrap { margin-bottom: 8px; }
+        .card-name-wrap { margin-bottom: 4px; }
 
         .card-name {
             display: block;
@@ -229,36 +235,79 @@
 
         .card-actions {
             display: flex;
-            flex-direction: column;
             gap: 6px;
-            padding: 0 16px 14px;
+            padding: 0 16px 8px;
+            align-items: center;
+            position: relative;
         }
 
-        .card-btn-row {
-            display: flex;
-            gap: 6px;
+        .card-actions .status-select { flex: 1; }
+
+        .card-view-row {
+            padding: 0 16px 10px;
         }
 
-        .card-btn {
-            flex: 1;
-            padding: 7px 10px;
-            background: transparent;
+        .card-view-btn {
+            display: block;
+            width: 100%;
+            padding: 7px 12px;
+            background: var(--surface-2);
             border: 1px solid var(--border-2);
             border-radius: var(--r);
             color: var(--text-muted);
             font-family: 'IBM Plex Mono', monospace;
             font-size: 10px;
             letter-spacing: .04em;
-            text-align: center;
             text-decoration: none;
+            text-align: center;
             cursor: pointer;
             transition: all var(--t);
+        }
+
+        .card-view-btn:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
+
+        .card-overflow-btn {
+            padding: 7px 10px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all var(--t);
         }
 
-        .card-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+        .card-overflow-btn:hover,
+        .card-overflow-btn.open {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
+
+        .card-dropdown-wrap:has(.card-overflow-menu) {
+            position: static;
+            flex: none;
+        }
+
+        .card-dropdown-menu.card-overflow-menu {
+            left: auto;
+            right: 0;
+            bottom: 100%;
+            margin-bottom: 4px;
+            width: 220px;
+        }
+
+        .card-dropdown-menu i.ti {
+            margin-right: 6px;
+            font-size: 14px;
+            vertical-align: -1px;
+        }
 
         /* ——— CARD DROPDOWN MENUS ——— */
         .card-dropdown-wrap {
@@ -494,7 +543,7 @@
 
         .progress-bar {
             flex: 1;
-            height: 4px;
+            height: 5px;
             background: var(--border);
             border-radius: 2px;
             overflow: hidden;
@@ -620,12 +669,6 @@
             display: flex; align-items: center; gap: 6px;
             margin-bottom: 16px; flex-wrap: wrap;
         }
-        .tag-filter-row .tag-manage-btn {
-            font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim);
-            background: none; border: none; cursor: pointer; padding: 3px 6px;
-            transition: color var(--t);
-        }
-        .tag-filter-row .tag-manage-btn:hover { color: var(--gold); }
 
         /* Card tags row */
         .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
@@ -729,6 +772,7 @@
                     <a href="/image-to-pattern">Convert Image</a>
                     <a href="/pdf-to-pattern">Import PDF</a>
                     <a href="/json-to-pattern">Import JSON</a>
+                    <a href="/oxs-to-pattern">Import OXS</a>
                     <a href="/create-pattern">Blank Canvas</a>
                 </div>
             </div>
@@ -750,6 +794,7 @@
                 <option value="name-za">Name Z–A</option>
             </select>
             <button class="select-btn" id="select-btn" onclick="toggleSelectionMode()">Select</button>
+            <button class="select-btn" onclick="openTagMgmt()"><i class="ti ti-tag"></i> Tags</button>
             <button class="select-btn" id="backup-all-btn" onclick="backupAll()" title="Download all patterns as ZIP"><i class="ti ti-download"></i> Backup All</button>
         </div>
 
@@ -1023,8 +1068,8 @@
         }
 
         function _calcProgress(p, status) {
-            const total = p.color_count || 0;
-            const done = status === 'completed' ? total : (p.completed_count || 0);
+            const total = (p.grid_w || 0) * (p.grid_h || 0);
+            const done = status === 'completed' ? total : (p.stitched_cell_count || 0);
             const pct = total ? Math.round(done / total * 100) : 0;
             const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
             const textClass = done >= total && total > 0 ? 'pt-done' : '';
@@ -1042,13 +1087,13 @@
             const progressHtml = total > 0 ? `
                         <div class="progress-badge">
                             <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
-                            <span class="progress-text ${textClass}">${done}/${total}</span>
+                            <span class="progress-text ${textClass}">${pct}%</span>
                         </div>` : '';
             return `
                 <div class="pattern-card${selectedIds.has(p.slug) ? ' selected' : ''}" data-id="${p.slug}" data-status="${st}"
                      onclick="cardClick(event, this, '${p.slug}')">
                     <span class="card-select-check"><i class="ti ti-check"></i></span>
-                    <div class="card-thumb">${thumbHtml}</div>
+                    <a href="/view/${p.slug}" class="card-thumb">${thumbHtml}</a>
                     <div class="card-body">
                         <div class="card-name-wrap">
                             <span class="card-name" onclick="startRename(this, '${p.slug}')">${escHtml(p.name)}</span>
@@ -1059,40 +1104,33 @@
                         </div>
                         <div class="card-meta">${p.grid_w} × ${p.grid_h} &middot; ${p.color_count} colors</div>
                         <div class="card-meta">${dateStr}</div>${_renderCardTags(p)}${progressHtml}
+                    </div>
+                    <div class="card-actions">
                         <select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
                             <option value="not_started"${sel('not_started')}>Not Started</option>
                             <option value="in_progress"${sel('in_progress')}>In Progress</option>
                             <option value="completed"${sel('completed')}>Completed</option>
                         </select>
-                    </div>
-                    <div class="card-actions">
-                        <div class="card-btn-row">
-                            <a href="/view/${p.slug}" class="card-btn">View</a>
-                            <a href="/image-to-pattern?load=${p.slug}" class="card-btn">Edit</a>
-                        </div>
-                        <div class="card-btn-row">
-                            <div class="card-dropdown-wrap">
-                                <button class="card-dropdown-btn" onclick="toggleCardMenu(event, 'tools')">Tools \u25be</button>
-                                <div class="card-dropdown-menu" data-menu="tools">
-                                    <button data-pid="${p.slug}" data-pname="${escHtml(p.name)}" onclick="openShoppingModal(this.dataset.pid, this.dataset.pname)">Shopping List</button>
-                                    <a href="/pattern-calculator?pattern=${p.slug}">Project Materials Calculator</a>
-                                    <button onclick="openTagPopover('${p.slug}', this)"><i class="ti ti-tag"></i> Tags</button>
-                                    <button onclick="duplicatePattern('${p.slug}', this)">Duplicate</button>
-                                    <div class="card-dropdown-sep"></div>
-                                    <button class="card-menu-danger" onclick="deletePattern('${p.slug}', this)">Delete</button>
-                                </div>
-                            </div>
-                            <div class="card-dropdown-wrap">
-                                <button class="card-dropdown-btn" onclick="toggleCardMenu(event, 'export')">Export \u25be</button>
-                                <div class="card-dropdown-menu" data-menu="export">
-                                    <button onclick="exportPDF('${p.slug}', this)">PDF</button>
-                                    <button onclick="exportSVG('${p.slug}', this)">SVG</button>
-                                    <button onclick="exportOXS('${p.slug}', this)">OXS</button>
-                                    <button onclick="exportJSON('${p.slug}', this)">JSON</button>
-                                </div>
+                        <div class="card-dropdown-wrap">
+                            <button class="card-overflow-btn" onclick="toggleCardMenu(event, 'overflow')" title="Actions"><i class="ti ti-dots"></i></button>
+                            <div class="card-dropdown-menu card-overflow-menu" data-menu="overflow">
+                                <a href="/image-to-pattern?load=${p.slug}"><i class="ti ti-pencil"></i> Edit</a>
+                                <div class="card-dropdown-sep"></div>
+                                <button data-pid="${p.slug}" data-pname="${escHtml(p.name)}" onclick="openShoppingModal(this.dataset.pid, this.dataset.pname)"><i class="ti ti-shopping-cart"></i> Shopping List</button>
+                                <a href="/pattern-calculator?pattern=${p.slug}"><i class="ti ti-calculator"></i> Materials Calculator</a>
+                                <button onclick="openTagPopover('${p.slug}', this)"><i class="ti ti-tag"></i> Tags</button>
+                                <button onclick="duplicatePattern('${p.slug}', this)"><i class="ti ti-copy"></i> Duplicate</button>
+                                <div class="card-dropdown-sep"></div>
+                                <button onclick="exportPDF('${p.slug}', this)">Export PDF</button>
+                                <button onclick="exportSVG('${p.slug}', this)">Export SVG</button>
+                                <button onclick="exportOXS('${p.slug}', this)">Export OXS</button>
+                                <button onclick="exportJSON('${p.slug}', this)">Export JSON</button>
+                                <div class="card-dropdown-sep"></div>
+                                <button class="card-menu-danger" onclick="deletePattern('${p.slug}', this)"><i class="ti ti-trash"></i> Delete</button>
                             </div>
                         </div>
                     </div>
+                    <div class="card-view-row"><a href="/view/${p.slug}" class="card-view-btn">View</a></div>
                 </div>
             `;
         }
@@ -1116,7 +1154,7 @@
                     fill.style.width = pct + '%';
                     const txt = badge.querySelector('.progress-text');
                     txt.className = `progress-text ${textClass}`;
-                    txt.textContent = `${done}/${p.color_count || 0}`;
+                    txt.textContent = `${pct}%`;
                 }
 
                 if (activeFilter && newStatus !== activeFilter) {
@@ -1462,6 +1500,7 @@
                     thumbnail: body.thumbnail,
                     project_status: 'not_started',
                     completed_count: 0,
+                    stitched_cell_count: 0,
                     updated_at: new Date().toISOString(),
                     created_at: new Date().toISOString(),
                     tags: src.tags || [],
@@ -1479,7 +1518,7 @@
         function cardClick(event, el, id) {
             if (!selectionMode) return;
             // Don't intercept clicks on interactive elements
-            if (event.target.closest('a, button, input, select, textarea')) return;
+            if (event.target.closest('a, button, input, select, textarea, .card-dropdown-menu')) return;
             event.preventDefault();
             togglePatternSelection(id);
             el.classList.toggle('selected', selectedIds.has(id));
@@ -1663,14 +1702,13 @@
 
         function _renderTagFilterRow() {
             const row = document.getElementById('tag-filter-row');
-            if (!allTags.length) { row.style.display = 'none'; return; }
+            if (!allTags.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
             row.style.display = 'flex';
             let html = '';
             for (const t of allTags) {
                 const active = activeTagIds.has(t.id) ? ' active' : '';
                 html += `<button class="tag-chip ${_tagChipClass(t.color)}${active}" data-tag-id="${t.id}" onclick="toggleTagFilter(${t.id})">${_tagDotHtml(t.color, 'tag-dot')} ${escHtml(t.name)}</button>`;
             }
-            html += `<button class="tag-manage-btn" onclick="openTagMgmt()" title="Manage Tags"><i class="ti ti-settings"></i></button>`;
             row.innerHTML = html;
         }
 
