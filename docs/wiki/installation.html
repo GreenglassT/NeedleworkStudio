@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
-    <script src="../js/main.js?v=2"></script>
+    <script src="../js/main.js?v=3"></script>
 </head>
 <body>
 
@@ -83,9 +83,11 @@
         <h2>Desktop App</h2>
         <p>Pre-built desktop installers are available on the <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">GitHub Releases</a> page. Download the appropriate package for your operating system:</p>
         <ul>
-            <li><strong>macOS</strong> - <code>.dmg</code> disk image. Open the DMG and drag Needlework Studio into your Applications folder.</li>
+            <li><strong>macOS (Apple Silicon)</strong> - <code>.dmg</code> disk image (ARM64). For M1/M2/M3/M4 Macs. Open the DMG and drag Needlework Studio into your Applications folder.</li>
+            <li><strong>macOS (Intel)</strong> - <code>.dmg</code> disk image (x64). For older Intel-based Macs. Open the DMG and drag Needlework Studio into your Applications folder.</li>
             <li><strong>Windows</strong> - <code>.exe</code> installer. Run the installer and follow the on-screen prompts.</li>
             <li><strong>Linux</strong> - <code>.AppImage</code> portable executable. Mark the file as executable (<code>chmod +x</code>) and run it directly.</li>
+            <li><strong>Linux (.deb)</strong> - <code>.deb</code> package for Debian and Ubuntu. Install with <code>sudo dpkg -i needlework-studio_*.deb</code>.</li>
         </ul>
 
         <h3>macOS Gatekeeper</h3>

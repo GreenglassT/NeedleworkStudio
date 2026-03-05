@@ -161,18 +161,18 @@ html { scroll-padding-top: 80px; }
 /* ——— HERO ——— */
 .hero {
     text-align: center;
-    padding: 80px 24px 60px;
+    padding: 56px 24px 48px;
     border-bottom: 1px solid var(--border);
     background: radial-gradient(ellipse at 50% 0%, rgba(200,145,58,.06) 0%, transparent 70%);
 }
 
-.hero-logo { height: 180px; width: auto; margin-bottom: 24px; display: block; margin-left: auto; margin-right: auto; }
+.hero-logo { height: 120px; width: auto; margin-bottom: 16px; display: block; margin-left: auto; margin-right: auto; }
 
 .hero-tagline {
-    font-size: 22px;
+    font-size: 20px;
     color: var(--text-muted);
     max-width: 540px;
-    margin: 0 auto 36px;
+    margin: 0 auto 28px;
     font-weight: 400;
 }
 
@@ -185,7 +185,7 @@ html { scroll-padding-top: 80px; }
 
 .hero-screenshot-wrap {
     max-width: 960px;
-    margin: 48px auto 0;
+    margin: 36px auto 0;
 }
 
 .hero-screenshot {
@@ -330,6 +330,9 @@ svg.feature-icon {
     padding: 28px 24px;
     text-align: center;
     transition: border-color var(--t);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .download-card:hover { border-color: var(--gold-dim); }
@@ -359,7 +362,37 @@ svg.download-icon {
     margin-bottom: 16px;
 }
 
-.download-card .btn { width: 100%; justify-content: center; }
+.download-card .btn { width: 100%; justify-content: center; margin-top: auto; }
+
+.download-select {
+    width: 100%;
+    padding: 9px 32px 9px 14px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23736555'/%3E%3C/svg%3E"); /* fill = --text-dim */
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color var(--t);
+}
+
+[data-theme="light"] .download-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239c8768'/%3E%3C/svg%3E"); /* fill = --text-dim */
+}
+
+.download-select:hover { border-color: var(--gold-dim); }
+
+.download-select:focus {
+    outline: none;
+    border-color: var(--gold);
+}
 
 .alt-install {
     background: var(--surface);

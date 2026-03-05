@@ -146,10 +146,13 @@
     var API = 'https://api.github.com/repos/GreenglassT/NeedleworkStudio/releases/latest';
     var RELEASES = 'https://github.com/GreenglassT/NeedleworkStudio/releases';
 
-    function matchAsset(assets, ext) {
+    function matchAsset(assets, ext, keyword) {
         for (var i = 0; i < assets.length; i++) {
             var name = assets[i].name.toLowerCase();
-            if (name.endsWith(ext) && name.indexOf('blockmap') === -1) return assets[i];
+            if (name.endsWith(ext) && name.indexOf('blockmap') === -1) {
+                if (keyword && name.indexOf(keyword) === -1) continue;
+                return assets[i];
+            }
         }
         return null;
     }
@@ -159,35 +162,65 @@
         var macBtn = document.querySelector('[data-os="mac"]');
         var winBtn = document.querySelector('[data-os="win"]');
         var linuxBtn = document.querySelector('[data-os="linux"]');
+        var macArch = document.getElementById('mac-arch');
+        var linuxPkg = document.getElementById('linux-pkg');
         if (!heroBtn && !macBtn) return;
 
         fetch(API)
             .then(function (r) { return r.json(); })
             .then(function (release) {
                 var assets = release.assets || [];
-                var dmg = matchAsset(assets, '.dmg');
+                var dmgArm = matchAsset(assets, '.dmg', 'arm64');
+                var dmgIntel = matchAsset(assets, '.dmg', 'x64');
                 var exe = matchAsset(assets, '.exe');
                 var appimage = matchAsset(assets, '.appimage');
+                var deb = matchAsset(assets, '.deb');
                 var version = release.tag_name || '';
+                var v = version ? version.replace(/^v/i, '') : '';
 
-                if (macBtn && dmg) macBtn.href = dmg.browser_download_url;
+                /* Bind a <select> dropdown to a download button */
+                function bindDownloadDropdown(selectEl, btn, defaultValue, getAsset) {
+                    function update() {
+                        if (!btn) return;
+                        var sel = selectEl ? selectEl.value : defaultValue;
+                        var result = getAsset(sel);
+                        if (result) {
+                            btn.href = result.url;
+                            if (result.label) btn.textContent = result.label;
+                        }
+                    }
+                    if (selectEl) selectEl.addEventListener('change', update);
+                    update();
+                }
+
+                bindDownloadDropdown(macArch, macBtn, 'arm64', function (sel) {
+                    var asset = sel === 'intel' ? dmgIntel : dmgArm;
+                    return asset ? { url: asset.browser_download_url } : null;
+                });
+
+                /* Windows */
                 if (winBtn && exe) winBtn.href = exe.browser_download_url;
-                if (linuxBtn && appimage) linuxBtn.href = appimage.browser_download_url;
 
-                /* Update version labels on download cards */
-                if (version) {
-                    var v = version.replace(/^v/i, '');
+                bindDownloadDropdown(linuxPkg, linuxBtn, 'appimage', function (sel) {
+                    if (sel === 'deb' && deb) return { url: deb.browser_download_url, label: 'Download .deb' };
+                    if (appimage) return { url: appimage.browser_download_url, label: 'Download .AppImage' };
+                    return null;
+                });
+
+                /* Update version labels */
+                if (v) {
                     document.querySelectorAll('.download-card .version').forEach(function (el) {
-                        el.textContent = el.textContent + ' - v' + v;
+                        var base = el.textContent;
+                        el.textContent = (base ? base + ' - ' : '') + 'v' + v;
                     });
                 }
 
                 /* Hero button: detect OS and link to correct asset */
                 if (heroBtn) {
                     var ua = navigator.userAgent.toLowerCase();
-                    if (ua.indexOf('mac') !== -1 && dmg) {
+                    if (ua.indexOf('mac') !== -1 && dmgArm) {
                         heroBtn.textContent = 'Download for macOS';
-                        heroBtn.href = dmg.browser_download_url;
+                        heroBtn.href = dmgArm.browser_download_url;
                     } else if (ua.indexOf('win') !== -1 && exe) {
                         heroBtn.textContent = 'Download for Windows';
                         heroBtn.href = exe.browser_download_url;
