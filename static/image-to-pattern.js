@@ -1836,6 +1836,14 @@ document.addEventListener('keydown', function(e) {
     if (document.querySelector('.notify-overlay')) return;
     const saveModal = document.getElementById('save-modal');
     if (saveModal && saveModal.style.display !== 'none') return;
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea') {
+            e.preventDefault();
+            showShortcutHelp(true);
+            return;
+        }
+    }
     if (editorInstance && editorInstance.isActive()) {
         if (editorInstance.handleKeyDown(e)) return;
     }

@@ -615,6 +615,7 @@
                 <option value="name-za">Name Z–A</option>
             </select>
             <button class="select-btn" id="select-btn" onclick="toggleSelectionMode()">Select</button>
+            <button class="select-btn" id="backup-all-btn" onclick="backupAll()" title="Download all patterns as ZIP"><i class="ti ti-download"></i> Backup All</button>
         </div>
 
         <div class="select-all-bar" id="select-all-bar">
@@ -1271,6 +1272,17 @@
             event.preventDefault();
             togglePatternSelection(id);
             el.classList.toggle('selected', selectedIds.has(id));
+        }
+
+        function backupAll() {
+            const btn = document.getElementById('backup-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> Backing up…';
+            window.location.href = '/api/saved-patterns/export-all';
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-download"></i> Backup All';
+            }, 5000);
         }
 
         function toggleSelectionMode() {

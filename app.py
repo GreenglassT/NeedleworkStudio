@@ -12,10 +12,11 @@ import math
 import io
 import time
 import shutil
+import zipfile
 import logging
 import secrets
 import string
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 logging.basicConfig(
     level=logging.INFO,
@@ -546,19 +547,34 @@ def _pdf_parse_cover(page):
 
 
 def _pdf_parse_legend(page):
-    """Return list of {dmc, name, legend_count} from legend page text."""
+    """Return list of {dmc, brand, name, legend_count} from legend page text.
+
+    Supports DMC (``DMC 310 Black 245``) and Anchor (``Anchor 1 White 245``
+    or ``ANC 1 White 245``) legend formats.
+    """
     text = page.extract_text() or ''
     entries = []
     seen = set()
     for line in text.split('\n'):
-        m = re.search(r'DMC\s+(\S+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$', line.strip())
+        stripped = line.strip()
+        # DMC: "DMC 310 Black 245"
+        m = re.search(r'DMC\s+(\S+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$', stripped)
         if m:
-            dmc = m.group(1).strip()
-            name = m.group(2).strip()
-            count = int(m.group(3))
-            if dmc not in seen:
-                entries.append({'dmc': dmc, 'name': name, 'legend_count': count})
-                seen.add(dmc)
+            brand, number = 'DMC', m.group(1).strip()
+            name, count = m.group(2).strip(), int(m.group(3))
+        else:
+            # Anchor: "Anchor 1 White 245" or "ANC 1 White 245"
+            m = re.search(r'(?:Anchor|ANC)\s+(\d+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$',
+                          stripped, re.IGNORECASE)
+            if m:
+                brand, number = 'Anchor', m.group(1).strip()
+                name, count = m.group(2).strip(), int(m.group(3))
+            else:
+                continue
+        key = f'{brand}:{number}'
+        if key not in seen:
+            entries.append({'dmc': number, 'brand': brand, 'name': name, 'legend_count': count})
+            seen.add(key)
     return entries
 
 
@@ -702,22 +718,25 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     # -- Legend (last page) --
     legend_entries = _pdf_parse_legend(plumber_pdf.pages[-1])
     if not legend_entries:
-        raise ValueError("No DMC entries found in legend")
+        raise ValueError("No thread entries found in legend (expected DMC or Anchor)")
 
     # Build color reference from app's thread database (with per-user status)
     db = get_db()
     uid = current_user.id
-    all_dmcs = [e['dmc'] for e in legend_entries]
-    _ph = ','.join('?' * len(all_dmcs))
-    _rows = db.execute(
-        f"""SELECT t.number, t.hex_color, t.category,
-                   COALESCE(u.status, 'dont_own') AS status
-            FROM threads t
-            LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-            WHERE t.brand = 'DMC' AND t.number IN ({_ph})""",
-        [uid] + all_dmcs
-    ).fetchall()
-    _thread_info = {r['number']: r for r in _rows}
+    # Query threads for each brand present in the legend
+    _thread_info = {}
+    for brand in {e['brand'] for e in legend_entries}:
+        brand_numbers = [e['dmc'] for e in legend_entries if e['brand'] == brand]
+        _ph = ','.join('?' * len(brand_numbers))
+        _rows = db.execute(
+            f"""SELECT t.number, t.hex_color, t.category,
+                       COALESCE(u.status, 'dont_own') AS status
+                FROM threads t
+                LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
+                WHERE t.brand = ? AND t.number IN ({_ph})""",
+            [uid, brand] + brand_numbers
+        ).fetchall()
+        _thread_info.update({r['number']: r for r in _rows})
     dmc_hex = {}
     for e in legend_entries:
         row = _thread_info.get(e['dmc'])
@@ -2390,6 +2409,84 @@ def api_list_saved_patterns():
         d.update(_parse_progress_data(d.pop('progress_data', None)))
         rows.append(d)
     return jsonify(rows)
+
+
+@app.route('/api/saved-patterns/export-all', methods=['GET'])
+@limiter.limit("5 per minute")
+@login_required
+def api_export_all_patterns():
+    """Download a ZIP of all user patterns as JSON files."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT slug, name, grid_w, grid_h, grid_data, legend_data, thumbnail,
+                  part_stitches_data, backstitches_data, knots_data, beads_data, brand
+             FROM saved_patterns
+            WHERE user_id = ?
+            ORDER BY updated_at DESC""",
+        (current_user.id,)
+    )
+    buf = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for row in cursor:
+            r = dict(row)
+            slug = r['slug']
+            # Sanitize name for filename: keep alphanumeric, spaces, hyphens, underscores
+            safe_name = re.sub(r'[^\w\s-]', '', r['name']).strip()
+            safe_name = re.sub(r'\s+', '-', safe_name).lower()
+            filename = f"{slug}-{safe_name}.json" if safe_name else f"{slug}.json"
+
+            try:
+                grid_data = json.loads(r['grid_data'])
+                legend_raw = json.loads(r['legend_data'])
+                part_stitches = json.loads(r['part_stitches_data'] or '[]')
+                backstitches = json.loads(r['backstitches_data'] or '[]')
+                knots = json.loads(r['knots_data'] or '[]')
+                beads = json.loads(r['beads_data'] or '[]')
+            except (json.JSONDecodeError, TypeError):
+                app.logger.exception("Skipping corrupted pattern %s during export-all", slug)
+                continue
+
+            # Strip legend to essential fields (matches client-side exportJSON)
+            legend_data = []
+            for e in legend_raw:
+                legend_data.append({
+                    'dmc': e.get('dmc'), 'hex': e.get('hex'), 'name': e.get('name'),
+                    'symbol': e.get('symbol'), 'stitches': e.get('stitches'),
+                    'category': e.get('category'),
+                })
+
+            payload = {
+                'format': 'needlework-studio',
+                'version': 1,
+                'exported_at': datetime.utcnow().isoformat() + 'Z',
+                'name': r['name'],
+                'brand': r.get('brand') or 'DMC',
+                'grid_w': r['grid_w'],
+                'grid_h': r['grid_h'],
+                'grid_data': grid_data,
+                'legend_data': legend_data,
+                'part_stitches': part_stitches,
+                'backstitches': backstitches,
+                'knots': knots,
+                'beads': beads,
+                'thumbnail': r.get('thumbnail') or '',
+            }
+            zf.writestr(filename, json.dumps(payload, separators=(',', ':')))
+            count += 1
+
+    if count == 0:
+        return jsonify({'error': 'No patterns to export'}), 404
+
+    buf.seek(0)
+    date_str = datetime.utcnow().strftime('%Y-%m-%d')
+    return send_file(
+        buf,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'needlework-studio-backup-{date_str}.zip',
+    )
 
 
 @app.route('/api/saved-patterns/<pattern_slug>', methods=['GET'])

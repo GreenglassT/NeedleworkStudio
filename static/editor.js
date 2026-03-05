@@ -57,6 +57,9 @@ function createPatternEditor(config) {
     let _rectPreview   = null;   // { c1, r1, c2, r2, outline } or null
     let _ellipseStart  = null;   // { col, row } ellipse drag start
     let _ellipsePreview = null;  // { c1, r1, c2, r2, outline } or null
+    let _fillPreviewRegion = null;   // Set<number> of grid indices, or null
+    let _fillPreviewCell   = null;   // { col, row } that generated the cached region
+    function _clearFillPreview() { _fillPreviewRegion = null; _fillPreviewCell = null; }
     let _mirrorMode    = localStorage.getItem('dmc-ed-mirror') || 'off';  // 'off' | 'horizontal' | 'vertical' | 'both'
 
     /* Brush size state */
@@ -548,14 +551,16 @@ function createPatternEditor(config) {
         return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
     }
 
-    /** BFS flood — returns Set of grid indices matching targetColor from startIdx */
-    function _bfsRegion(grid, grid_w, grid_h, startIdx, targetColor) {
+    /** BFS flood — returns Set of grid indices matching targetColor from startIdx.
+     *  Optional limit: stop early once region exceeds this size. */
+    function _bfsRegion(grid, grid_w, grid_h, startIdx, targetColor, limit) {
         const region  = new Set();
         const visited = new Uint8Array(grid_w * grid_h);
         const queue   = [startIdx];
         let   head    = 0;
         visited[startIdx] = 1;
         while (head < queue.length) {
+            if (limit && region.size >= limit) return region;
             const i = queue[head++];
             region.add(i);
             const c = i % grid_w;
@@ -1788,6 +1793,7 @@ function createPatternEditor(config) {
         if (tool !== 'line') { lineStart = null; _lineEnd = null; }
         if (tool !== 'rect') { _rectStart = null; _rectPreview = null; }
         if (tool !== 'ellipse') { _ellipseStart = null; _ellipsePreview = null; }
+        if (tool !== 'fill') _clearFillPreview();
         if (tool !== 'text') _hideTextPanel();
         if (!isStitch) { _bsStart = null; _bsPreviewEnd = null; }
         _hideEyedropTip();
@@ -1814,6 +1820,7 @@ function createPatternEditor(config) {
         if (!info) return;
         activeDmc    = String(dmc);
         activeHex    = info.hex;
+        _clearFillPreview();
         _updateActiveIndicator();
         document.querySelectorAll('.legend-row, .key-row').forEach(r => {
             r.classList.toggle('active', _active && r.dataset.dmc === String(dmc));
@@ -1936,6 +1943,20 @@ function createPatternEditor(config) {
 
         // Selection marching ants
         if (_selRect) _drawSelectionOutline(ctx, offset, cp);
+
+        // Fill preview (under hover highlight)
+        if (_fillPreviewRegion && activeTool === 'fill') {
+            const fpd = getPatternData();
+            ctx.save();
+            ctx.fillStyle = activeHex;
+            ctx.globalAlpha = 0.3;
+            for (const idx of _fillPreviewRegion) {
+                const c = idx % fpd.grid_w;
+                const r = (idx - c) / fpd.grid_w;
+                ctx.fillRect(offset.x + c * cp, offset.y + r * cp, cp, cp);
+            }
+            ctx.restore();
+        }
 
         // Hover cell highlight (always on top)
         if (_hoverCell && activeTool !== 'pan') {
@@ -2359,6 +2380,7 @@ function createPatternEditor(config) {
                         _floodFillNoUndo(pd.grid_w - 1 - col, pd.grid_h - 1 - row);
                     _commitEdit();
                 }
+                _clearFillPreview();
                 break;
             case 'eyedropper': {
                 const dmc = pd.grid[row * pd.grid_w + col];
@@ -2546,6 +2568,28 @@ function createPatternEditor(config) {
 
         _hoverIntersection = null;
 
+        // Fill preview — compute BFS region on hover
+        if (activeTool === 'fill' && !_painting) {
+            if (_cellKey(prevHover) !== _cellKey(_hoverCell)) {
+                if (!hoverStitch || !activeDmc) {
+                    _clearFillPreview();
+                } else if (!_fillPreviewCell || _fillPreviewCell.col !== hoverStitch.col || _fillPreviewCell.row !== hoverStitch.row) {
+                    _fillPreviewCell = { col: hoverStitch.col, row: hoverStitch.row };
+                    const pd = getPatternData();
+                    const idx = hoverStitch.row * pd.grid_w + hoverStitch.col;
+                    const target = pd.grid[idx];
+                    if (target === activeDmc) {
+                        _fillPreviewRegion = null;
+                    } else {
+                        const region = _bfsRegion(pd.grid, pd.grid_w, pd.grid_h, idx, target, 50001);
+                        _fillPreviewRegion = region.size <= 50000 ? region : null;
+                    }
+                }
+                _redrawOverlay();
+            }
+            return;
+        }
+
         // Line preview
         if (activeTool === 'line' && lineStart) {
             if (hoverStitch) _lineEnd = hoverStitch;
@@ -2680,6 +2724,7 @@ function createPatternEditor(config) {
         _rectPreview = null;
         _ellipseStart = null;
         _ellipsePreview = null;
+        _clearFillPreview();
         _bsStart = null;
         _bsPreviewEnd = null;
         _hoverIntersection = null;
@@ -2849,6 +2894,7 @@ function createPatternEditor(config) {
         _rectPreview = null;
         _ellipseStart = null;
         _ellipsePreview = null;
+        _clearFillPreview();
         _bsStart = null;
         _bsPreviewEnd = null;
         _hoverIntersection = null;

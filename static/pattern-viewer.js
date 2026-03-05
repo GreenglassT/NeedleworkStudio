@@ -479,6 +479,7 @@ function _updateCellProgressBar() {
     if (bar) bar.style.width = pct + '%';
     if (label) label.textContent =
         `${pct}% \u00b7 ${done.toLocaleString()} / ${total.toLocaleString()} stitches`;
+    _updateStats();
 }
 
 function _syncColorsFromCells() {
@@ -602,6 +603,7 @@ function _timerPause() {
 function _timerTick() {
     _timerDirty = true;
     _renderTimerDisplay();
+    _updateStats();
 }
 
 function _fmtTime(s) {
@@ -621,6 +623,47 @@ function _renderTimerDisplay() {
         el.style.display = '';
     } else {
         el.style.display = 'none';
+    }
+}
+
+/* ——— PATTERN STATS (estimated remaining time + skein estimate) ——— */
+function _estimateSkeins(stitches, fabricCount) {
+    // Same formula as pattern-calculator: 3.8" thread per stitch at given fabric count,
+    // 2 strands, average efficiency (1.15), 8.7-yard skeins
+    // 2 strands baseline, 15% waste (average efficiency), 8.7-yard skeins
+    const threadPerStitch = (3.8 / fabricCount) * 1.15;
+    return stitches * threadPerStitch / 36 / 8.7;
+}
+
+function _updateStats() {
+    // --- Estimated remaining time ---
+    const statsEl = document.getElementById('stats-display');
+    if (statsEl) {
+        const total = _totalStitchableCount;
+        const done = stitchedCells.size;
+        const secs = _timerCurrentSeconds();
+        const pct = total > 0 ? done / total : 0;
+        if (pct >= 0.01 && secs > 0) {
+            const estimatedTotal = secs / pct;
+            const remaining = Math.max(0, Math.round(estimatedTotal - secs));
+            statsEl.innerHTML = '<i class="ti ti-hourglass" aria-hidden="true"></i> ~' + escHtml(_fmtTime(remaining)) + ' remaining';
+            statsEl.style.display = '';
+        } else {
+            statsEl.style.display = 'none';
+        }
+    }
+
+    // --- Skein estimate in legend totals ---
+    const totalsEl = document.getElementById('legend-totals');
+    if (totalsEl && patternData && patternData.legend) {
+        const legend = patternData.legend;
+        const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
+        const totalSkeins = _estimateSkeins(totalSt, 14);
+        let text = `${legend.length} color${legend.length === 1 ? '' : 's'} \u00b7 ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
+        if (totalSkeins >= 0.1) {
+            text += ` \u00b7 ~${Math.ceil(totalSkeins)} skein${Math.ceil(totalSkeins) === 1 ? '' : 's'}`;
+        }
+        totalsEl.textContent = text;
     }
 }
 
@@ -707,10 +750,6 @@ function filterLegend() {
 
 function renderLegend() {
     const { legend, grid } = patternData;
-    const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
-    document.getElementById('legend-totals').textContent =
-        `${legend.length} color${legend.length === 1 ? '' : 's'} · ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
-
     // Per-color stitched cell counts for fractional display
     const colorStitched = {};
     if (stitchedCells.size > 0) {
@@ -783,6 +822,8 @@ function renderLegend() {
     } else if (q && filtered.length !== 1 && highlightDmc !== null) {
         clearHighlight();
     }
+
+    _updateStats();
 }
 
 /* ——— TRANSFORM ——— */

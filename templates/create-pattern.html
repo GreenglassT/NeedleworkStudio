@@ -524,6 +524,7 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='stitch-renderer.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='editor.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='shortcut-help.js') }}?v={{ v }}"></script>
 <script>
     /* ═══════════════════════════════════════════
        State
@@ -1337,6 +1338,14 @@
 
     /* ——— KEYBOARD ——— */
     document.addEventListener('keydown', function(e) {
+        if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const tag = (e.target.tagName || '').toLowerCase();
+            if (tag !== 'input' && tag !== 'textarea') {
+                e.preventDefault();
+                showShortcutHelp(true);
+                return;
+            }
+        }
         if (editorInstance && editorInstance.isActive()) {
             if (editorInstance.handleKeyDown(e)) return;
         }
