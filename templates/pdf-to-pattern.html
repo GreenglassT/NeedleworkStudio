@@ -14,22 +14,6 @@
         .status-dot.own { background: var(--owned); }
         .status-dot.need { background: var(--need); }
         .status-dot.dont_own { background: var(--text-dim); }
-        .compat-note {
-            display: flex;
-            gap: 10px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            background: color-mix(in srgb, var(--accent) 8%, transparent);
-            border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
-            color: var(--text-dim);
-            font-size: .85rem;
-            line-height: 1.45;
-            margin-top: 12px;
-        }
-        .compat-note .ti { font-size: 1.2rem; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
-        .compat-note strong { color: var(--text); display: block; margin-bottom: 2px; font-size: .9rem; }
-        .compat-note p { margin: 0; }
-        .compat-note a { color: var(--accent); text-decoration: underline; }
     </style>
 {% endblock %}
 
@@ -52,7 +36,7 @@
         </div>
         <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="onFileSelected(this)">
 
-        <div class="compat-note">
+        <div class="info-note">
             <i class="ti ti-info-circle"></i>
             <div>
                 <strong>Compatibility note</strong>

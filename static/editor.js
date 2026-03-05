@@ -560,9 +560,9 @@ function createPatternEditor(config) {
         let   head    = 0;
         visited[startIdx] = 1;
         while (head < queue.length) {
-            if (limit && region.size >= limit) return region;
             const i = queue[head++];
             region.add(i);
+            if (limit && region.size >= limit) return region;
             const c = i % grid_w;
             const r = (i - c) / grid_w;
             if (c > 0          && !visited[i - 1]      && grid[i - 1]      === targetColor) { visited[i - 1]      = 1; queue.push(i - 1); }

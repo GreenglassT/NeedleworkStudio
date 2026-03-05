@@ -2,6 +2,9 @@
 const FABRIC_COLOR  = '#F5F0E8';
 const FALLBACK_HEX  = '#888888';
 
+if (typeof initShortcutHelp === 'function')
+    initShortcutHelp(() => true);  // always in edit mode on this page
+
 /* ——— STATE ——— */
 let currentStep    = 'upload';
 let selectedFile   = null;
@@ -1836,14 +1839,6 @@ document.addEventListener('keydown', function(e) {
     if (document.querySelector('.notify-overlay')) return;
     const saveModal = document.getElementById('save-modal');
     if (saveModal && saveModal.style.display !== 'none') return;
-    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const tag = (e.target.tagName || '').toLowerCase();
-        if (tag !== 'input' && tag !== 'textarea') {
-            e.preventDefault();
-            showShortcutHelp(true);
-            return;
-        }
-    }
     if (editorInstance && editorInstance.isActive()) {
         if (editorInstance.handleKeyDown(e)) return;
     }

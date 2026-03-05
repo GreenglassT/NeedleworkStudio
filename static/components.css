@@ -110,6 +110,24 @@
     display: none;
 }
 
+/* ── Info Note ───────────────────────────────────────────────── */
+.info-note {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    color: var(--text-dim);
+    font-size: .85rem;
+    line-height: 1.45;
+    margin-top: 12px;
+}
+.info-note .ti { font-size: 1.2rem; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.info-note strong { color: var(--text); display: block; margin-bottom: 2px; font-size: .9rem; }
+.info-note p { margin: 0; }
+.info-note a { color: var(--accent); text-decoration: underline; }
+
 /* ── Page Layout ─────────────────────────────────────────────── */
 .page-wrap {
     max-width: var(--pw-max, 900px);

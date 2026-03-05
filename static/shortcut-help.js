@@ -51,6 +51,23 @@
         }).join('');
     }
 
+    /* Register the ? key globally — pages just include this script.
+       Optional: call initShortcutHelp(editModeFn) to provide a callback
+       that returns true when the editor is active (defaults to false). */
+    var _editModeFn = function () { return false; };
+    window.initShortcutHelp = function (editModeFn) {
+        if (typeof editModeFn === 'function') _editModeFn = editModeFn;
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (document.querySelector('.notify-overlay')) return;
+        var tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+        e.preventDefault();
+        showShortcutHelp(_editModeFn());
+    });
+
     window.showShortcutHelp = function (isEditMode) {
         if (document.getElementById('ks-overlay')) return;
 

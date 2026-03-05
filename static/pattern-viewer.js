@@ -1,5 +1,8 @@
 const FABRIC_COLOR = '#F5F0E8';
 
+if (typeof initShortcutHelp === 'function')
+    initShortcutHelp(() => editMode && editor && editor.isActive());
+
 /* ——— DROPDOWN HELPERS ——— */
 function _closeDropdown(menuId, btnId) {
     const menu = document.getElementById(menuId);
@@ -479,7 +482,8 @@ function _updateCellProgressBar() {
     if (bar) bar.style.width = pct + '%';
     if (label) label.textContent =
         `${pct}% \u00b7 ${done.toLocaleString()} / ${total.toLocaleString()} stitches`;
-    _updateStats();
+    _updateETA();
+    _updateLegendTotals();
 }
 
 function _syncColorsFromCells() {
@@ -603,7 +607,7 @@ function _timerPause() {
 function _timerTick() {
     _timerDirty = true;
     _renderTimerDisplay();
-    _updateStats();
+    _updateETA();
 }
 
 function _fmtTime(s) {
@@ -635,36 +639,33 @@ function _estimateSkeins(stitches, fabricCount) {
     return stitches * threadPerStitch / 36 / 8.7;
 }
 
-function _updateStats() {
-    // --- Estimated remaining time ---
+function _updateETA() {
     const statsEl = document.getElementById('stats-display');
-    if (statsEl) {
-        const total = _totalStitchableCount;
-        const done = stitchedCells.size;
-        const secs = _timerCurrentSeconds();
-        const pct = total > 0 ? done / total : 0;
-        if (pct >= 0.01 && secs > 0) {
-            const estimatedTotal = secs / pct;
-            const remaining = Math.max(0, Math.round(estimatedTotal - secs));
-            statsEl.innerHTML = '<i class="ti ti-hourglass" aria-hidden="true"></i> ~' + escHtml(_fmtTime(remaining)) + ' remaining';
-            statsEl.style.display = '';
-        } else {
-            statsEl.style.display = 'none';
-        }
+    if (!statsEl) return;
+    const total = _totalStitchableCount;
+    const done = stitchedCells.size;
+    const secs = _timerCurrentSeconds();
+    const pct = total > 0 ? done / total : 0;
+    if (pct >= 0.01 && secs > 0) {
+        const remaining = Math.max(0, Math.round((secs / pct) - secs));
+        statsEl.innerHTML = '<i class="ti ti-hourglass" aria-hidden="true"></i> ~' + escHtml(_fmtTime(remaining)) + ' remaining';
+        statsEl.style.display = '';
+    } else {
+        statsEl.style.display = 'none';
     }
+}
 
-    // --- Skein estimate in legend totals ---
+function _updateLegendTotals() {
     const totalsEl = document.getElementById('legend-totals');
-    if (totalsEl && patternData && patternData.legend) {
-        const legend = patternData.legend;
-        const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
-        const totalSkeins = _estimateSkeins(totalSt, 14);
-        let text = `${legend.length} color${legend.length === 1 ? '' : 's'} \u00b7 ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
-        if (totalSkeins >= 0.1) {
-            text += ` \u00b7 ~${Math.ceil(totalSkeins)} skein${Math.ceil(totalSkeins) === 1 ? '' : 's'}`;
-        }
-        totalsEl.textContent = text;
+    if (!totalsEl || !patternData || !patternData.legend) return;
+    const legend = patternData.legend;
+    const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
+    const totalSkeins = _estimateSkeins(totalSt, 14);
+    let text = `${legend.length} color${legend.length === 1 ? '' : 's'} \u00b7 ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
+    if (totalSkeins >= 0.1) {
+        text += ` \u00b7 ~${Math.ceil(totalSkeins)} skein${Math.ceil(totalSkeins) === 1 ? '' : 's'} (14ct)`;
     }
+    totalsEl.textContent = text;
 }
 
 function _timerFlush() {
@@ -823,7 +824,8 @@ function renderLegend() {
         clearHighlight();
     }
 
-    _updateStats();
+    _updateETA();
+    _updateLegendTotals();
 }
 
 /* ——— TRANSFORM ——— */
@@ -1414,14 +1416,6 @@ document.addEventListener('keydown', function(e) {
     const tag = (e.target.tagName || '').toLowerCase();
     const inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
 
-    // ? key — show shortcut cheat sheet
-    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (!inInput) {
-            e.preventDefault();
-            showShortcutHelp(editMode && editor && editor.isActive());
-            return;
-        }
-    }
     // F key — toggle zen/fullscreen
     if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (!inInput) {
