@@ -175,6 +175,25 @@ function createPatternEditor(config) {
 .ed-resize-actions button:hover{background:var(--surface-2);color:var(--text)}
 .ed-resize-actions button.primary{border-color:var(--gold-dim);color:var(--gold)}
 .ed-resize-actions button.primary:hover{background:var(--gold-dim);color:var(--text)}
+.ed-rc-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:200}
+.ed-rc-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r-lg);padding:20px;z-index:201;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:240px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)}
+.ed-rc-modal h3{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin:0 0 12px;color:var(--text)}
+.ed-rc-toggle{display:flex;gap:0;margin-bottom:12px;border:1px solid var(--border-2);border-radius:var(--r);overflow:hidden}
+.ed-rc-toggle button{flex:1;font-family:inherit;font-size:10px;padding:5px 0;border:none;background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
+.ed-rc-toggle button:not(:last-child){border-right:1px solid var(--border-2)}
+.ed-rc-toggle button.active{background:var(--gold);color:#1a1208}
+.ed-rc-idx{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ed-rc-idx label{font-size:10px;color:var(--text-muted);white-space:nowrap}
+.ed-rc-idx input[type=number]{width:70px;padding:4px 6px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:11px;outline:none}
+.ed-rc-idx input[type=number]:focus{border-color:var(--gold-dim)}
+.ed-rc-idx .ed-rc-max{font-size:9px;color:var(--text-dim)}
+.ed-rc-actions{display:flex;gap:6px;flex-wrap:wrap}
+.ed-rc-actions button{font-family:inherit;font-size:10px;padding:6px 12px;border-radius:var(--r);border:1px solid var(--border-2);background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
+.ed-rc-actions button:hover{background:var(--surface-2);color:var(--text)}
+.ed-rc-actions button.primary{border-color:var(--gold-dim);color:var(--gold)}
+.ed-rc-actions button.primary:hover{background:var(--gold-dim);color:var(--text)}
+.ed-rc-actions button.danger{border-color:var(--skip);color:var(--skip)}
+.ed-rc-actions button.danger:hover{background:rgba(158,74,74,.15);color:var(--skip)}
 .ed-text-panel{position:absolute;z-index:20;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.4);padding:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;display:none}
 .ed-text-panel input[type=text]{width:160px;padding:4px 6px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:11px;outline:none}
 .ed-text-panel input[type=text]:focus{border-color:var(--gold-dim)}
@@ -889,6 +908,282 @@ function createPatternEditor(config) {
         }
 
         _commitEdit();
+    }
+
+    /* ═══════════════════════════════════════════
+       Row / Column Insert & Delete
+       ═══════════════════════════════════════════ */
+
+    let _rcModal = null, _rcBackdrop = null;
+
+    function _rowColHasContent(axis, idx) {
+        const pd = getPatternData();
+        const { grid, grid_w, grid_h } = pd;
+        if (axis === 'row') {
+            for (let c = 0; c < grid_w; c++) { if (grid[idx * grid_w + c] !== 'BG') return true; }
+        } else {
+            for (let r = 0; r < grid_h; r++) { if (grid[r * grid_w + idx] !== 'BG') return true; }
+        }
+        if (pd.part_stitches) for (const ps of pd.part_stitches) {
+            const x = ps.x !== undefined ? ps.x : ps.col;
+            const y = ps.y !== undefined ? ps.y : ps.row;
+            if (axis === 'row' ? y === idx : x === idx) return true;
+        }
+        if (pd.backstitches) for (const bs of pd.backstitches) {
+            if (axis === 'row') { if (bs.y1 === idx || bs.y2 === idx || (bs.y1 < idx && bs.y2 > idx) || (bs.y2 < idx && bs.y1 > idx)) return true; }
+            else { if (bs.x1 === idx || bs.x2 === idx || (bs.x1 < idx && bs.x2 > idx) || (bs.x2 < idx && bs.x1 > idx)) return true; }
+        }
+        if (pd.knots) for (const k of pd.knots) {
+            if (axis === 'row' ? k.y === idx : k.x === idx) return true;
+        }
+        if (pd.beads) for (const b of pd.beads) {
+            if (axis === 'row' ? b.y === idx : b.x === idx) return true;
+        }
+        return false;
+    }
+
+    function _insertRow(idx) {
+        const pd = getPatternData();
+        const oldW = pd.grid_w, oldH = pd.grid_h;
+        const newH = oldH + 1;
+        if (newH > 500) return;
+        pushUndo();
+        // Rebuild grid: copy rows before idx, insert BG row, copy rows from idx onward
+        const newGrid = new Array(oldW * newH).fill('BG');
+        for (let r = 0; r < oldH; r++) {
+            const destR = r < idx ? r : r + 1;
+            for (let c = 0; c < oldW; c++) newGrid[destR * oldW + c] = pd.grid[r * oldW + c];
+        }
+        pd.grid_h = newH;
+        pd.grid = newGrid;
+        // Shift stitches
+        if (pd.part_stitches) pd.part_stitches.forEach(ps => {
+            const y = ps.y !== undefined ? ps.y : ps.row;
+            if (y >= idx) { if (ps.y !== undefined) ps.y = y + 1; else ps.row = y + 1; }
+        });
+        if (pd.backstitches) pd.backstitches.forEach(bs => {
+            if (bs.y1 >= idx) bs.y1++;
+            if (bs.y2 >= idx) bs.y2++;
+        });
+        if (pd.knots) pd.knots.forEach(k => { if (k.y >= idx) k.y++; });
+        if (pd.beads) pd.beads.forEach(b => { if (b.y >= idx) b.y++; });
+        _commitEdit();
+    }
+
+    function _insertCol(idx) {
+        const pd = getPatternData();
+        const oldW = pd.grid_w, oldH = pd.grid_h;
+        const newW = oldW + 1;
+        if (newW > 500) return;
+        pushUndo();
+        const newGrid = new Array(newW * oldH).fill('BG');
+        for (let r = 0; r < oldH; r++) {
+            for (let c = 0; c < oldW; c++) {
+                const destC = c < idx ? c : c + 1;
+                newGrid[r * newW + destC] = pd.grid[r * oldW + c];
+            }
+        }
+        pd.grid_w = newW;
+        pd.grid = newGrid;
+        if (pd.part_stitches) pd.part_stitches.forEach(ps => {
+            const x = ps.x !== undefined ? ps.x : ps.col;
+            if (x >= idx) { if (ps.x !== undefined) ps.x = x + 1; else ps.col = x + 1; }
+        });
+        if (pd.backstitches) pd.backstitches.forEach(bs => {
+            if (bs.x1 >= idx) bs.x1++;
+            if (bs.x2 >= idx) bs.x2++;
+        });
+        if (pd.knots) pd.knots.forEach(k => { if (k.x >= idx) k.x++; });
+        if (pd.beads) pd.beads.forEach(b => { if (b.x >= idx) b.x++; });
+        _commitEdit();
+    }
+
+    function _deleteRow(idx) {
+        const pd = getPatternData();
+        const oldW = pd.grid_w, oldH = pd.grid_h;
+        if (oldH <= 1) return;
+        const newH = oldH - 1;
+        pushUndo();
+        const newGrid = new Array(oldW * newH);
+        for (let r = 0; r < oldH; r++) {
+            if (r === idx) continue;
+            const destR = r < idx ? r : r - 1;
+            for (let c = 0; c < oldW; c++) newGrid[destR * oldW + c] = pd.grid[r * oldW + c];
+        }
+        pd.grid_h = newH;
+        pd.grid = newGrid;
+        // Remove stitches on deleted row, shift those below up
+        if (pd.part_stitches) pd.part_stitches = pd.part_stitches.filter(ps => {
+            const y = ps.y !== undefined ? ps.y : ps.row;
+            if (y === idx) return false;
+            if (y > idx) { if (ps.y !== undefined) ps.y = y - 1; else ps.row = y - 1; }
+            return true;
+        });
+        if (pd.backstitches) pd.backstitches = pd.backstitches.filter(bs => {
+            // Remove if both endpoints are on the deleted row intersection
+            if (bs.y1 === idx && bs.y2 === idx) return false;
+            // Remove if it crosses the deleted row (segment spans across)
+            if ((bs.y1 <= idx && bs.y2 > idx) || (bs.y2 <= idx && bs.y1 > idx)) return false;
+            if (bs.y1 > idx) bs.y1--;
+            if (bs.y2 > idx) bs.y2--;
+            return true;
+        });
+        if (pd.knots) pd.knots = pd.knots.filter(k => {
+            if (k.y === idx) return false;
+            if (k.y > idx) k.y--;
+            return true;
+        });
+        if (pd.beads) pd.beads = pd.beads.filter(b => {
+            if (b.y === idx) return false;
+            if (b.y > idx) b.y--;
+            return true;
+        });
+        _commitEdit();
+    }
+
+    function _deleteCol(idx) {
+        const pd = getPatternData();
+        const oldW = pd.grid_w, oldH = pd.grid_h;
+        if (oldW <= 1) return;
+        const newW = oldW - 1;
+        pushUndo();
+        const newGrid = new Array(newW * oldH);
+        for (let r = 0; r < oldH; r++) {
+            for (let c = 0; c < oldW; c++) {
+                if (c === idx) continue;
+                const destC = c < idx ? c : c - 1;
+                newGrid[r * newW + destC] = pd.grid[r * oldW + c];
+            }
+        }
+        pd.grid_w = newW;
+        pd.grid = newGrid;
+        if (pd.part_stitches) pd.part_stitches = pd.part_stitches.filter(ps => {
+            const x = ps.x !== undefined ? ps.x : ps.col;
+            if (x === idx) return false;
+            if (x > idx) { if (ps.x !== undefined) ps.x = x - 1; else ps.col = x - 1; }
+            return true;
+        });
+        if (pd.backstitches) pd.backstitches = pd.backstitches.filter(bs => {
+            if (bs.x1 === idx && bs.x2 === idx) return false;
+            if ((bs.x1 <= idx && bs.x2 > idx) || (bs.x2 <= idx && bs.x1 > idx)) return false;
+            if (bs.x1 > idx) bs.x1--;
+            if (bs.x2 > idx) bs.x2--;
+            return true;
+        });
+        if (pd.knots) pd.knots = pd.knots.filter(k => {
+            if (k.x === idx) return false;
+            if (k.x > idx) k.x--;
+            return true;
+        });
+        if (pd.beads) pd.beads = pd.beads.filter(b => {
+            if (b.x === idx) return false;
+            if (b.x > idx) b.x--;
+            return true;
+        });
+        _commitEdit();
+    }
+
+    function _showRowColModal() {
+        if (_rcModal) return;
+        const pd = getPatternData();
+        let axis = 'row'; // 'row' | 'col'
+
+        _rcBackdrop = document.createElement('div');
+        _rcBackdrop.className = 'ed-rc-backdrop';
+
+        _rcModal = document.createElement('div');
+        _rcModal.className = 'ed-rc-modal';
+        _rcModal.innerHTML = `
+            <h3>Insert / Delete</h3>
+            <div class="ed-rc-toggle">
+                <button data-axis="row" class="active">Row</button>
+                <button data-axis="col">Column</button>
+            </div>
+            <div class="ed-rc-idx">
+                <label class="ed-rc-label">Row #</label>
+                <input type="number" class="ed-rc-input" min="1" max="${pd.grid_h}" value="1">
+                <span class="ed-rc-max">of ${pd.grid_h}</span>
+            </div>
+            <div class="ed-rc-actions">
+                <button class="ed-rc-ins-before primary">Insert Before</button>
+                <button class="ed-rc-ins-after primary">Insert After</button>
+                <button class="ed-rc-delete danger">Delete</button>
+                <button class="ed-rc-cancel">Close</button>
+            </div>
+        `;
+        container.appendChild(_rcBackdrop);
+        container.appendChild(_rcModal);
+
+        const idxInput = _rcModal.querySelector('.ed-rc-input');
+        const maxLabel = _rcModal.querySelector('.ed-rc-max');
+        const axisLabel = _rcModal.querySelector('.ed-rc-label');
+
+        function updateAxisUI() {
+            const pd2 = getPatternData();
+            const maxVal = axis === 'row' ? pd2.grid_h : pd2.grid_w;
+            axisLabel.textContent = axis === 'row' ? 'Row #' : 'Col #';
+            idxInput.max = maxVal;
+            maxLabel.textContent = 'of ' + maxVal;
+            if (parseInt(idxInput.value) > maxVal) idxInput.value = maxVal;
+            _rcModal.querySelectorAll('.ed-rc-toggle button').forEach(b => {
+                b.classList.toggle('active', b.dataset.axis === axis);
+            });
+        }
+
+        _rcModal.querySelectorAll('.ed-rc-toggle button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                axis = btn.dataset.axis;
+                updateAxisUI();
+            });
+        });
+
+        const close = () => {
+            _rcBackdrop.remove();
+            _rcModal.remove();
+            _rcBackdrop = null;
+            _rcModal = null;
+        };
+
+        function getIdx() {
+            const pd2 = getPatternData();
+            const maxVal = axis === 'row' ? pd2.grid_h : pd2.grid_w;
+            return Math.max(0, Math.min(maxVal - 1, (parseInt(idxInput.value) || 1) - 1));
+        }
+
+        _rcModal.querySelector('.ed-rc-ins-before').addEventListener('click', () => {
+            const idx = getIdx();
+            if (axis === 'row') _insertRow(idx); else _insertCol(idx);
+            updateAxisUI();
+        });
+
+        _rcModal.querySelector('.ed-rc-ins-after').addEventListener('click', () => {
+            const idx = getIdx();
+            if (axis === 'row') _insertRow(idx + 1); else _insertCol(idx + 1);
+            updateAxisUI();
+        });
+
+        _rcModal.querySelector('.ed-rc-delete').addEventListener('click', () => {
+            const pd2 = getPatternData();
+            const maxVal = axis === 'row' ? pd2.grid_h : pd2.grid_w;
+            if (maxVal <= 1) return;
+            const idx = getIdx();
+            if (_rowColHasContent(axis, idx)) {
+                const label = axis === 'row' ? `row ${idx + 1}` : `column ${idx + 1}`;
+                if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} contains stitches. Delete anyway?`)) return;
+            }
+            if (axis === 'row') _deleteRow(idx); else _deleteCol(idx);
+            updateAxisUI();
+        });
+
+        _rcBackdrop.addEventListener('click', close);
+        _rcModal.querySelector('.ed-rc-cancel').addEventListener('click', close);
+        _rcModal.addEventListener('mousedown', (e) => e.stopPropagation());
+        _rcModal.addEventListener('click', (e) => e.stopPropagation());
+
+        idxInput.addEventListener('keydown', (e) => e.stopPropagation());
+        idxInput.focus({ preventScroll: true });
+        idxInput.select();
     }
 
     function _outlineRegionAt(col, row) {
@@ -2388,6 +2683,8 @@ function createPatternEditor(config) {
         _hoverIntersection = null;
         _hideTextPanel();
         _hideEyedropTip();
+        if (_rcModal) { _rcBackdrop?.remove(); _rcModal.remove(); _rcBackdrop = null; _rcModal = null; }
+        if (_resizeModal) { _resizeBackdrop?.remove(); _resizeModal.remove(); _resizeBackdrop = null; _resizeModal = null; }
         _mirrorMode = 'off';
         _hoverCell = null;
         _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
@@ -2409,6 +2706,7 @@ function createPatternEditor(config) {
             return false;
         }
         if (_resizeModal && _resizeModal.contains(ae)) return false;
+        if (_rcModal && _rcModal.contains(ae)) return false;
         if (e.key === 'Escape') {
             if (_addColorDropdown && _addColorDropdown.classList.contains('open')) {
                 _closeAddColorDropdown();
@@ -2500,6 +2798,7 @@ function createPatternEditor(config) {
             if (e.key === 'y') { e.preventDefault(); redo(); return true; }
             if (e.key === 's' && onSave) { e.preventDefault(); onSave(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault(); _showResizeModal(); return true; }
+            if (e.shiftKey && e.key.toUpperCase() === 'I') { e.preventDefault(); _showRowColModal(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'O') { e.preventDefault(); _setTool('auto-outline'); return true; }
             return false;
         }
@@ -2644,6 +2943,7 @@ function createPatternEditor(config) {
                 <div class="tool-sep"></div>
                 <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
                 <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
+                <button class="tool-btn ed-rowcol-btn" title="Insert/Delete Row/Column (Ctrl+Shift+I)"><i class="ti ti-row-insert-bottom"></i><span class="tool-lbl">Row/Col</span></button>
                 <button class="tool-btn" data-tool="auto-outline" title="Auto Outline (Ctrl+Shift+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="5" y="5" width="14" height="14" rx="1" stroke-dasharray="3 2"/></svg><span class="tool-lbl">Outline</span></button>
             </div>
         `;
@@ -2703,6 +3003,7 @@ function createPatternEditor(config) {
         });
         _toolbar.querySelector('.ed-mirror-btn').addEventListener('click', _cycleMirror);
         _toolbar.querySelector('.ed-resize-btn').addEventListener('click', _showResizeModal);
+        _toolbar.querySelector('.ed-rowcol-btn').addEventListener('click', _showRowColModal);
 
         // Brush size pills
         _brushBtns = _toolbar.querySelectorAll('.brush-pill[data-brush]');
