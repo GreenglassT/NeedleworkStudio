@@ -16,6 +16,7 @@ jobs:
           - os: macos-14
             target: mac
             target-args: "--mac --arm64"
+            artifact-suffix: "arm64-Apple"
             artifact-name: "Needlework-Studio-macOS-arm64"
             artifact-glob: |
               electron/dist/*.dmg
@@ -25,6 +26,7 @@ jobs:
           - os: macos-15-intel
             target: mac
             target-args: "--mac --x64"
+            artifact-suffix: "x64-Intel"
             artifact-name: "Needlework-Studio-macOS-x64"
             artifact-glob: |
               electron/dist/*.dmg
@@ -81,9 +83,16 @@ jobs:
 
       - name: Build and publish
         working-directory: electron
-        run: npx electron-builder ${{ matrix.target-args }} --publish onTag
+        shell: bash
+        run: |
+          EXTRA=""
+          if [ -n "$ARTIFACT_SUFFIX" ]; then
+            EXTRA="-c.mac.artifactName=Needlework-Studio-\${version}-${ARTIFACT_SUFFIX}.\${ext}"
+          fi
+          npx electron-builder ${{ matrix.target-args }} $EXTRA --publish onTag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_SUFFIX: ${{ matrix.artifact-suffix }}
 
       - name: Upload artifact
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
