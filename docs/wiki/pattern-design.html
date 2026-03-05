@@ -136,7 +136,13 @@
         <p>Places specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, the stitch tool lets you place the seven different stitch types described in the section below. Select the desired stitch type from the stitch picker before placing.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M17.5 4H6.5a2.5 2.5 0 0 0 0 5h11a2.5 2.5 0 0 1 0 5H4"/><path d="M14 4L8 20"/></svg> Text</h3>
-        <p>Renders text onto the canvas using system fonts. Type your text, choose a font from the fonts installed on your system, set the size, and click to place it on the grid. The text is rasterized to stitches and becomes part of the pattern. This is particularly useful for adding names, dates, messages, or decorative lettering to your designs.</p>
+        <p>Renders text onto the canvas as stitches. Click on any grid cell to open the text panel, type your text, and press Enter to stamp it onto the pattern. Press <kbd>X</kbd> to select this tool.</p>
+        <p>The text tool has two rendering modes, toggled with buttons in the text panel:</p>
+        <ul>
+            <li><strong>Pixel Font</strong> - A built-in bitmap font designed specifically for cross-stitch grids. Two variants are available: <strong>Standard</strong> (5&times;7 characters) and <strong>Compact</strong> (3&times;5 characters). Pixel fonts produce clean, readable lettering at small sizes where system fonts would not rasterize well.</li>
+            <li><strong>System Font</strong> - Renders text using fonts installed on your computer. Nine curated fonts are available in a dropdown: Georgia, Times New Roman, Palatino Linotype, Arial, Verdana, Trebuchet MS, Courier New, Impact, and Comic Sans MS. System fonts are rasterized onto an offscreen canvas and sampled to stitches, so they work best at larger scales.</li>
+        </ul>
+        <p>Both modes include a scale slider (1&times; to 10&times;) to control the output size, and the panel shows a live dimension readout (e.g. "24 &times; 7 cells") so you can gauge the footprint before placing. The stamped text becomes ordinary stitches and can be edited with any other tool afterward.</p>
 
         <h2>Stitch Types</h2>
         <p>Needlework Studio supports <strong>eight stitch types</strong> that correspond to the standard stitches and embellishments used in counted cross-stitch embroidery.</p>
@@ -186,8 +192,8 @@
         <h3>Canvas Resize</h3>
         <p>You can resize the canvas after creation without losing your existing work. Press <kbd>Ctrl+Shift+R</kbd> to open the resize dialog. Enter new dimensions and choose an <strong>anchor position</strong> that determines where the existing content is placed within the new canvas. For example, anchoring to the top-left adds empty space to the right and bottom, while anchoring to the center adds equal space on all sides.</p>
 
-        <h3>Row and Column Insert / Delete</h3>
-        <p>Insert or delete individual rows and columns at any position in the grid. Right-click a ruler number to insert or delete at that position. Existing stitches shift to accommodate the change. This is useful for adjusting spacing, adding a border row, or removing an unwanted column without resizing the entire canvas.</p>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M3 3h18v18H3z"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="8" y1="9" x2="8" y2="15"/><line x1="5" y1="12" x2="11" y2="12"/></svg> Row and Column Insert / Delete</h3>
+        <p>Insert or delete individual rows and columns at any position in the grid. Press <kbd>Ctrl+Shift+I</kbd> or click the <strong>Row/Col</strong> button in the toolbar to open the insert/delete modal. The modal lets you choose between rows and columns, enter a 1-based index, and then insert before, insert after, or delete at that position. When deleting a row or column that contains stitches, a confirmation prompt appears first. All stitch data (part stitches, backstitches, knots, beads) is properly shifted or removed to keep the pattern consistent. The operation is fully undoable.</p>
 
         <h3>Minimap</h3>
         <p>A small overview of the entire pattern is shown in the corner of the editor. The minimap highlights the portion of the canvas currently visible in the main viewport. Click or drag on the minimap to jump to a different part of the pattern quickly.</p>
@@ -231,6 +237,7 @@
             <li><kbd>Ctrl+Y</kbd> / <kbd>Cmd+Shift+Z</kbd> - Redo</li>
             <li><kbd>Ctrl+S</kbd> / <kbd>Cmd+S</kbd> - Save pattern</li>
             <li><kbd>Ctrl+Shift+R</kbd> - Resize canvas</li>
+            <li><kbd>Ctrl+Shift+I</kbd> - Insert / delete rows and columns</li>
             <li><kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Delete</kbd> - Copy / paste / clear selection</li>
         </ul>
     </main>

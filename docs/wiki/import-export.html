@@ -84,7 +84,7 @@
         <p>Needlework Studio can import cross-stitch patterns from three file formats. All import options are available from the <strong>Create</strong> menu in the navigation bar.</p>
 
         <h3>PDF Import</h3>
-        <p>The PDF importer is designed to handle cross-stitch chart PDFs - the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data.</p>
+        <p>The PDF importer is designed to handle cross-stitch chart PDFs - the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data. Both <strong>DMC</strong> and <strong>Anchor</strong> thread legends are recognized.</p>
         <p><strong>How it works:</strong></p>
         <ol>
             <li><strong>Upload</strong> - Select a PDF file from your computer using the file picker. The PDF should contain cross-stitch chart pages with a grid of symbols or colors.</li>
@@ -153,6 +153,10 @@
             <li>Progress tracking data</li>
         </ul>
         <p>JSON export is the recommended format for backups, archiving, and transferring patterns between Needlework Studio instances. It is the only format that guarantees no data loss during export and re-import.</p>
+
+        <h2><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Backup All</h2>
+        <p>The <strong>Backup All</strong> button in the Saved Patterns gallery exports your entire pattern library as a single ZIP file. Each pattern is saved as an individual JSON file inside the archive, so you can restore any or all of them later with the JSON import.</p>
+        <p>The downloaded file is named <code>needlework-studio-backup-YYYY-MM-DD.zip</code> with the current date. This is the fastest way to create a full offline backup of your work, and it pairs well with the JSON import if you ever need to move to a new server or recover from data loss.</p>
     </main>
 </div>
 
