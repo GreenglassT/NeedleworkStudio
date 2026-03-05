@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Installation — Needlework Studio Wiki</title>
+    <title>Installation - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -78,9 +83,9 @@
         <h2>Desktop App</h2>
         <p>Pre-built desktop installers are available on the <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">GitHub Releases</a> page. Download the appropriate package for your operating system:</p>
         <ul>
-            <li><strong>macOS</strong> &mdash; <code>.dmg</code> disk image. Open the DMG and drag Needlework Studio into your Applications folder.</li>
-            <li><strong>Windows</strong> &mdash; <code>.exe</code> installer. Run the installer and follow the on-screen prompts.</li>
-            <li><strong>Linux</strong> &mdash; <code>.AppImage</code> portable executable. Mark the file as executable (<code>chmod +x</code>) and run it directly.</li>
+            <li><strong>macOS</strong> - <code>.dmg</code> disk image. Open the DMG and drag Needlework Studio into your Applications folder.</li>
+            <li><strong>Windows</strong> - <code>.exe</code> installer. Run the installer and follow the on-screen prompts.</li>
+            <li><strong>Linux</strong> - <code>.AppImage</code> portable executable. Mark the file as executable (<code>chmod +x</code>) and run it directly.</li>
         </ul>
 
         <h3>macOS Gatekeeper</h3>
@@ -129,8 +134,8 @@ volumes:
 
         <h3>Prerequisites</h3>
         <ul>
-            <li><strong>Python 3.10 or newer</strong> &mdash; verify with <code>python3 --version</code>.</li>
-            <li><strong>pip</strong> &mdash; the Python package installer (usually bundled with Python).</li>
+            <li><strong>Python 3.10 or newer</strong> - verify with <code>python3 --version</code>.</li>
+            <li><strong>pip</strong> - the Python package installer (usually bundled with Python).</li>
         </ul>
 
         <h3>Clone and Install</h3>
@@ -145,7 +150,9 @@ pip install -r requirements.txt</code></pre>
         <p>Run the database initialization script to create all tables and seed the thread library:</p>
         <pre><code>python3 init_db.py</code></pre>
         <p>This seeds the database with 744 DMC threads and over 400 Anchor threads, giving you a complete reference library out of the box.</p>
-        <p><strong>Warning:</strong> <code>init_db.py</code> drops and recreates the entire database. Only run this for first-time setup or if you need a full reset. Running it on an existing installation will permanently delete all user data, patterns, and inventory.</p>
+        <div class="callout-warning">
+            <strong>Warning:</strong> <code>init_db.py</code> drops and recreates the entire database. Only run this for first-time setup or if you need a full reset. Running it on an existing installation will permanently delete all user data, patterns, and inventory.
+        </div>
 
         <h3>Create a User</h3>
         <p>Create your first user account:</p>
@@ -166,7 +173,7 @@ pip install -r requirements.txt</code></pre>
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

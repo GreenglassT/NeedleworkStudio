@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Desktop Sync — Needlework Studio Wiki</title>
+    <title>Desktop Sync - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -73,16 +78,16 @@
         <p class="page-sub">Synchronize your patterns and thread inventory between the desktop app and a self-hosted Needlework Studio server.</p>
 
         <h2>Overview</h2>
-        <p>The Needlework Studio desktop app can operate entirely offline as a standalone application, but it also supports <strong>bidirectional synchronization</strong> with a self-hosted Needlework Studio server. When sync is configured, your data flows in both directions &mdash; changes made on the desktop are pushed to the server, and changes made on the server (or from another synced desktop) are pulled to the desktop.</p>
+        <p>The Needlework Studio desktop app can operate entirely offline as a standalone application, but it also supports <strong>bidirectional synchronization</strong> with a self-hosted Needlework Studio server. When sync is configured, your data flows in both directions - changes made on the desktop are pushed to the server, and changes made on the server (or from another synced desktop) are pulled to the desktop.</p>
         <p>This means you can design patterns on your laptop, review them on your phone through the server's web interface, and track stitching progress from either device. All data stays in sync automatically.</p>
 
         <h2>Setting Up Sync</h2>
         <p>Pairing the desktop app with a server is a straightforward process:</p>
         <ol>
-            <li><strong>Open the sync panel</strong> &mdash; Click the <strong>cloud icon</strong> in the desktop app's navigation bar. This opens the sync configuration panel.</li>
-            <li><strong>Enter the server URL</strong> &mdash; Type the full URL of your Needlework Studio server instance (for example, <code>https://needlework.example.com</code> or <code>http://192.168.1.50:5000</code>). The URL should point to the root of the application, not to a specific page.</li>
-            <li><strong>Enter your credentials</strong> &mdash; Provide the username and password for your account on the server. These credentials are used only once during the pairing process to authenticate and request an API token.</li>
-            <li><strong>Pair</strong> &mdash; Click the pair button. The desktop app sends your credentials to the server, which validates them and issues an <strong>API token</strong>. This token is stored securely on the desktop and used for all subsequent sync operations.</li>
+            <li><strong>Open the sync panel</strong> - Click the <strong>cloud icon</strong> in the desktop app's navigation bar. This opens the sync configuration panel.</li>
+            <li><strong>Enter the server URL</strong> - Type the full URL of your Needlework Studio server instance (for example, <code>https://needlework.example.com</code> or <code>http://192.168.1.50:6969</code>). The URL should point to the root of the application, not to a specific page.</li>
+            <li><strong>Enter your credentials</strong> - Provide the username and password for your account on the server. These credentials are used only once during the pairing process to authenticate and request an API token.</li>
+            <li><strong>Pair</strong> - Click the pair button. The desktop app sends your credentials to the server, which validates them and issues an <strong>API token</strong>. This token is stored securely on the desktop and used for all subsequent sync operations.</li>
         </ol>
 
         <h3>Security Note</h3>
@@ -95,7 +100,7 @@
         <p>Synchronization transfers data between the desktop app and the server to keep both copies up to date.</p>
 
         <h3>Automatic Sync on Launch</h3>
-        <p>When the desktop app starts and a server is paired, it automatically performs a sync operation. This pulls any changes from the server (such as patterns you created via the web interface) and pushes any local changes that have not yet been synced. You do not need to take any action &mdash; sync happens in the background during startup.</p>
+        <p>When the desktop app starts and a server is paired, it automatically performs a sync operation. This pulls any changes from the server (such as patterns you created via the web interface) and pushes any local changes that have not yet been synced. You do not need to take any action - sync happens in the background during startup.</p>
 
         <h3>Manual Sync</h3>
         <p>You can trigger a sync at any time by clicking the <strong>Sync Now</strong> button in the sync panel. This is useful if you have just made changes on the server and want them to appear on the desktop immediately without restarting the app, or if you want to ensure your latest desktop changes are pushed to the server before switching devices.</p>
@@ -106,22 +111,22 @@
         <h3>Saved Patterns</h3>
         <p>All saved patterns are synced in full, including:</p>
         <ul>
-            <li><strong>Grid data</strong> &mdash; The complete stitch grid with all full stitch placements and colors.</li>
-            <li><strong>Legend</strong> &mdash; The thread color legend with DMC/Anchor thread references, symbols, and color definitions.</li>
-            <li><strong>Part stitches</strong> &mdash; Half stitches, quarter stitches, and three-quarter stitches with their positions and orientations.</li>
-            <li><strong>Backstitches</strong> &mdash; All backstitch lines with start and end coordinates and thread color assignments.</li>
-            <li><strong>French knots</strong> &mdash; All French knot positions and their thread color assignments.</li>
-            <li><strong>Progress data</strong> &mdash; Per-color completion status, so your stitching progress is available on both devices.</li>
-            <li><strong>Thumbnails</strong> &mdash; Pattern thumbnail images for display in the gallery.</li>
-            <li><strong>Metadata</strong> &mdash; Pattern name, status (Not Started / In Progress / Completed), creation date, and modification timestamps.</li>
+            <li><strong>Grid data</strong> - The complete stitch grid with all full stitch placements and colors.</li>
+            <li><strong>Legend</strong> - The thread color legend with DMC/Anchor thread references, symbols, and color definitions.</li>
+            <li><strong>Part stitches</strong> - Half stitches, quarter stitches, and three-quarter stitches with their positions and orientations.</li>
+            <li><strong>Backstitches</strong> - All backstitch lines with start and end coordinates and thread color assignments.</li>
+            <li><strong>French knots</strong> - All French knot positions and their thread color assignments.</li>
+            <li><strong>Progress data</strong> - Per-color completion status, so your stitching progress is available on both devices.</li>
+            <li><strong>Thumbnails</strong> - Pattern thumbnail images for display in the gallery.</li>
+            <li><strong>Metadata</strong> - Pattern name, status (Not Started / In Progress / Completed), creation date, and modification timestamps.</li>
         </ul>
 
         <h3>Thread Inventory</h3>
         <p>Your thread inventory data is synced across devices, including:</p>
         <ul>
-            <li><strong>Ownership status</strong> &mdash; Whether each thread is marked as Own, Need, or Don't Own.</li>
-            <li><strong>Skein quantities</strong> &mdash; The number of skeins recorded for each thread.</li>
-            <li><strong>Notes</strong> &mdash; Any free-text notes you have attached to individual threads.</li>
+            <li><strong>Ownership status</strong> - Whether each thread is marked as Own, Need, or Don't Own.</li>
+            <li><strong>Skein quantities</strong> - The number of skeins recorded for each thread.</li>
+            <li><strong>Notes</strong> - Any free-text notes you have attached to individual threads.</li>
         </ul>
 
         <h3>Deletions</h3>
@@ -135,10 +140,10 @@
         <h2>Status Indicator</h2>
         <p>The sync status is communicated visually through the cloud icon in the desktop app's navigation bar. The icon changes color and animation to reflect the current state:</p>
         <ul>
-            <li><strong>Gray</strong> &mdash; <em>Unpaired.</em> The desktop app is not connected to any server. Sync is not configured. Click the icon to set up pairing.</li>
-            <li><strong>Green</strong> &mdash; <em>Paired and idle.</em> The desktop app is paired with a server and the last sync completed successfully. Data is up to date.</li>
-            <li><strong>Gold pulse</strong> &mdash; <em>Syncing.</em> A sync operation is currently in progress. The icon pulses with a gold animation while data is being transferred. Avoid closing the app while syncing to ensure all data is transferred completely.</li>
-            <li><strong>Red</strong> &mdash; <em>Error.</em> The last sync attempt failed. This typically means the server is unreachable (network issue, server is down, or the URL has changed). Check your network connection and server status. The icon will return to green after a successful sync.</li>
+            <li><strong>Gray</strong> - <em>Unpaired.</em> The desktop app is not connected to any server. Sync is not configured. Click the icon to set up pairing.</li>
+            <li><strong>Green</strong> - <em>Paired and idle.</em> The desktop app is paired with a server and the last sync completed successfully. Data is up to date.</li>
+            <li><strong>Gold pulse</strong> - <em>Syncing.</em> A sync operation is currently in progress. The icon pulses with a gold animation while data is being transferred. Avoid closing the app while syncing to ensure all data is transferred completely.</li>
+            <li><strong>Red</strong> - <em>Error.</em> The last sync attempt failed. This typically means the server is unreachable (network issue, server is down, or the URL has changed). Check your network connection and server status. The icon will return to green after a successful sync.</li>
         </ul>
 
         <h2>Unpairing</h2>
@@ -152,7 +157,7 @@
         <ul>
             <li>The API token stored on the desktop is deleted.</li>
             <li>The token is <strong>revoked on the server</strong>, so it cannot be reused even if someone were to recover it.</li>
-            <li>The desktop app returns to standalone mode. Your local data remains intact &mdash; nothing is deleted from the desktop. However, future changes on the server will no longer be pulled to the desktop, and local changes will no longer be pushed.</li>
+            <li>The desktop app returns to standalone mode. Your local data remains intact - nothing is deleted from the desktop. However, future changes on the server will no longer be pulled to the desktop, and local changes will no longer be pushed.</li>
         </ul>
         <p>You can re-pair with the same server (or a different one) at any time by going through the setup process again. Re-pairing will issue a new API token and resume synchronization.</p>
     </main>
@@ -161,7 +166,7 @@
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

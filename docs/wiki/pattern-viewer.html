@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pattern Viewer — Needlework Studio Wiki</title>
+    <title>Pattern Viewer - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -76,10 +81,10 @@
         <p class="screenshot-caption">The pattern viewer in chart mode with color legend and progress tracking</p>
 
         <h2>Viewing Modes</h2>
-        <p>The Pattern Viewer offers three distinct viewing modes, each designed for a different stage of working with your pattern. You can switch between modes at any time using the mode toggle buttons in the viewer toolbar.</p>
+        <p>The Pattern Viewer has three viewing modes. Switch between them using the mode toggle buttons in the viewer toolbar.</p>
 
         <h3>Chart Mode</h3>
-        <p>Chart mode displays the pattern as a traditional cross-stitch chart &mdash; a grid of colored squares with symbol overlays. This is the standard way to read a cross-stitch pattern while stitching. Each grid cell shows a colored square with a unique symbol assigned to that thread color. The symbol overlays ensure that the chart remains readable even when printed in black and white or when two similar colors are used side by side.</p>
+        <p>Chart mode displays the pattern as a traditional cross-stitch chart - a grid of colored squares with symbol overlays. This is the standard way to read a cross-stitch pattern while stitching. Each grid cell shows a colored square with a unique symbol assigned to that thread color. The symbol overlays ensure that the chart remains readable even when printed in black and white or when two similar colors are used side by side.</p>
         <p>Chart mode includes <strong>four-sided rulers</strong> along the top, bottom, left, and right edges of the grid. These rulers display stitch coordinates and make it easy to count your position on the fabric. The rulers follow your scroll position so they remain visible as you pan across the pattern.</p>
         <p>You can toggle <strong>gridlines</strong> on or off. When gridlines are enabled, thin lines separate each stitch cell, making it easier to count stitches and follow rows. When gridlines are disabled, the cells sit flush against each other for a cleaner visual appearance.</p>
 
@@ -101,17 +106,20 @@
         <p>The legend panel includes a search field that lets you filter the thread list by thread number or name. This is useful in patterns with many colors when you need to quickly find a specific thread.</p>
 
         <h3>Resizable Sidebar</h3>
-        <p>The legend panel is resizable &mdash; drag its edge to make it wider or narrower according to your preference. This allows you to balance the space between the legend and the chart area. The panel can also be collapsed entirely to maximize the chart viewing area.</p>
+        <p>The legend panel is resizable - drag its edge to make it wider or narrower according to your preference. This allows you to balance the space between the legend and the chart area. The panel can also be collapsed entirely to maximize the chart viewing area.</p>
 
         <h3>Per-Color Progress Tracking</h3>
         <p>Each color entry in the legend includes a progress toggle. You can mark individual colors as <strong>complete</strong> when you have finished stitching all instances of that color in the pattern. Completed colors are visually distinguished in the legend (dimmed or struck through), making it easy to see at a glance which colors remain. This per-color tracking is especially useful when stitching with the "cross-country" method, where you complete one color at a time across the entire pattern.</p>
 
+        <h2>Minimap</h2>
+        <p>A minimap in the bottom-right corner of the viewer shows a scaled-down overview of the entire pattern. A highlighted rectangle indicates the portion of the pattern currently visible in the main viewport. Click or drag on the minimap to jump to a different area. The minimap is especially helpful on large patterns where the zoomed-in view only shows a small section of the chart.</p>
+
         <h2>Zoom Controls</h2>
-        <p>The viewer supports a wide zoom range from <strong>10% to 400%</strong>, giving you the flexibility to see the entire pattern at once or zoom in to inspect individual stitches.</p>
+        <p>The viewer supports a wide zoom range, giving you the flexibility to see the entire pattern at once or zoom in to inspect individual stitches.</p>
         <ul>
-            <li><strong>Zoom in</strong> &mdash; Click the <kbd>+</kbd> button in the toolbar, press the <kbd>+</kbd> or <kbd>=</kbd> key, or use your mouse scroll wheel while holding <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd> on macOS).</li>
-            <li><strong>Zoom out</strong> &mdash; Click the <kbd>-</kbd> button, press the <kbd>-</kbd> key, or scroll down while holding <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>.</li>
-            <li><strong>Fit to window</strong> &mdash; Double-click the zoom percentage indicator to automatically fit the entire pattern within the visible area.</li>
+            <li><strong>Zoom in</strong> - Click the <kbd>+</kbd> button in the toolbar, press the <kbd>+</kbd> or <kbd>=</kbd> key, or use your mouse scroll wheel while holding <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd> on macOS).</li>
+            <li><strong>Zoom out</strong> - Click the <kbd>-</kbd> button, press the <kbd>-</kbd> key, or scroll down while holding <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>.</li>
+            <li><strong>Fit to window</strong> - Double-click the zoom percentage indicator to automatically fit the entire pattern within the visible area.</li>
         </ul>
         <p>The current zoom level is displayed as a percentage in the toolbar. At lower zoom levels (below 50%), symbols may be hidden automatically to keep the chart readable, showing only the color blocks.</p>
 
@@ -125,18 +133,20 @@
         <p>Toggles the symbol overlays on each stitch cell. When enabled, each cell displays a unique character or shape identifying its thread color. When disabled, only the color fill is shown. Press <kbd>S</kbd> to toggle symbols. Symbols are particularly important when working with a printed black-and-white chart or when the pattern contains colors that are hard to distinguish on screen.</p>
 
         <h3>Stitches</h3>
-        <p>Toggles the visibility of different stitch types on the chart. You can selectively show or hide full stitches, part stitches (half, quarter, three-quarter), backstitches, and French knots. This is useful for focusing on one stitch type at a time during stitching &mdash; for example, hiding backstitches while you work on the cross-stitches, then hiding everything except backstitches when you are ready to outline.</p>
+        <p>Toggles the visibility of different stitch types on the chart. You can selectively show or hide full stitches, part stitches (half, quarter, three-quarter), backstitches, and French knots. This is useful for focusing on one stitch type at a time during stitching - for example, hiding backstitches while you work on the cross-stitches, then hiding everything except backstitches when you are ready to outline.</p>
 
         <h2>Keyboard Shortcuts</h2>
         <p>The Pattern Viewer supports the following keyboard shortcuts for efficient navigation and control:</p>
         <ul>
-            <li><kbd>Z</kbd> &mdash; Toggle zen mode (fullscreen distraction-free view)</li>
-            <li><kbd>G</kbd> &mdash; Toggle gridlines</li>
-            <li><kbd>S</kbd> &mdash; Toggle symbol overlays</li>
-            <li><kbd>+</kbd> / <kbd>=</kbd> &mdash; Zoom in</li>
-            <li><kbd>-</kbd> &mdash; Zoom out</li>
-            <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> &mdash; Pan the chart in the corresponding direction</li>
-            <li><kbd>Escape</kbd> &mdash; Exit zen mode</li>
+            <li><kbd>?</kbd> - Show keyboard shortcut help</li>
+            <li><kbd>Z</kbd> or <kbd>F</kbd> - Toggle zen / fullscreen mode</li>
+            <li><kbd>M</kbd> - Toggle stitch marking mode</li>
+            <li><kbd>G</kbd> - Toggle gridlines</li>
+            <li><kbd>S</kbd> - Toggle symbol overlays</li>
+            <li><kbd>+</kbd> / <kbd>=</kbd> - Zoom in</li>
+            <li><kbd>-</kbd> - Zoom out</li>
+            <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> - Pan the chart</li>
+            <li><kbd>Escape</kbd> - Exit zen mode, clear highlight, close search</li>
         </ul>
 
         <h2>Progress Tracking</h2>
@@ -149,7 +159,7 @@
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

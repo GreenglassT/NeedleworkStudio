@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administration — Needlework Studio Wiki</title>
+    <title>Administration - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -64,6 +65,10 @@
             <a href="installation.html" class="sidebar-link">Installation</a>
             <a href="administration.html" class="sidebar-link active">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
         </div>
     </aside>
 
@@ -136,7 +141,10 @@ docker compose exec needlework-studio python3 manage_users.py tokens
 docker compose exec needlework-studio python3 manage_users.py revoke &lt;token-id&gt;</code></pre>
 
         <h2>Backups</h2>
-        <p>All Needlework Studio data &mdash; the SQLite database, uploaded images, and generated files &mdash; is stored in a single directory. This makes backups straightforward: just copy or archive that directory.</p>
+        <p>Needlework Studio stores all data - the SQLite database, uploaded images, and generated files - in a single directory.</p>
+
+        <h3>In-App Backup Export</h3>
+        <p>You can export a backup of your data directly from the application without needing command-line access. Open the backup option from the application menu to download an archive of your patterns, thread inventory, and settings. This is the simplest way to create a backup and does not require SSH or Docker access.</p>
 
         <h3>Data Locations</h3>
         <ul>
@@ -202,7 +210,7 @@ docker compose exec -T needlework-studio tar xzf - -C / < needlework-backup-2025
                 <tr>
                     <td><code>FLASK_DEBUG</code></td>
                     <td><code>0</code></td>
-                    <td>Enable Flask debug mode. Set to <code>1</code> for development only &mdash; this enables auto-reload and detailed error pages. Never enable in production.</td>
+                    <td>Enable Flask debug mode. Set to <code>1</code> for development only - this enables auto-reload and detailed error pages. Never enable in production.</td>
                 </tr>
                 <tr>
                     <td><code>NEEDLEWORK_DATA_DIR</code></td>
@@ -212,7 +220,7 @@ docker compose exec -T needlework-studio tar xzf - -C / < needlework-backup-2025
                 <tr>
                     <td><code>DESKTOP_MODE</code></td>
                     <td><code>false</code></td>
-                    <td>Enable auto-login without credentials. This is used internally by the desktop (Electron) app to bypass the login screen. Do not enable this on a server-hosted deployment &mdash; it would allow anyone to access the application without authentication.</td>
+                    <td>Enable auto-login without credentials. This is used internally by the desktop (Electron) app to bypass the login screen. Do not enable this on a server-hosted deployment - it would allow anyone to access the application without authentication.</td>
                 </tr>
             </tbody>
         </table>
@@ -239,7 +247,7 @@ volumes:
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

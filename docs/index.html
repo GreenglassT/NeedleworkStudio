@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Needlework Studio — Cross-Stitch Pattern Design &amp; Management</title>
+    <title>Needlework Studio - Cross-Stitch Pattern Design &amp; Management</title>
     <meta name="description" content="A self-hosted cross-stitch pattern management and design tool. Track thread inventory, design patterns, and manage stitching projects.">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -95,7 +96,7 @@
                  alt="Pattern editor with drawing tools"
                  class="screenshot feature-thumb">
             <h3>Pattern Editor</h3>
-            <p>Full-featured editor with 11 drawing tools, 6 stitch types including backstitches and beads. Mirror modes, 50-level undo/redo, flood fill, and brush size control.</p>
+            <p>12 tools, 8 stitch types including backstitches, French knots, and beads. Mirror modes, 50-level undo/redo, flood fill preview, row/column insert, and keyboard shortcut help.</p>
         </div>
         <div class="feature-card">
             <img src="img/pattern-viewer-dark.jpg"
@@ -104,7 +105,7 @@
                  alt="Pattern viewer with chart mode"
                  class="screenshot feature-thumb">
             <h3>Pattern Viewer</h3>
-            <p>Chart mode with symbol overlays, thread mode with realistic rendering. Zen mode, resizable legend, per-color progress tracking, and 10%-400% zoom.</p>
+            <p>Chart mode with symbol overlays, thread mode with realistic rendering. Zen mode, resizable legend, per-color progress tracking, and smooth zoom.</p>
         </div>
         <div class="feature-card">
             <img src="img/pdf-import-dark.jpg"
@@ -131,7 +132,7 @@
                  alt="Image to pattern converter"
                  class="screenshot feature-thumb">
             <h3>Image Converter</h3>
-            <p>Upload any photo and convert it to a cross-stitch pattern. Adjust dimensions, color count, thread brand, and palette before saving or editing.</p>
+            <p>Upload any photo and convert it to a cross-stitch pattern. Adjust dimensions, color count (up to 256), contrast, brightness, dithering, and crop shape before generating.</p>
         </div>
     </div>
 </section>
@@ -145,37 +146,46 @@
             <svg class="download-icon" width="36" height="36" viewBox="0 0 24 24" fill="currentColor" width="36" height="36"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
             <h3>macOS</h3>
             <p class="version">Apple Silicon (ARM64)</p>
-            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases/latest/download/Needlework-Studio-0.2.4-arm64.dmg" class="btn btn-primary">Download .dmg</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="btn btn-primary" data-os="mac">Download .dmg</a>
         </div>
         <div class="download-card">
             <svg class="download-icon" width="36" height="36" viewBox="0 0 24 24" fill="currentColor" width="36" height="36"><path d="M3 12V6.75l6-1.32v6.48L3 12zm6.98.09l8.02.01V5.21l-8.02 1.28v5.6zM3 13l6 .09v6.81l-6-1.15V13zm6.98.01l8.02.09v6.69l-8.02-1.41v-5.37z"/></svg>
             <h3>Windows</h3>
             <p class="version">64-bit installer</p>
-            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases/latest/download/Needlework-Studio-Setup-0.2.4.exe" class="btn btn-primary">Download .exe</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="btn btn-primary" data-os="win">Download .exe</a>
         </div>
         <div class="download-card">
             <svg class="download-icon" width="36" height="36" viewBox="0 0 24 24" fill="currentColor" width="36" height="36"><path d="M12.5 2c-1.5 0-2.5 1.5-2.5 3.5 0 .53.11 1.04.3 1.5H9c-1.1 0-2 .9-2 2v2c0 .74.4 1.39 1 1.73V15c0 1.1.9 2 2 2h1v3h4v-3h1c1.1 0 2-.9 2-2v-2.27c.6-.34 1-.99 1-1.73V9c0-1.1-.9-2-2-2h-1.3c.19-.46.3-.97.3-1.5 0-2-1-3.5-2.5-3.5zm-1.5 5h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm0 2v.5h3V9h-3z"/></svg>
             <h3>Linux</h3>
             <p class="version">AppImage (x64)</p>
-            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases/latest/download/Needlework-Studio-0.2.4.AppImage" class="btn btn-primary">Download .AppImage</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="btn btn-primary" data-os="linux">Download .AppImage</a>
         </div>
     </div>
 
     <div class="alt-install">
         <h3>Self-Hosted with Docker</h3>
-        <pre><code>docker pull ghcr.io/greenglasst/needleworkstudio:latest
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Save this as <code>docker-compose.yml</code>, then run the commands below:</p>
+        <pre><code>services:
+  needlework-studio:
+    image: ghcr.io/greenglasst/needleworkstudio:latest
+    ports:
+      - "6969:6969"
+    volumes:
+      - needlework-data:/data
+    restart: unless-stopped
 
-# Create docker-compose.yml and run:
-docker compose up -d
+volumes:
+  needlework-data:</code></pre>
+        <pre><code>docker compose up -d
 docker compose exec needlework-studio python manage_users.py create</code></pre>
-        <p style="font-size: 14px; color: var(--text-muted);">See the <a href="wiki/installation.html">Installation Guide</a> for full setup instructions including Docker Compose, manual Python setup, and configuration.</p>
+        <p style="font-size: 14px; color: var(--text-muted);">Then open <code>http://localhost:6969</code>. See the <a href="wiki/installation.html">Installation Guide</a> for full details.</p>
     </div>
 </section>
 
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="wiki/index.html">Wiki</a>

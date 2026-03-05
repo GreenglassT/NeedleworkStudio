@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Import &amp; Export — Needlework Studio Wiki</title>
+    <title>Import &amp; Export - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -79,12 +84,12 @@
         <p>Needlework Studio can import cross-stitch patterns from three file formats. All import options are available from the <strong>Create</strong> menu in the navigation bar.</p>
 
         <h3>PDF Import</h3>
-        <p>The PDF importer is designed to handle cross-stitch chart PDFs &mdash; the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data.</p>
+        <p>The PDF importer is designed to handle cross-stitch chart PDFs - the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data.</p>
         <p><strong>How it works:</strong></p>
         <ol>
-            <li><strong>Upload</strong> &mdash; Select a PDF file from your computer using the file picker. The PDF should contain cross-stitch chart pages with a grid of symbols or colors.</li>
-            <li><strong>Preview</strong> &mdash; After upload, Needlework Studio displays a preview of the parsed pattern along with the extracted thread legend. Review the preview to verify that the chart was parsed correctly. The preview shows the full grid with colors and symbols as they were interpreted from the PDF.</li>
-            <li><strong>Name and save</strong> &mdash; Enter a name for the pattern and click save to add it to your library.</li>
+            <li><strong>Upload</strong> - Select a PDF file from your computer using the file picker. The PDF should contain cross-stitch chart pages with a grid of symbols or colors.</li>
+            <li><strong>Preview</strong> - After upload, Needlework Studio displays a preview of the parsed pattern along with the extracted thread legend. Review the preview to verify that the chart was parsed correctly. The preview shows the full grid with colors and symbols as they were interpreted from the PDF.</li>
+            <li><strong>Name and save</strong> - Enter a name for the pattern and click save to add it to your library.</li>
         </ol>
         <p>The PDF parser works best with digitally-generated chart PDFs. Scanned or photographed charts may not parse as accurately due to image quality variations. If a PDF contains multiple chart pages, Needlework Studio will stitch them together into a single continuous pattern.</p>
 
@@ -106,10 +111,10 @@
         <h2>Import Workflow</h2>
         <p>Regardless of the file format, the import workflow follows a consistent sequence:</p>
         <ol>
-            <li><strong>Upload file</strong> &mdash; Select the file from your computer using the file picker dialog. The file is uploaded and processed on the server.</li>
-            <li><strong>Preview with legend</strong> &mdash; The imported pattern is displayed as a preview alongside its thread legend. Review the preview carefully to confirm that the pattern was parsed correctly. Check that the colors look right, the dimensions match what you expect, and the stitch types are properly represented.</li>
-            <li><strong>Name pattern</strong> &mdash; Enter a descriptive name for the pattern. This name will appear in your pattern library and can be changed later.</li>
-            <li><strong>Save</strong> &mdash; Click the save button to add the pattern to your library. The pattern is now available in the Saved Patterns gallery, where you can open it in the <a href="pattern-viewer.html">Pattern Viewer</a> or the <a href="pattern-design.html">Pattern Design</a> editor.</li>
+            <li><strong>Upload file</strong> - Select the file from your computer using the file picker dialog. The file is uploaded and processed on the server.</li>
+            <li><strong>Preview with legend</strong> - The imported pattern is displayed as a preview alongside its thread legend. Review the preview carefully to confirm that the pattern was parsed correctly. Check that the colors look right, the dimensions match what you expect, and the stitch types are properly represented.</li>
+            <li><strong>Name pattern</strong> - Enter a descriptive name for the pattern. This name will appear in your pattern library and can be changed later.</li>
+            <li><strong>Save</strong> - Click the save button to add the pattern to your library. The pattern is now available in the Saved Patterns gallery, where you can open it in the <a href="pattern-viewer.html">Pattern Viewer</a> or the <a href="pattern-design.html">Pattern Design</a> editor.</li>
         </ol>
 
         <h2>Export Formats</h2>
@@ -118,18 +123,18 @@
         <h3>PDF Export</h3>
         <p>The PDF exporter generates a multi-page document optimized for printing and offline use. The exported PDF includes:</p>
         <ul>
-            <li><strong>Cover page</strong> &mdash; A title page showing the pattern name, a thumbnail preview of the design, overall dimensions in stitches, thread count, and other summary information.</li>
-            <li><strong>Tiled grid pages</strong> &mdash; The full pattern chart is split across multiple pages in a tiled layout, with each page showing a portion of the grid at a readable scale. Page-edge markers and overlap indicators help you align the pages when taping them together or navigating between sections. Each grid cell shows the color fill and symbol overlay.</li>
-            <li><strong>Legend page</strong> &mdash; A complete thread legend listing every color used in the pattern with its symbol, DMC or Anchor thread number, color name, stitch count, and a color swatch. This serves as your shopping list and reference while stitching.</li>
+            <li><strong>Cover page</strong> - A title page showing the pattern name, a thumbnail preview of the design, overall dimensions in stitches, thread count, and other summary information.</li>
+            <li><strong>Tiled grid pages</strong> - The full pattern chart is split across multiple pages in a tiled layout, with each page showing a portion of the grid at a readable scale. Page-edge markers and overlap indicators help you align the pages when taping them together or navigating between sections. Each grid cell shows the color fill and symbol overlay.</li>
+            <li><strong>Legend page</strong> - A complete thread legend listing every color used in the pattern with its symbol, DMC or Anchor thread number, color name, stitch count, and a color swatch. This serves as your shopping list and reference while stitching.</li>
         </ul>
         <p>The PDF output is designed for standard letter or A4 paper sizes and uses high-contrast colors and symbols that remain legible when printed in black and white.</p>
 
         <h3>SVG Export</h3>
         <p>The SVG exporter produces a vector graphics file of the pattern chart. Because SVG is a vector format, the output can be scaled to any size without loss of quality. This makes it ideal for:</p>
         <ul>
-            <li><strong>High-quality printing</strong> &mdash; Print the chart at any size, from a small reference card to a large poster.</li>
-            <li><strong>Editing in vector software</strong> &mdash; Open the SVG in applications like Inkscape, Adobe Illustrator, or Figma to add custom annotations, borders, or labels.</li>
-            <li><strong>Web publishing</strong> &mdash; Embed the chart on a website or blog post as a scalable image.</li>
+            <li><strong>High-quality printing</strong> - Print the chart at any size, from a small reference card to a large poster.</li>
+            <li><strong>Editing in vector software</strong> - Open the SVG in applications like Inkscape, Adobe Illustrator, or Figma to add custom annotations, borders, or labels.</li>
+            <li><strong>Web publishing</strong> - Embed the chart on a website or blog post as a scalable image.</li>
         </ul>
         <p>The exported SVG includes the full grid with color fills and symbol overlays, matching the appearance of chart mode in the Pattern Viewer.</p>
 
@@ -154,7 +159,7 @@
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

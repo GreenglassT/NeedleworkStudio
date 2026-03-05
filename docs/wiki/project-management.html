@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Management — Needlework Studio Wiki</title>
+    <title>Project Management - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -78,9 +83,9 @@
         <h2>Pattern Status</h2>
         <p>Every saved pattern in Needlework Studio has a status that reflects where it stands in your workflow. There are three status levels:</p>
         <ul>
-            <li><strong>Not Started</strong> &mdash; The pattern has been saved to your library but you have not begun stitching it. This is the default status for newly created or imported patterns.</li>
-            <li><strong>In Progress</strong> &mdash; You are actively stitching this pattern. Setting a pattern to "In Progress" moves it to the top of your attention and is reflected on the dashboard stats cards.</li>
-            <li><strong>Completed</strong> &mdash; You have finished stitching the pattern. Completed patterns remain in your library for reference but are visually distinguished from active projects.</li>
+            <li><strong>Not Started</strong> - The pattern has been saved to your library but you have not begun stitching it. This is the default status for newly created or imported patterns.</li>
+            <li><strong>In Progress</strong> - You are actively stitching this pattern. Setting a pattern to "In Progress" moves it to the top of your attention and is reflected on the dashboard stats cards.</li>
+            <li><strong>Completed</strong> - You have finished stitching the pattern. Completed patterns remain in your library for reference but are visually distinguished from active projects.</li>
         </ul>
         <p>You can change a pattern's status from the pattern detail view or from the Saved Patterns gallery. The status is displayed as a badge on each pattern card, making it easy to see the state of your projects at a glance.</p>
 
@@ -88,7 +93,7 @@
         <p>Beyond the high-level status, Needlework Studio tracks detailed progress at the per-color level within each pattern. In the <a href="pattern-viewer.html">Pattern Viewer</a>'s legend panel, you can mark individual thread colors as complete as you finish stitching them.</p>
 
         <h3>Visual Progress Bars</h3>
-        <p>Each pattern card in the Saved Patterns gallery displays a visual progress bar that reflects how many of the pattern's colors you have marked as complete. The bar fills proportionally &mdash; if a pattern uses 20 colors and you have completed 10 of them, the bar shows 50% progress. This gives you a quick, visual sense of how far along each project is without opening it.</p>
+        <p>Each pattern card in the Saved Patterns gallery displays a visual progress bar that reflects how many of the pattern's colors you have marked as complete. The bar fills proportionally - if a pattern uses 20 colors and you have completed 10 of them, the bar shows 50% progress. This gives you a quick, visual sense of how far along each project is without opening it.</p>
         <p>The progress bar uses a warm gold color scheme consistent with the application's design and is shown on both the gallery thumbnail cards and the pattern detail view.</p>
 
         <h2>Saved Patterns Gallery</h2>
@@ -103,38 +108,38 @@
         <h3>Sorting</h3>
         <p>You can sort the pattern gallery by several criteria:</p>
         <ul>
-            <li><strong>Name</strong> &mdash; Alphabetical order (A to Z or Z to A). Useful for finding patterns by name when you know what you are looking for.</li>
-            <li><strong>Date</strong> &mdash; Most recently modified first, or oldest first. The default sort order shows your most recently worked-on patterns at the top.</li>
-            <li><strong>Status</strong> &mdash; Group patterns by their status (In Progress first, then Not Started, then Completed). This puts your active projects front and center.</li>
+            <li><strong>Name</strong> - Alphabetical order (A to Z or Z to A). Useful for finding patterns by name when you know what you are looking for.</li>
+            <li><strong>Date</strong> - Most recently modified first, or oldest first. The default sort order shows your most recently worked-on patterns at the top.</li>
+            <li><strong>Status</strong> - Group patterns by their status (In Progress first, then Not Started, then Completed). This puts your active projects front and center.</li>
         </ul>
 
         <h3>Batch Actions</h3>
         <p>You can select multiple patterns at once and perform batch actions on the selection. Select patterns by clicking their selection checkboxes, then use the batch action menu. Available batch actions include:</p>
         <ul>
-            <li><strong>Delete</strong> &mdash; Remove multiple patterns from your library at once. A confirmation dialog prevents accidental deletion.</li>
-            <li><strong>Status change</strong> &mdash; Set the status of all selected patterns simultaneously.</li>
+            <li><strong>Delete</strong> - Remove multiple patterns from your library at once. A confirmation dialog prevents accidental deletion.</li>
+            <li><strong>Status change</strong> - Set the status of all selected patterns simultaneously.</li>
         </ul>
-        <p>Batch actions are a significant time saver when reorganizing your library or cleaning up patterns you no longer need.</p>
+        <p>Batch actions are useful when reorganizing your library or removing patterns you no longer need.</p>
 
         <h2>Pattern Cards</h2>
         <p>Each pattern in the gallery is represented by a card that displays key information at a glance:</p>
         <ul>
-            <li><strong>Thumbnail</strong> &mdash; A miniature rendering of the pattern chart.</li>
-            <li><strong>Pattern name</strong> &mdash; The name you assigned when creating or importing the pattern.</li>
-            <li><strong>Thread count</strong> &mdash; The number of distinct thread colors used in the pattern.</li>
-            <li><strong>Dimensions</strong> &mdash; The size of the pattern grid in stitches (width x height).</li>
-            <li><strong>Status badge</strong> &mdash; A colored badge indicating the pattern's current status (Not Started, In Progress, or Completed).</li>
-            <li><strong>Progress bar</strong> &mdash; A visual indicator of per-color completion progress.</li>
+            <li><strong>Thumbnail</strong> - A miniature rendering of the pattern chart.</li>
+            <li><strong>Pattern name</strong> - The name you assigned when creating or importing the pattern.</li>
+            <li><strong>Thread count</strong> - The number of distinct thread colors used in the pattern.</li>
+            <li><strong>Dimensions</strong> - The size of the pattern grid in stitches (width x height).</li>
+            <li><strong>Status badge</strong> - A colored badge indicating the pattern's current status (Not Started, In Progress, or Completed).</li>
+            <li><strong>Progress bar</strong> - A visual indicator of per-color completion progress.</li>
         </ul>
         <p>Click any pattern card to open it in the <a href="pattern-viewer.html">Pattern Viewer</a>.</p>
 
         <h2>Forking Patterns</h2>
-        <p>The <strong>fork</strong> feature creates an independent duplicate of any pattern in your library. When you fork a pattern, Needlework Studio creates a complete copy with its own separate data &mdash; the grid, legend, part stitches, backstitches, French knots, and all metadata are duplicated. Changes to the fork do not affect the original pattern, and vice versa.</p>
+        <p>The <strong>fork</strong> feature creates an independent duplicate of any pattern in your library. When you fork a pattern, Needlework Studio creates a complete copy with its own separate data - the grid, legend, part stitches, backstitches, French knots, and all metadata are duplicated. Changes to the fork do not affect the original pattern, and vice versa.</p>
         <p>Forking is useful in several scenarios:</p>
         <ul>
-            <li><strong>Experimenting with changes</strong> &mdash; Fork a pattern before trying a major color scheme change or design modification. If the experiment does not work out, you still have the original.</li>
-            <li><strong>Creating variations</strong> &mdash; Start from an existing pattern to create a different version, such as changing the color palette or adding a border.</li>
-            <li><strong>Preserving the original</strong> &mdash; Before heavily editing an imported pattern, fork it to keep a pristine copy of the original import.</li>
+            <li><strong>Experimenting with changes</strong> - Fork a pattern before trying a major color scheme change or design modification. If the experiment does not work out, you still have the original.</li>
+            <li><strong>Creating variations</strong> - Start from an existing pattern to create a different version, such as changing the color palette or adding a border.</li>
+            <li><strong>Preserving the original</strong> - Before heavily editing an imported pattern, fork it to keep a pristine copy of the original import.</li>
         </ul>
         <p>Forked patterns appear in your library with a default name based on the original (e.g., "My Pattern (fork)"), which you can rename at any time.</p>
 
@@ -158,7 +163,7 @@
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

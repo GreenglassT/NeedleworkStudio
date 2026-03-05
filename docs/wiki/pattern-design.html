@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pattern Design — Needlework Studio Wiki</title>
+    <title>Pattern Design - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -81,20 +86,24 @@
         <h3>Image to Pattern</h3>
         <p>The Image-to-Pattern converter transforms any photograph or image file into a stitchable cross-stitch chart. The workflow is as follows:</p>
         <ol>
-            <li><strong>Upload an image</strong> &mdash; Select a file from your computer. Most common image formats are supported (JPEG, PNG, WebP, BMP, GIF).</li>
-            <li><strong>Configure grid size</strong> &mdash; Set the width of the resulting pattern in stitches, from <strong>10 to 500</strong>. The height is calculated automatically to maintain the image's aspect ratio. Larger grids produce more detailed patterns but require more stitching time and thread colors.</li>
-            <li><strong>Set color count</strong> &mdash; Choose how many thread colors the pattern should use, from <strong>2 to 34</strong>. Fewer colors produce a simpler, more stylized result. More colors capture finer detail and smoother gradients.</li>
-            <li><strong>Choose dithering</strong> &mdash; Dithering algorithms simulate additional colors by interleaving stitches of different colors. Options include no dithering (solid color blocks), Floyd-Steinberg dithering (natural-looking gradients), and other algorithms. Experiment with different settings to find the look you prefer.</li>
-            <li><strong>Crop the image</strong> &mdash; An inline crop tool lets you select the region of the image you want to convert, directly in the browser. You can adjust the crop rectangle before generating the pattern.</li>
-            <li><strong>Generate</strong> &mdash; Click the generate button to produce the pattern. The converter will quantize the image colors to the nearest DMC thread colors and produce a grid chart.</li>
+            <li><strong>Upload an image</strong> - Select or drag-and-drop a file. Supported formats: JPEG, PNG, WebP, BMP, GIF (up to 10 MB).</li>
+            <li><strong>Configure grid size</strong> - Set the width of the resulting pattern in stitches, from <strong>10 to 500</strong>. The height is calculated automatically to maintain aspect ratio. You can lock or unlock the aspect ratio.</li>
+            <li><strong>Set color count</strong> - Choose how many thread colors the pattern should use, from <strong>2 to 256</strong>. Fewer colors produce a simpler, more stylized result; more colors capture finer gradients.</li>
+            <li><strong>Adjust image settings</strong> - Use the <strong>contrast</strong> and <strong>brightness</strong> sliders to tweak the image before conversion. A <strong>palette filter</strong> (Standard, Historical, or Modern) controls which subset of thread colors is used. You can also select the thread brand (DMC or Anchor) and toggle <strong>pixel art mode</strong> for sharp, un-antialiased output.</li>
+            <li><strong>Choose dithering</strong> - Dithering simulates additional colors by interleaving stitches. Options include no dithering (solid blocks) and Floyd-Steinberg (smoother gradients).</li>
+            <li><strong>Crop the image</strong> - An inline crop tool lets you select the region to convert. Crop shapes include rectangle, square, ellipse, and circle.</li>
+            <li><strong>Generate</strong> - Click generate to produce the pattern. The converter quantizes image colors to the nearest thread colors and produces a grid chart with a real-time preview and color key.</li>
         </ol>
         <p>After generation, the pattern opens in the design editor where you can refine it with the drawing tools described below.</p>
 
         <h3>Blank Canvas</h3>
-        <p>The Blank Canvas option creates an empty grid at custom dimensions that you specify. Enter the desired width and height in stitches to create the canvas. This is ideal for designing patterns entirely from scratch &mdash; lettering, geometric designs, borders, or original artwork.</p>
+        <p>The Blank Canvas option creates an empty grid at custom dimensions that you specify. Enter the desired width and height in stitches to create the canvas. This is ideal for designing patterns entirely from scratch - lettering, geometric designs, borders, or original artwork.</p>
 
         <h2>Drawing Tools</h2>
-        <p>The pattern editor provides <strong>11 drawing tools</strong> in the toolbar. Select a tool by clicking its icon or pressing the corresponding keyboard shortcut.</p>
+        <p>The pattern editor provides <strong>12 tools</strong> in the toolbar. Select a tool by clicking its icon or pressing the corresponding keyboard shortcut.</p>
+
+        <h3>Hand / Pan</h3>
+        <p>Click and drag to pan the canvas. You can also hold <kbd>Space</kbd> with any other tool active to temporarily switch to pan mode. Press <kbd>H</kbd> to select this tool.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg> Pencil</h3>
         <p>The primary drawing tool. Click or click-and-drag to place stitches of the currently selected color on the grid. The pencil respects the current brush size setting, allowing you to draw single stitches or larger blocks at once.</p>
@@ -103,7 +112,7 @@
         <p>Removes stitches from the grid. Click or drag to erase stitches. Like the pencil, the eraser respects the current brush size. Erased cells revert to the empty (background) state.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="var(--gold)" stroke="none" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M19 11V7a1 1 0 0 0-1-1h-3.4a1 1 0 0 1-.7-.3L12.7 4.3a1 1 0 0 0-1.4 0L10.1 5.7a1 1 0 0 1-.7.3H6a1 1 0 0 0-1 1v4a1 1 0 0 1-.3.7l-1.4 1.2a1 1 0 0 0 0 1.4l1.2 1.2a1 1 0 0 1 .3.7V20a1 1 0 0 0 1 1h4a1 1 0 0 1 .7.3l1.2 1.4a1 1 0 0 0 1.4 0l1.2-1.4a1 1 0 0 1 .7-.3H18a1 1 0 0 0 1-1v-3.4a1 1 0 0 1 .3-.7l1.4-1.2a1 1 0 0 0 0-1.4L19.3 11.7a1 1 0 0 1-.3-.7z"/></svg> Fill (Bucket)</h3>
-        <p>Flood-fills a contiguous region of the same color with the currently selected color. Click on any stitch to replace all connected stitches of that color with the new color. This is useful for quickly recoloring large areas of a pattern.</p>
+        <p>Flood-fills a contiguous region of the same color with the currently selected color. Hovering over a region shows a preview highlight of the area that will be filled before you click. Click on any stitch to replace all connected stitches of that color with the new color.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/></svg> Line</h3>
         <p>Draws a straight line of stitches between two points. Click to set the start point, then click again to set the end point. The line is rendered using the current color and brush size. Lines snap to pixel-aligned angles for clean results.</p>
@@ -121,22 +130,22 @@
         <p>Replaces every instance of one color with another across the entire pattern. Select the replacement color, then click on any stitch of the color you want to replace. Every stitch of the target color in the pattern will change to the new color. This is a global operation and is useful for swapping thread colors throughout a design.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="4 2"/></svg> Select</h3>
-        <p>Selects a rectangular region of the canvas for moving, copying, or deleting. Click and drag to define the selection area. Once selected, you can move the selection to a new position on the canvas. This tool is essential for rearranging elements of your design.</p>
+        <p>Selects a rectangular region of the canvas. Click and drag to define the selection area, then drag to move it. Use <kbd>Ctrl+C</kbd> to copy, <kbd>Ctrl+V</kbd> to paste, and <kbd>Delete</kbd> to clear the selected stitches. The selection is shown with a marching-ants border.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><polyline points="4 7 4 4 7 4"/><polyline points="20 7 20 4 17 4"/><polyline points="4 17 4 20 7 20"/><polyline points="20 17 20 20 17 20"/><line x1="4" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="20" y2="12"/><line x1="12" y1="4" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="20"/></svg> Stitch</h3>
-        <p>Places specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, the stitch tool lets you place the six different stitch types described in the section below. Select the desired stitch type from the stitch picker before placing.</p>
+        <p>Places specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, the stitch tool lets you place the seven different stitch types described in the section below. Select the desired stitch type from the stitch picker before placing.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M17.5 4H6.5a2.5 2.5 0 0 0 0 5h11a2.5 2.5 0 0 1 0 5H4"/><path d="M14 4L8 20"/></svg> Text</h3>
         <p>Renders text onto the canvas using system fonts. Type your text, choose a font from the fonts installed on your system, set the size, and click to place it on the grid. The text is rasterized to stitches and becomes part of the pattern. This is particularly useful for adding names, dates, messages, or decorative lettering to your designs.</p>
 
         <h2>Stitch Types</h2>
-        <p>Needlework Studio supports <strong>six stitch types</strong> that correspond to the standard stitches used in counted cross-stitch embroidery.</p>
+        <p>Needlework Studio supports <strong>eight stitch types</strong> that correspond to the standard stitches and embellishments used in counted cross-stitch embroidery.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg> Full Stitch</h3>
-        <p>The standard cross-stitch &mdash; an X shape that covers one square of the fabric grid. This is the most common stitch type and the default for the pencil tool. Full stitches are displayed as solid colored squares on the chart.</p>
+        <p>The standard cross-stitch - an X shape that covers one square of the fabric grid. This is the most common stitch type and the default for the pencil tool. Full stitches are displayed as solid colored squares on the chart.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="20" y2="4"/></svg> Half Stitch</h3>
-        <p>A single diagonal line covering half of a grid square, going either from bottom-left to top-right or from top-left to bottom-right. Half stitches are used for lighter coverage, backgrounds, and blending effects. They use approximately half the thread of a full stitch.</p>
+        <p>A single diagonal line covering half of a grid square, going either from bottom-left to top-right or from top-left to bottom-right. Press <kbd>`</kbd> (backtick) to toggle the direction. Half stitches are used for lighter coverage, backgrounds, and blending effects. They use approximately half the thread of a full stitch.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="20" x2="12" y2="12"/></svg> Quarter Stitch</h3>
         <p>A small diagonal stitch that covers one quarter of a grid square. Quarter stitches start from a corner and end at the center of the square. They are used for fine detail work and smooth diagonal edges, especially in realistic or photographic patterns.</p>
@@ -144,55 +153,85 @@
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="4" x2="20" y2="20"/><line x1="4" y1="20" x2="12" y2="12"/></svg> Three-Quarter Stitch</h3>
         <p>A combination of a half stitch and a quarter stitch, covering three-quarters of a grid square. This stitch type is commonly used to create smoother curves and diagonal lines than full stitches alone can achieve. It is especially useful for lettering and organic shapes.</p>
 
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg> Petite Stitch</h3>
+        <p>A small cross-stitch that occupies one quarter of a grid square. Petite stitches are smaller than regular full stitches and are used for fine detail in areas where a full-sized stitch would be too coarse. They are treated as quarter-weight stitches in the materials calculator.</p>
+
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><line x1="3" y1="18" x2="21" y2="6"/><circle cx="3" cy="18" r="2" fill="var(--gold)"/><circle cx="21" cy="6" r="2" fill="var(--gold)"/></svg> Backstitch</h3>
         <p>A straight line stitch used for outlines, borders, and fine detail. Backstitches run along the edges of grid squares (rather than filling them) and can be placed horizontally, vertically, or diagonally. They are typically stitched after all cross-stitches are complete and are essential for defining shapes and adding crispness to a design.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" width="18" height="18" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="4" fill="var(--gold)"/><path d="M12 8 C14 6, 16 8, 14 10" stroke="var(--gold)" stroke-width="1.5" fill="none"/></svg> French Knot</h3>
         <p>A small raised dot placed at the intersection of grid lines. French knots are used for eyes, flower centers, decorative dots, and other small accent details. They are represented on the chart as small circles or dots at grid intersections.</p>
 
+        <h3>Beads</h3>
+        <p>Beads are placed on individual grid cells to represent seed beads or other small beads stitched onto the fabric. They are shown on the chart as small diamond shapes and are exported alongside other stitch data in all supported formats.</p>
+
         <h2>Brush Sizes</h2>
         <p>Several tools (including the pencil and eraser) support adjustable brush sizes. The available sizes are:</p>
         <ul>
-            <li><strong>1x1</strong> &mdash; Single stitch. The most precise option for detailed work.</li>
-            <li><strong>2x2</strong> &mdash; A block of four stitches. Good for filling small areas quickly.</li>
-            <li><strong>3x3</strong> &mdash; A block of nine stitches. Useful for medium-scale fills.</li>
-            <li><strong>5x5</strong> &mdash; A block of twenty-five stitches. Speeds up large area work.</li>
-            <li><strong>9x9</strong> &mdash; A block of eighty-one stitches. The largest brush for rapid coverage of big areas.</li>
+            <li><strong>1x1</strong> - Single stitch. The most precise option for detailed work.</li>
+            <li><strong>2x2</strong> - A block of four stitches. Good for filling small areas quickly.</li>
+            <li><strong>3x3</strong> - A block of nine stitches. Useful for medium-scale fills.</li>
+            <li><strong>5x5</strong> - A block of twenty-five stitches. Speeds up large area work.</li>
+            <li><strong>9x9</strong> - A block of eighty-one stitches. The largest brush for rapid coverage of big areas.</li>
         </ul>
 
         <h2>Canvas Operations</h2>
 
         <h3>Mirror and Symmetry Modes</h3>
-        <p>Symmetry modes automatically duplicate your strokes across an axis of symmetry. When enabled, every stitch you place is simultaneously mirrored on the opposite side of the canvas. Available symmetry modes include horizontal mirror (left-right), vertical mirror (top-bottom), and quad symmetry (both axes at once). These modes are invaluable for designing symmetric motifs, borders, and mandala-style patterns.</p>
+        <p>Symmetry modes duplicate your strokes across an axis. When enabled, every stitch you place is mirrored on the opposite side of the canvas. Available modes include horizontal mirror (left-right), vertical mirror (top-bottom), and quad symmetry (both axes at once). Press <kbd>M</kbd> to cycle through the modes. These are especially useful for symmetric motifs, borders, and mandala-style patterns.</p>
 
         <h3>Undo and Redo</h3>
         <p>The editor maintains a history of up to <strong>50 levels</strong> of undo and redo. Press <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd> on macOS) to undo the last action, and <kbd>Ctrl+Y</kbd> (or <kbd>Cmd+Shift+Z</kbd>) to redo. You can also use the undo and redo buttons in the toolbar. The history tracks all drawing operations, color changes, and canvas modifications.</p>
 
         <h3>Canvas Resize</h3>
-        <p>You can resize the canvas after creation without losing your existing work. The resize dialog lets you enter new dimensions and choose an <strong>anchor position</strong> that determines where the existing pattern content is placed within the new canvas size. For example, anchoring to the top-left will add new empty space to the right and bottom edges, while anchoring to the center will add equal space on all sides. This is useful for adding borders, extending a design, or trimming excess empty space.</p>
+        <p>You can resize the canvas after creation without losing your existing work. Press <kbd>Ctrl+Shift+R</kbd> to open the resize dialog. Enter new dimensions and choose an <strong>anchor position</strong> that determines where the existing content is placed within the new canvas. For example, anchoring to the top-left adds empty space to the right and bottom, while anchoring to the center adds equal space on all sides.</p>
+
+        <h3>Row and Column Insert / Delete</h3>
+        <p>Insert or delete individual rows and columns at any position in the grid. Right-click a ruler number to insert or delete at that position. Existing stitches shift to accommodate the change. This is useful for adjusting spacing, adding a border row, or removing an unwanted column without resizing the entire canvas.</p>
+
+        <h3>Minimap</h3>
+        <p>A small overview of the entire pattern is shown in the corner of the editor. The minimap highlights the portion of the canvas currently visible in the main viewport. Click or drag on the minimap to jump to a different part of the pattern quickly.</p>
+
+        <h3>Autosave and Recovery</h3>
+        <p>The editor autosaves your work to the browser's local storage every few seconds. If you close the tab or your browser crashes, the next time you open the editor you will be prompted to recover your unsaved work. Autosave data is retained for 7 days.</p>
+
+        <h3>Keyboard Shortcut Help</h3>
+        <p>Press <kbd>?</kbd> in the editor to open a help overlay listing all keyboard shortcuts for tools, stitch types, and canvas operations.</p>
+
+        <h3>Pattern Statistics</h3>
+        <p>The editor displays pattern statistics including total stitch count, dimensions, and per-color stitch counts. These update as you draw and are visible in the legend panel.</p>
 
         <h2>Color Management</h2>
         <p>The color palette panel in the editor displays all colors currently used in the pattern. From this panel you can:</p>
         <ul>
-            <li><strong>Add colors</strong> &mdash; Open the thread picker to add new DMC or Anchor colors to your pattern's palette. The picker supports search by number or name.</li>
-            <li><strong>Replace colors</strong> &mdash; Swap one color for another throughout the entire pattern using the Replace Color tool.</li>
-            <li><strong>Batch operations</strong> &mdash; Remove unused colors from the palette, or perform bulk color adjustments.</li>
+            <li><strong>Add colors</strong> - Open the thread picker to add new DMC or Anchor colors to your pattern's palette. The picker supports search by number or name.</li>
+            <li><strong>Replace colors</strong> - Swap one color for another throughout the entire pattern using the Replace Color tool.</li>
+            <li><strong>Batch operations</strong> - Remove unused colors from the palette, or perform bulk color adjustments.</li>
         </ul>
 
         <h2>Keyboard Shortcuts</h2>
-        <p>The most commonly used tools and actions have keyboard shortcuts for faster workflow:</p>
+        <p>Press <kbd>?</kbd> at any time to see the full list in the editor. The most common shortcuts:</p>
         <ul>
-            <li><kbd>P</kbd> &mdash; Pencil tool</li>
-            <li><kbd>E</kbd> &mdash; Eraser tool</li>
-            <li><kbd>F</kbd> &mdash; Fill tool</li>
-            <li><kbd>L</kbd> &mdash; Line tool</li>
-            <li><kbd>R</kbd> &mdash; Rectangle tool</li>
-            <li><kbd>O</kbd> &mdash; Ellipse tool</li>
-            <li><kbd>I</kbd> &mdash; Eyedropper tool</li>
-            <li><kbd>T</kbd> &mdash; Text tool</li>
-            <li><kbd>Ctrl+Z</kbd> / <kbd>Cmd+Z</kbd> &mdash; Undo</li>
-            <li><kbd>Ctrl+Y</kbd> / <kbd>Cmd+Shift+Z</kbd> &mdash; Redo</li>
-            <li><kbd>Ctrl+S</kbd> / <kbd>Cmd+S</kbd> &mdash; Save pattern</li>
+            <li><kbd>H</kbd> - Hand / pan tool</li>
+            <li><kbd>P</kbd> or <kbd>W</kbd> - Pencil tool</li>
+            <li><kbd>E</kbd> - Eraser tool</li>
+            <li><kbd>F</kbd> - Fill tool</li>
+            <li><kbd>L</kbd> - Line tool</li>
+            <li><kbd>T</kbd> - Rectangle tool</li>
+            <li><kbd>O</kbd> - Ellipse tool</li>
+            <li><kbd>I</kbd> - Eyedropper tool</li>
+            <li><kbd>X</kbd> - Text tool</li>
+            <li><kbd>R</kbd> - Replace color tool</li>
+            <li><kbd>S</kbd> - Selection tool</li>
+            <li><kbd>1</kbd>&ndash;<kbd>7</kbd> - Stitch types (half, quarter, three-quarter, petite, backstitch, French knot, bead)</li>
+            <li><kbd>M</kbd> - Cycle mirror mode (off &rarr; horizontal &rarr; vertical &rarr; both)</li>
+            <li><kbd>`</kbd> - Toggle half-stitch direction</li>
+            <li><kbd>Space</kbd> (hold) - Temporary pan</li>
+            <li><kbd>Ctrl+Z</kbd> / <kbd>Cmd+Z</kbd> - Undo</li>
+            <li><kbd>Ctrl+Y</kbd> / <kbd>Cmd+Shift+Z</kbd> - Redo</li>
+            <li><kbd>Ctrl+S</kbd> / <kbd>Cmd+S</kbd> - Save pattern</li>
+            <li><kbd>Ctrl+Shift+R</kbd> - Resize canvas</li>
+            <li><kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Delete</kbd> - Copy / paste / clear selection</li>
         </ul>
     </main>
 </div>
@@ -200,7 +239,7 @@
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

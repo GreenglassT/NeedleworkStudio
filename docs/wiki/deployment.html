@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deployment — Needlework Studio Wiki</title>
+    <title>Deployment - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -64,6 +65,10 @@
             <a href="installation.html" class="sidebar-link">Installation</a>
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link active">Deployment</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
         </div>
     </aside>
 
@@ -176,7 +181,7 @@ sudo systemctl start needlework-studio</code></pre>
             <li><strong>Login attempts:</strong> 5 requests per minute per IP address. This mitigates brute-force password attacks.</li>
             <li><strong>Thread inventory updates:</strong> 60 requests per minute per user. This prevents accidental or automated flooding of the API.</li>
         </ul>
-        <p>Rate limiting is implemented in-memory, which is why a single Gunicorn worker (<code>-w 1</code>) is required. See the <a href="installation.html">Installation</a> page for details on the Gunicorn configuration.</p>
+        <p>Rate limiting is implemented in-memory, which is why a single Gunicorn worker (<code>-w 1</code>) is required. See <a href="installation.html#gunicorn">Installation &gt; Production with Gunicorn</a> for details.</p>
 
         <h3>HTTP Security Headers</h3>
         <p>Needlework Studio sets the following security headers on all responses:</p>
@@ -201,7 +206,7 @@ sudo systemctl start needlework-studio</code></pre>
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

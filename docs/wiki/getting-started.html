@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Getting Started — Needlework Studio Wiki</title>
+    <title>Getting Started - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -65,6 +66,10 @@
             <a href="administration.html" class="sidebar-link">Administration</a>
             <a href="deployment.html" class="sidebar-link">Deployment</a>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+        </div>
     </aside>
 
     <!-- Content -->
@@ -76,14 +81,13 @@
         <p class="screenshot-caption">The Needlework Studio dashboard with stats cards and recent patterns</p>
 
         <h2>What is Needlework Studio?</h2>
-        <p>Needlework Studio is a free, open-source, self-hosted application for managing and designing counted cross-stitch patterns. It combines a full-featured pattern editor with a comprehensive thread inventory, project tracking, and import/export capabilities &mdash; all accessible through your web browser or the dedicated desktop app.</p>
-        <p>Whether you are converting a photograph into a stitchable chart, cataloguing your thread collection, or tracking progress on a work in progress, Needlework Studio provides the tools you need in a single, unified interface.</p>
+        <p>Needlework Studio is a free, open-source, self-hosted application for managing and designing counted cross-stitch patterns. It includes a pattern editor, thread inventory for DMC and Anchor brands, project tracking, and import/export in PDF, OXS, and JSON formats. It runs in your web browser or as a desktop app.</p>
 
         <h2>Three Ways to Run Needlework Studio</h2>
-        <p>You can run Needlework Studio in whichever way best suits your setup. All three methods give you the same full-featured application.</p>
+        <p>All three methods run the same application with the same feature set.</p>
 
         <h3>Desktop App (Recommended for Personal Use)</h3>
-        <p>Download the installer for your platform &mdash; macOS (.dmg), Windows (.exe), or Linux (.AppImage). The desktop app bundles everything you need and runs locally without requiring a server. It also supports <a href="desktop-sync.html">bidirectional sync</a> with a self-hosted server instance if you want to access your data from multiple devices.</p>
+        <p>Download the installer for your platform - macOS (.dmg), Windows (.exe), or Linux (.AppImage). The desktop app bundles everything you need and runs locally without requiring a server. It also supports <a href="desktop-sync.html">bidirectional sync</a> with a self-hosted server instance if you want to access your data from multiple devices.</p>
 
         <h3>Docker (Recommended for Self-Hosting)</h3>
         <p>The Docker image is the fastest way to deploy a server instance. A single <code>docker run</code> command or a short <code>docker-compose.yml</code> file is all you need. This is ideal if you want to access Needlework Studio from any device on your network or share it with household members.</p>
@@ -101,10 +105,10 @@
         <h3>Exploring the Dashboard</h3>
         <p>After logging in, you arrive at the <strong>Home</strong> page. The dashboard gives you an at-a-glance summary of your workspace:</p>
         <ul>
-            <li><strong>Stats cards</strong> &mdash; These display your total number of saved patterns, threads owned, threads needed, and patterns in progress. As you build your inventory and save patterns, these numbers update automatically.</li>
-            <li><strong>Recent patterns</strong> &mdash; A row of thumbnail cards showing your most recently saved or edited patterns. Click any card to open it in the Pattern Viewer.</li>
+            <li><strong>Stats cards</strong> - These display your total number of saved patterns, threads owned, threads needed, and patterns in progress. As you build your inventory and save patterns, these numbers update automatically.</li>
+            <li><strong>Recent patterns</strong> - A row of thumbnail cards showing your most recently saved or edited patterns. Click any card to open it in the Pattern Viewer.</li>
         </ul>
-        <p>If this is a brand-new installation, the dashboard will show zeroes and an empty recent patterns section. That is expected &mdash; once you import your first pattern or start building your thread inventory, the dashboard will populate.</p>
+        <p>If this is a brand-new installation, the dashboard will show zeroes and an empty recent patterns section. That is expected - once you import your first pattern or start building your thread inventory, the dashboard will populate.</p>
 
         <h2>Navigation Overview</h2>
         <p>The main navigation bar runs along the top of the screen (or is accessible via the hamburger menu on smaller screens). Here is what each section contains:</p>
@@ -121,24 +125,24 @@
         <h3>Create Menu</h3>
         <p>The <strong>Create</strong> dropdown provides several ways to start a new pattern:</p>
         <ul>
-            <li><strong>Image to Pattern</strong> &mdash; Upload a photograph or image file and convert it into a cross-stitch chart. You can configure the grid size (10 to 500 stitches), color count (2 to 34 colors), dithering algorithm, and crop the image inline before generating.</li>
-            <li><strong>Blank Canvas</strong> &mdash; Start with an empty grid at custom dimensions. Useful when you want to design a pattern entirely from scratch.</li>
-            <li><strong>PDF Import</strong> &mdash; Upload a cross-stitch PDF chart. Needlework Studio will parse the chart pages and extract the pattern data automatically.</li>
-            <li><strong>JSON Import</strong> &mdash; Import a pattern in Needlework Studio's native JSON format, useful for sharing patterns between instances.</li>
-            <li><strong>OXS Import</strong> &mdash; Import an Open Cross Stitch (.oxs) XML file for interoperability with other cross-stitch software.</li>
+            <li><strong>Image to Pattern</strong> - Upload a photograph or image file and convert it into a cross-stitch chart. You can configure the grid size (10 to 500 stitches), color count (2 to 256 colors), dithering, contrast, brightness, and crop the image before generating.</li>
+            <li><strong>Blank Canvas</strong> - Start with an empty grid at custom dimensions. Useful when you want to design a pattern entirely from scratch.</li>
+            <li><strong>PDF Import</strong> - Upload a cross-stitch PDF chart. Needlework Studio will parse the chart pages and extract the pattern data automatically.</li>
+            <li><strong>JSON Import</strong> - Import a pattern in Needlework Studio's native JSON format, useful for sharing patterns between instances.</li>
+            <li><strong>OXS Import</strong> - Import an Open Cross Stitch (.oxs) XML file for interoperability with other cross-stitch software.</li>
         </ul>
         <p>For a deeper look at the pattern creation tools, see <a href="pattern-design.html">Pattern Design</a>. For details on file import workflows, see <a href="import-export.html">Import &amp; Export</a>.</p>
 
         <h2>Theme Toggle</h2>
         <p>Needlework Studio supports both a <strong>dark theme</strong> and a <strong>light theme</strong>. You can switch between them at any time by clicking the theme toggle button in the top navigation bar. Your preference is saved in your browser's local storage and will persist across sessions.</p>
-        <p>The dark theme uses warm, low-contrast tones designed to be comfortable during long design sessions. The light theme offers a brighter workspace that some users prefer for color-accurate work.</p>
+        <p>The dark theme uses warm, low-contrast tones. The light theme is brighter and can be easier for judging thread colors.</p>
 
         <h2>Next Steps</h2>
         <p>Now that you are familiar with the interface, here are some suggested next steps:</p>
         <ul>
-            <li><a href="thread-inventory.html">Thread Inventory</a> &mdash; Start cataloguing the threads you own so Needlework Studio can help you plan materials for future projects.</li>
-            <li><a href="pattern-design.html">Pattern Design</a> &mdash; Try converting an image into a cross-stitch pattern or open a blank canvas to experiment with the drawing tools.</li>
-            <li><a href="import-export.html">Import &amp; Export</a> &mdash; If you have existing patterns in PDF, OXS, or JSON format, import them into your library.</li>
+            <li><a href="thread-inventory.html">Thread Inventory</a> - Start cataloguing the threads you own so Needlework Studio can help you plan materials for future projects.</li>
+            <li><a href="pattern-design.html">Pattern Design</a> - Try converting an image into a cross-stitch pattern or open a blank canvas to experiment with the drawing tools.</li>
+            <li><a href="import-export.html">Import &amp; Export</a> - If you have existing patterns in PDF, OXS, or JSON format, import them into your library.</li>
         </ul>
     </main>
 </div>
@@ -146,7 +150,7 @@
 <!-- Footer -->
 <footer class="site-footer">
     <div class="footer-inner">
-        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
             <a href="index.html">Wiki</a>

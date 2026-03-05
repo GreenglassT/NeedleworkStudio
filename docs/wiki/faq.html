@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ &amp; Troubleshooting - Needlework Studio Wiki</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js?v=2"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="var(--text)" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="var(--gold)" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Reference</div>
+            <a href="faq.html" class="sidebar-link active">FAQ &amp; Troubleshooting</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>FAQ &amp; Troubleshooting</h1>
+        <p class="page-sub">Answers to common questions and solutions for issues you may run into.</p>
+
+        <h2>Desktop App</h2>
+
+        <h3>macOS says the app is damaged or cannot be opened</h3>
+        <p>The macOS build is not signed with an Apple Developer certificate, so Gatekeeper blocks it on first launch. To open it:</p>
+        <ol>
+            <li>Right-click (or Control-click) the app in Finder.</li>
+            <li>Select <strong>Open</strong> from the context menu.</li>
+            <li>Click <strong>Open</strong> again in the confirmation dialog.</li>
+        </ol>
+        <p>You only need to do this once. After the first launch, macOS remembers your choice.</p>
+
+        <h3>Where does the desktop app store my data?</h3>
+        <p>The desktop app stores all data (database, images, settings) locally on your machine in the application's data directory. On macOS this is in <code>~/Library/Application Support/needlework-studio</code>, on Windows in <code>%APPDATA%\needlework-studio</code>, and on Linux in <code>~/.config/needlework-studio</code>. No internet connection or server is required.</p>
+
+        <h2>Installation &amp; Docker</h2>
+
+        <h3>I ran init_db.py and lost all my data</h3>
+        <p><code>init_db.py</code> drops and recreates the entire database from scratch. It is meant for first-time setup only. If you ran it on an existing installation, your data is gone unless you have a backup. See <a href="administration.html">Administration</a> for backup procedures to avoid this in the future.</p>
+
+        <h3>The app starts but I cannot log in</h3>
+        <p>You need to create a user account first. For Docker:</p>
+        <pre><code>docker compose exec needlework-studio python3 manage_users.py create</code></pre>
+        <p>For manual installs:</p>
+        <pre><code>python3 manage_users.py create</code></pre>
+        <p>Follow the prompts to set a username and password, then log in at <code>http://localhost:6969</code>.</p>
+
+        <h3>How do I reset my password?</h3>
+        <p>Use the <code>manage_users.py</code> script with the <code>password</code> command:</p>
+        <pre><code>python3 manage_users.py password</code></pre>
+        <p>For Docker:</p>
+        <pre><code>docker compose exec needlework-studio python3 manage_users.py password</code></pre>
+
+        <h3>Can multiple users share one server?</h3>
+        <p>Yes. Each user has their own account, thread inventory, and pattern library. Create additional accounts with <code>manage_users.py create</code>. Data is isolated between users.</p>
+
+        <h2>Patterns &amp; Import</h2>
+
+        <h3>My PDF did not parse correctly</h3>
+        <p>The PDF importer works best with digitally-generated cross-stitch charts (the kind produced by pattern design software). Scanned or photographed charts, hand-drawn patterns, and heavily stylized PDFs may not parse accurately. If the result looks wrong:</p>
+        <ul>
+            <li>Check that the PDF contains a standard symbol grid and color legend.</li>
+            <li>Try a different PDF of the same pattern if available (some sellers offer multiple formats).</li>
+            <li>As a fallback, use the Image-to-Pattern converter: take a screenshot of the chart and convert it as an image.</li>
+        </ul>
+
+        <h3>Can I import patterns from PC Stitch or other software?</h3>
+        <p>If the software can export to OXS (Open Cross Stitch) format, you can import it directly. Many cross-stitch programs support OXS export. Otherwise, export to PDF and use the PDF importer, or export a chart image and use the Image-to-Pattern converter.</p>
+
+        <h3>The color matching looks wrong after import</h3>
+        <p>OXS files contain explicit thread references (e.g. "DMC 310"), so colors are mapped directly to threads in your library. If a thread number in the file is not recognized, the raw hex color is used instead. For the Image-to-Pattern converter, colors are matched to the closest DMC thread using the CIEDE2000 perceptual color distance algorithm, which usually produces good results but may not be perfect for every color. In either case, you can open the pattern in the editor and use the Replace Color tool to swap any color for a better match.</p>
+
+        <h2>Editor &amp; Viewer</h2>
+
+        <h3>How do I see all keyboard shortcuts?</h3>
+        <p>Press <kbd>?</kbd> in either the pattern editor or the pattern viewer to open a help overlay listing all available keyboard shortcuts.</p>
+
+        <h3>My unsaved changes were lost</h3>
+        <p>The editor autosaves to your browser's local storage every few seconds. If you close the tab accidentally, reopening the editor should prompt you to recover your work. Autosave data is kept for 7 days. However, clearing your browser data or using a different browser will lose the autosave. Always use <kbd>Ctrl+S</kbd> to save to the server.</p>
+
+        <h3>The pattern looks blurry or pixelated</h3>
+        <p>Check your zoom level. At very low zoom levels, the chart shows simplified color blocks without symbols or fine detail. Zoom in (scroll wheel or <kbd>+</kbd> key) to see individual stitches clearly. At 100% and above, each stitch cell is rendered at full detail.</p>
+
+        <h2>Sync</h2>
+
+        <h3>The sync icon is red / sync is failing</h3>
+        <p>A red sync icon means the desktop app cannot reach the server. Check that:</p>
+        <ul>
+            <li>The server is running and accessible at the URL you configured.</li>
+            <li>Your network connection is working (try opening the server URL in a browser).</li>
+            <li>The port is not blocked by a firewall.</li>
+            <li>If you changed the server's URL or port, unpair and re-pair with the new address.</li>
+        </ul>
+
+        <h3>I made changes on both devices and one was overwritten</h3>
+        <p>Needlework Studio uses a last-write-wins strategy based on timestamps. The most recently modified version takes precedence. To avoid accidental overwrites, sync frequently and avoid editing the same pattern on multiple devices at the same time. You can also <a href="project-management.html">fork a pattern</a> before making major changes to keep a backup copy.</p>
+
+        <h2>Browser Compatibility</h2>
+        <p>Needlework Studio's web interface is tested on current versions of:</p>
+        <ul>
+            <li><strong>Chrome</strong> / Chromium (version 90+)</li>
+            <li><strong>Firefox</strong> (version 90+)</li>
+            <li><strong>Safari</strong> (version 15+)</li>
+            <li><strong>Edge</strong> (version 90+)</li>
+        </ul>
+        <p>The app uses HTML5 Canvas for pattern rendering and localStorage for autosave and preferences. JavaScript must be enabled. Mobile browsers work but the editor is best used with a mouse or trackpad due to the precision required for placing individual stitches.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

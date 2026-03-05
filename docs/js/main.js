@@ -141,21 +141,64 @@
     });
 })();
 
-/* OS detection for download button */
+/* Fetch latest release and update download links */
 (function () {
-    document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.querySelector('.hero-download');
-        if (!btn) return;
-        var ua = navigator.userAgent.toLowerCase();
-        if (ua.indexOf('mac') !== -1) {
-            btn.textContent = 'Download for macOS';
-            btn.href = 'https://github.com/GreenglassT/NeedleworkStudio/releases/latest/download/Needlework-Studio-0.2.4-arm64.dmg';
-        } else if (ua.indexOf('win') !== -1) {
-            btn.textContent = 'Download for Windows';
-            btn.href = 'https://github.com/GreenglassT/NeedleworkStudio/releases/latest/download/Needlework-Studio-Setup-0.2.4.exe';
-        } else if (ua.indexOf('linux') !== -1) {
-            btn.textContent = 'Download for Linux';
-            btn.href = 'https://github.com/GreenglassT/NeedleworkStudio/releases/latest/download/Needlework-Studio-0.2.4.AppImage';
+    var API = 'https://api.github.com/repos/GreenglassT/NeedleworkStudio/releases/latest';
+    var RELEASES = 'https://github.com/GreenglassT/NeedleworkStudio/releases';
+
+    function matchAsset(assets, ext) {
+        for (var i = 0; i < assets.length; i++) {
+            var name = assets[i].name.toLowerCase();
+            if (name.endsWith(ext) && name.indexOf('blockmap') === -1) return assets[i];
         }
+        return null;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var heroBtn = document.querySelector('.hero-download');
+        var macBtn = document.querySelector('[data-os="mac"]');
+        var winBtn = document.querySelector('[data-os="win"]');
+        var linuxBtn = document.querySelector('[data-os="linux"]');
+        if (!heroBtn && !macBtn) return;
+
+        fetch(API)
+            .then(function (r) { return r.json(); })
+            .then(function (release) {
+                var assets = release.assets || [];
+                var dmg = matchAsset(assets, '.dmg');
+                var exe = matchAsset(assets, '.exe');
+                var appimage = matchAsset(assets, '.appimage');
+                var version = release.tag_name || '';
+
+                if (macBtn && dmg) macBtn.href = dmg.browser_download_url;
+                if (winBtn && exe) winBtn.href = exe.browser_download_url;
+                if (linuxBtn && appimage) linuxBtn.href = appimage.browser_download_url;
+
+                /* Update version labels on download cards */
+                if (version) {
+                    var v = version.replace(/^v/i, '');
+                    document.querySelectorAll('.download-card .version').forEach(function (el) {
+                        el.textContent = el.textContent + ' - v' + v;
+                    });
+                }
+
+                /* Hero button: detect OS and link to correct asset */
+                if (heroBtn) {
+                    var ua = navigator.userAgent.toLowerCase();
+                    if (ua.indexOf('mac') !== -1 && dmg) {
+                        heroBtn.textContent = 'Download for macOS';
+                        heroBtn.href = dmg.browser_download_url;
+                    } else if (ua.indexOf('win') !== -1 && exe) {
+                        heroBtn.textContent = 'Download for Windows';
+                        heroBtn.href = exe.browser_download_url;
+                    } else if (ua.indexOf('linux') !== -1 && appimage) {
+                        heroBtn.textContent = 'Download for Linux';
+                        heroBtn.href = appimage.browser_download_url;
+                    }
+                }
+            })
+            .catch(function () {
+                /* On failure, keep links pointing to releases page */
+            });
     });
 })();
