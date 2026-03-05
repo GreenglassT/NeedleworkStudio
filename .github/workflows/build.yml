@@ -16,7 +16,16 @@ jobs:
           - os: macos-14
             target: mac
             target-args: "--mac --arm64"
-            artifact-name: "Needlework-Studio-macOS"
+            artifact-name: "Needlework-Studio-macOS-arm64"
+            artifact-glob: |
+              electron/dist/*.dmg
+              electron/dist/*.zip
+              electron/dist/*.yml
+            build-backend: bash build_backend.sh
+          - os: macos-15-intel
+            target: mac
+            target-args: "--mac --x64"
+            artifact-name: "Needlework-Studio-macOS-x64"
             artifact-glob: |
               electron/dist/*.dmg
               electron/dist/*.zip
