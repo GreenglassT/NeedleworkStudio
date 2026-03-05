@@ -531,7 +531,7 @@
        ═══════════════════════════════════════════ */
     let canvasCellPx = 19;
     const MAX_CELL_PX = 80;
-    const SYMBOL_SET = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※";
+    const SYMBOL_SET = {{ pattern_symbols | tojson }};
     const FABRIC_COLOR = '#F5F0E8';
     const FALLBACK_HEX = '#888888';
     const CHART_BG = '#ffffff';

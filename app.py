@@ -2044,7 +2044,8 @@ def mark_need():
 @login_required
 def image_to_pattern():
     """Image to cross-stitch pattern generator page."""
-    return render_template('image-to-pattern.html')
+    return render_template('image-to-pattern.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
 
 
 @app.route('/api/image/session-source')
@@ -2880,7 +2881,8 @@ def oxs_to_pattern():
 @app.route('/create-pattern')
 @login_required
 def create_pattern():
-    return render_template('create-pattern.html')
+    return render_template('create-pattern.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
 
 
 @app.route('/api/pdf/import', methods=['POST'])

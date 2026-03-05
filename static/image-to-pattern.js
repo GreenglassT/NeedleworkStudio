@@ -1097,7 +1097,7 @@ function ensureEditor() {
         onDirty:          () => { _scheduleAutosave(); },
         onClean:          () => {},
         onSave:           null,
-        symbolSet:        "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※",
+        symbolSet:        (window._PAGE_CONFIG && window._PAGE_CONFIG.patternSymbols) || "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※",
     });
     editorInstance.injectUI();
 }

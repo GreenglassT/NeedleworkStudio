@@ -1289,5 +1289,6 @@
     <script src="{{ url_for('static', filename='stitch-renderer.js') }}?v={{ v }}"></script>
     <script src="{{ url_for('static', filename='editor.js') }}?v={{ v }}"></script>
     <script src="{{ url_for('static', filename='shortcut-help.js') }}?v={{ v }}"></script>
+    <script>window._PAGE_CONFIG = { patternSymbols: {{ pattern_symbols | tojson }} };</script>
     <script src="{{ url_for('static', filename='image-to-pattern.js') }}?v={{ v }}"></script>
 {% endblock %}
