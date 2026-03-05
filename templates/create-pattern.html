@@ -141,6 +141,19 @@
         white-space: nowrap;
     }
     .canvas-toolbar input[type=checkbox] { accent-color: var(--gold); }
+    .btn-back-toolbar {
+        padding: 6px 14px;
+        border: 1px solid var(--border-2);
+        border-radius: var(--r);
+        background: transparent;
+        color: var(--text-muted);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px; cursor: pointer;
+        transition: all var(--t);
+        display: flex; align-items: center; gap: 4px;
+        text-decoration: none;
+    }
+    .btn-back-toolbar:hover { background: var(--surface-2); color: var(--text); }
     .btn-save-toolbar {
         padding: 6px 14px;
         border: 1px solid var(--gold-dim);
@@ -410,6 +423,9 @@
     <div id="editor-wrap">
         <div class="canvas-card">
             <div class="canvas-toolbar">
+                <a href="/saved-patterns" class="btn-back-toolbar" id="btn-back" onclick="return confirmLeave()">
+                    <i class="ti ti-arrow-left"></i> Back
+                </a>
                 <label>
                     <input type="checkbox" id="gridlines-check" checked onchange="renderCanvas()">
                     Gridlines
@@ -1141,14 +1157,21 @@
 
         area.addEventListener('wheel', function(e) {
             e.preventDefault();
-            const rect   = area.getBoundingClientRect();
-            const mx     = e.clientX - rect.left;
-            const my     = e.clientY - rect.top;
-            const factor = e.deltaY < 0 ? WHEEL_ZOOM_FACTOR : 1 / WHEEL_ZOOM_FACTOR;
-            cvPanX  = mx - (mx - cvPanX) * factor;
-            cvPanY  = my - (my - cvPanY) * factor;
-            const maxZoom = area.clientWidth / (canvasCellPx * MIN_ZOOM_CELLS);
-            cvScale = Math.max(0.05, Math.min(maxZoom, cvScale * factor));
+            if (e.ctrlKey) {
+                // Pinch-to-zoom (trackpad) or Ctrl+wheel (mouse)
+                const rect   = area.getBoundingClientRect();
+                const mx     = e.clientX - rect.left;
+                const my     = e.clientY - rect.top;
+                const factor = e.deltaY < 0 ? WHEEL_ZOOM_FACTOR : 1 / WHEEL_ZOOM_FACTOR;
+                cvPanX  = mx - (mx - cvPanX) * factor;
+                cvPanY  = my - (my - cvPanY) * factor;
+                const maxZoom = area.clientWidth / (canvasCellPx * MIN_ZOOM_CELLS);
+                cvScale = Math.max(0.05, Math.min(maxZoom, cvScale * factor));
+            } else {
+                // Two-finger scroll (trackpad) or plain mouse wheel → pan
+                cvPanX -= e.deltaX;
+                cvPanY -= e.deltaY;
+            }
             applyCanvasTransform();
             scheduleSnap();
         }, { passive: false });
@@ -1308,6 +1331,12 @@
     });
 
     /* ——— UNSAVED CHANGES WARNING ——— */
+    window.confirmLeave = function() {
+        if (editorInstance && editorInstance.isDirty()) {
+            return confirm('You have unsaved changes. Leave without saving?');
+        }
+        return true;
+    };
     window.addEventListener('beforeunload', function(e) {
         if (editorInstance && editorInstance.isDirty()) {
             e.preventDefault();
