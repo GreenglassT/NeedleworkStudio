@@ -703,10 +703,34 @@ svg.download-icon {
     text-decoration: none;
     color: inherit;
     transition: border-color var(--t);
-    display: block;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
 }
 
 .wiki-index-card:hover { border-color: var(--gold-dim); color: inherit; }
+
+.wiki-index-card:hover .wiki-card-icon {
+    color: var(--gold-hover);
+}
+
+.wiki-card-icon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+    color: var(--gold);
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: color var(--t);
+}
+
+.wiki-card-body {
+    flex: 1;
+    min-width: 0;
+}
 
 .wiki-index-card h3 {
     font-size: 17px;
