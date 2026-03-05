@@ -187,6 +187,20 @@ function createPatternEditor(config) {
 .ed-text-scale-val{font-size:10px;color:var(--gold);min-width:20px;text-align:right}
 .ed-eyedrop-tip{position:absolute;z-index:25;pointer-events:none;display:none;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);box-shadow:0 2px 8px rgba(0,0,0,.4);padding:4px 8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);white-space:nowrap;gap:6px;align-items:center}
 .ed-eyedrop-tip .ed-et-sw{width:14px;height:14px;border-radius:2px;border:1px solid var(--border-2);flex-shrink:0}
+.ed-text-mode-row{display:flex;gap:0;margin-top:6px;border:1px solid var(--border-2);border-radius:var(--r);overflow:hidden}
+.ed-text-mode-row button{flex:1;font-family:inherit;font-size:9px;padding:3px 0;border:none;background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
+.ed-text-mode-row button:not(:last-child){border-right:1px solid var(--border-2)}
+.ed-text-mode-row button.active{background:var(--gold);color:#1a1208}
+.ed-text-sysfont-row{position:relative;margin-top:4px}
+.ed-font-trigger{display:flex;align-items:center;justify-content:space-between;width:100%;padding:3px 6px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:10px;cursor:pointer;outline:none;transition:border-color var(--t)}
+.ed-font-trigger:hover,.ed-font-trigger.open{border-color:var(--gold-dim)}
+.ed-font-trigger .ed-ft-arrow{font-size:8px;color:var(--text-muted);margin-left:6px;transition:transform var(--t)}
+.ed-font-trigger.open .ed-ft-arrow{transform:rotate(180deg)}
+.ed-font-menu{position:absolute;bottom:100%;left:0;right:0;margin-bottom:2px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r);box-shadow:0 -4px 12px rgba(0,0,0,.35);max-height:160px;overflow-y:auto;z-index:30;display:none}
+.ed-font-menu.open{display:block}
+.ed-font-menu button{display:block;width:100%;padding:4px 8px;border:none;background:transparent;color:var(--text);font-size:10px;text-align:left;cursor:pointer;transition:background var(--t)}
+.ed-font-menu button:hover{background:var(--gold-dim);color:var(--text)}
+.ed-font-menu button.active{background:var(--gold);color:#1a1208}
 .ed-text-dim{color:var(--gold);font-size:9px;margin-top:4px;min-height:13px}
 .ed-text-hint{color:var(--text-muted);font-size:9px;margin-top:2px}
 .stitch-dir-toggle{border-color:var(--border-2) !important;background:var(--surface-2) !important;color:var(--text-muted) !important}
@@ -1149,8 +1163,23 @@ function createPatternEditor(config) {
     let _textInsertPos = null;   // { col, row }
     let _textPanel = null;       // DOM element
     let _textInput = null;       // input element
+    let _textPixelFontRow = null;
+    let _textSysFontRow = null;
     let _textScale = 1;
     let _textCompact = false;
+    let _textFontMode = 'pixel'; // 'pixel' | 'system'
+    let _textSystemFont = 'Georgia';
+    const _SYSTEM_FONTS = [
+        { name: 'Georgia',          label: 'Georgia (Serif)' },
+        { name: 'Times New Roman',  label: 'Times New Roman' },
+        { name: 'Palatino Linotype', label: 'Palatino' },
+        { name: 'Arial',            label: 'Arial (Sans)' },
+        { name: 'Verdana',          label: 'Verdana' },
+        { name: 'Trebuchet MS',     label: 'Trebuchet MS' },
+        { name: 'Courier New',      label: 'Courier New (Mono)' },
+        { name: 'Impact',           label: 'Impact' },
+        { name: 'Comic Sans MS',    label: 'Comic Sans MS' },
+    ];
 
     function _textToGrid(text, scale) {
         const font = _textCompact ? _PIXEL_FONT_COMPACT : _PIXEL_FONT;
@@ -1183,16 +1212,75 @@ function createPatternEditor(config) {
         return { w: Math.max(totalW, 0), h: charH, cells };
     }
 
+    let _textRenderCanvas = null;
+    function _textToGridSystem(text, scale, fontName) {
+        // Target height in grid cells — match pixel font proportions
+        const baseH = 7 * scale;
+        const fontSize = Math.max(8, baseH * 1.1);
+        if (!_textRenderCanvas) _textRenderCanvas = document.createElement('canvas');
+        const cv = _textRenderCanvas;
+        const ctx = cv.getContext('2d', { willReadFrequently: true });
+        ctx.font = `bold ${fontSize}px "${fontName}", sans-serif`;
+        const metrics = ctx.measureText(text);
+        const textW = Math.ceil(metrics.width);
+        const ascent = Math.ceil(metrics.actualBoundingBoxAscent || fontSize * 0.8);
+        const descent = Math.ceil(metrics.actualBoundingBoxDescent || fontSize * 0.2);
+        const textH = ascent + descent;
+        if (textW <= 0 || textH <= 0) return { w: 0, h: 0, cells: [] };
+        cv.width = textW;
+        cv.height = textH;
+        // Reset context after dimension change
+        ctx.font = `bold ${fontSize}px "${fontName}", sans-serif`;
+        ctx.fillStyle = '#000';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(text, 0, ascent);
+        const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
+        const pixels = imgData.data;
+        const cells = [];
+        for (let r = 0; r < textH; r++) {
+            for (let c = 0; c < textW; c++) {
+                const alpha = pixels[(r * textW + c) * 4 + 3];
+                if (alpha > 100) {
+                    cells.push({ col: c, row: r });
+                }
+            }
+        }
+        return { w: textW, h: textH, cells };
+    }
+
+    // Cache to avoid double-computing on each keystroke (dim label + preview)
+    let _textGridCache = null;
+    function _textToGridDispatch(text, scale) {
+        const key = `${_textFontMode}|${text}|${scale}|${_textSystemFont}|${_textCompact}`;
+        if (_textGridCache && _textGridCache.key === key) return _textGridCache.result;
+        const result = _textFontMode === 'system'
+            ? _textToGridSystem(text, scale, _textSystemFont)
+            : _textToGrid(text, scale);
+        _textGridCache = { key, result };
+        return result;
+    }
+
     function _showTextPanel(col, row) {
         _textInsertPos = { col, row };
         if (!_textPanel) {
             _textPanel = document.createElement('div');
             _textPanel.className = 'ed-text-panel';
+            const fontMenuItems = _SYSTEM_FONTS.map(f =>
+                `<button data-font-name="${f.name}"${f.name === _textSystemFont ? ' class="active"' : ''} style="font-family:'${f.name}',sans-serif">${f.label}</button>`
+            ).join('');
             _textPanel.innerHTML = `
                 <input type="text" class="ed-text-input" placeholder="Type text…" maxlength="40">
+                <div class="ed-text-mode-row">
+                    <button data-mode="pixel" class="active">Pixel</button>
+                    <button data-mode="system">System Font</button>
+                </div>
                 <div class="ed-text-font-row">
                     <button data-font="standard" class="active">Standard</button>
                     <button data-font="compact">Compact</button>
+                </div>
+                <div class="ed-text-sysfont-row" style="display:none">
+                    <button class="ed-font-trigger" type="button"><span class="ed-ft-label">${_SYSTEM_FONTS.find(f => f.name === _textSystemFont).label}</span><span class="ed-ft-arrow">▼</span></button>
+                    <div class="ed-font-menu">${fontMenuItems}</div>
                 </div>
                 <div class="ed-text-scale-row">
                     <input type="range" class="ed-text-scale" min="1" max="10" value="1" step="1">
@@ -1206,15 +1294,53 @@ function createPatternEditor(config) {
             const scaleSlider = _textPanel.querySelector('.ed-text-scale');
             const scaleLabel = _textPanel.querySelector('.ed-text-scale-val');
             const dimEl = _textPanel.querySelector('.ed-text-dim');
+            _textPixelFontRow = _textPanel.querySelector('.ed-text-font-row');
+            _textSysFontRow = _textPanel.querySelector('.ed-text-sysfont-row');
+            const fontTrigger = _textPanel.querySelector('.ed-font-trigger');
+            const fontMenu = _textPanel.querySelector('.ed-font-menu');
+            const fontLabel = _textPanel.querySelector('.ed-ft-label');
             function _updateTextDim() {
                 const val = _textInput.value.trim();
                 if (!val) { dimEl.textContent = ''; return; }
-                const { w, h } = _textToGrid(val, _textScale);
+                const { w, h } = _textToGridDispatch(val, _textScale);
                 dimEl.textContent = `${w} × ${h} cells`;
             }
+            function _closeFontMenu() { fontTrigger.classList.remove('open'); fontMenu.classList.remove('open'); }
+            // Mode toggle (Pixel / System Font)
+            _textPanel.querySelectorAll('.ed-text-mode-row button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    _textFontMode = btn.dataset.mode;
+                    _textPanel.querySelectorAll('.ed-text-mode-row button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    _textPixelFontRow.style.display = _textFontMode === 'pixel' ? '' : 'none';
+                    _textSysFontRow.style.display = _textFontMode === 'system' ? '' : 'none';
+                    _closeFontMenu();
+                    _updateTextDim();
+                    _redrawOverlay();
+                });
+            });
+            // Custom font picker dropdown
+            fontTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = fontMenu.classList.contains('open');
+                if (isOpen) { _closeFontMenu(); } else { fontTrigger.classList.add('open'); fontMenu.classList.add('open'); }
+            });
+            fontMenu.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    _textSystemFont = btn.dataset.fontName;
+                    fontLabel.textContent = btn.textContent;
+                    fontMenu.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    _closeFontMenu();
+                    _updateTextDim();
+                    _redrawOverlay();
+                });
+            });
             _textInput.addEventListener('input', () => { _updateTextDim(); _redrawOverlay(); });
             _textInput.addEventListener('keydown', (e) => {
-                e.stopPropagation(); // Don't let tool shortcuts fire while typing
+                e.stopPropagation();
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     _commitText();
@@ -1224,6 +1350,7 @@ function createPatternEditor(config) {
                     _redrawOverlay();
                 }
             });
+            // Pixel font variant toggle (Standard / Compact)
             _textPanel.querySelectorAll('.ed-text-font-row button').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1244,11 +1371,19 @@ function createPatternEditor(config) {
             _textPanel.addEventListener('mousedown', (e) => e.stopPropagation());
             _textPanel.addEventListener('click', (e) => e.stopPropagation());
         }
+        // Preserve text when repositioning (panel already open)
+        const wasOpen = _textPanel.style.display === 'block';
         // Position near the insertion point, clamped to visible area
         const offset = getGridOffset();
         const cp = getCellPx();
         const px = offset.x + col * cp;
         const py = offset.y + row * cp;
+        // Sync font mode UI on every open (panel is reused)
+        _textPixelFontRow.style.display = _textFontMode === 'pixel' ? '' : 'none';
+        _textSysFontRow.style.display = _textFontMode === 'system' ? '' : 'none';
+        _textPanel.querySelectorAll('.ed-text-mode-row button').forEach(b => {
+            b.classList.toggle('active', b.dataset.mode === _textFontMode);
+        });
         _textPanel.style.display = 'block';
         const panelW = _textPanel.offsetWidth || 200;
         const panelH = _textPanel.offsetHeight || 70;
@@ -1258,7 +1393,7 @@ function createPatternEditor(config) {
         const clampedY = Math.max(8, Math.min(py - panelH - 8, ch - panelH - 8));
         _textPanel.style.left = clampedX + 'px';
         _textPanel.style.top = clampedY + 'px';
-        _textInput.value = '';
+        if (!wasOpen) _textInput.value = '';
         _textInput.focus({ preventScroll: true });
     }
 
@@ -1273,7 +1408,7 @@ function createPatternEditor(config) {
             _redrawOverlay();
             return;
         }
-        const { cells } = _textToGrid(_textInput.value, _textScale);
+        const { cells } = _textToGridDispatch(_textInput.value, _textScale);
         if (cells.length === 0) { _hideTextPanel(); return; }
         const pd = getPatternData();
         pushUndo();
@@ -1291,7 +1426,7 @@ function createPatternEditor(config) {
 
     function _drawTextPreview(ctx, offset, cp) {
         if (!_textInsertPos || !_textInput || !_textInput.value) return;
-        const { cells } = _textToGrid(_textInput.value, _textScale);
+        const { cells } = _textToGridDispatch(_textInput.value, _textScale);
         ctx.fillStyle = activeHex + '88';
         for (const { col, row } of cells) {
             const destC = _textInsertPos.col + col;
