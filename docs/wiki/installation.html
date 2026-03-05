@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link active">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Installation</h1>
+        <p class="page-sub">Install Needlework Studio as a desktop application, a Docker container, or a manual Python deployment.</p>
+
+        <img src="../img/login-dark.jpg" data-dark="../img/login-dark.jpg" data-light="../img/login-light.jpg" alt="Login screen" class="screenshot">
+        <p class="screenshot-caption">The Needlework Studio login screen</p>
+
+        <h2>Desktop App</h2>
+        <p>Pre-built desktop installers are available on the <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">GitHub Releases</a> page. Download the appropriate package for your operating system:</p>
+        <ul>
+            <li><strong>macOS</strong> &mdash; <code>.dmg</code> disk image. Open the DMG and drag Needlework Studio into your Applications folder.</li>
+            <li><strong>Windows</strong> &mdash; <code>.exe</code> installer. Run the installer and follow the on-screen prompts.</li>
+            <li><strong>Linux</strong> &mdash; <code>.AppImage</code> portable executable. Mark the file as executable (<code>chmod +x</code>) and run it directly.</li>
+        </ul>
+
+        <h3>macOS Gatekeeper</h3>
+        <p>Because the macOS build is not signed with an Apple Developer certificate, Gatekeeper will block the first launch. To open the app:</p>
+        <ol>
+            <li>Right-click (or Control-click) the Needlework Studio application in Finder.</li>
+            <li>Select <strong>Open</strong> from the context menu.</li>
+            <li>In the confirmation dialog, click <strong>Open</strong> again.</li>
+        </ol>
+        <p>You only need to do this once. After the first launch macOS will remember your choice and the app will open normally.</p>
+
+        <h3>Local Data Storage</h3>
+        <p>The desktop app stores all data locally on your machine. It works fully offline with no server or internet connection required. Your thread inventory, patterns, and project data are kept in the application's data directory on disk.</p>
+
+        <h2>Docker</h2>
+        <p>Docker is the recommended way to self-host Needlework Studio. A single container runs the full application with persistent data stored in a Docker volume.</p>
+
+        <h3>Quick Start</h3>
+        <p>Pull the latest image from the GitHub Container Registry:</p>
+        <pre><code>docker pull ghcr.io/greenglasst/needleworkstudio:latest</code></pre>
+
+        <h3>Docker Compose</h3>
+        <p>Create a <code>docker-compose.yml</code> file with the following configuration:</p>
+        <pre><code>services:
+  needlework-studio:
+    image: ghcr.io/greenglasst/needleworkstudio:latest
+    ports:
+      - "6969:6969"
+    volumes:
+      - needlework-data:/data
+    restart: unless-stopped
+
+volumes:
+  needlework-data:</code></pre>
+
+        <p>Start the container:</p>
+        <pre><code>docker compose up -d</code></pre>
+
+        <h3>Create Your First User</h3>
+        <p>After starting the container, create an initial user account with the built-in management script:</p>
+        <pre><code>docker compose exec needlework-studio python3 manage_users.py create</code></pre>
+        <p>Follow the interactive prompts to set a username and password. Once created, open <code>http://localhost:6969</code> in your browser and log in.</p>
+
+        <h2>Manual Python Setup</h2>
+        <p>If you prefer to run Needlework Studio directly on a host machine without Docker, you can set it up manually with Python.</p>
+
+        <h3>Prerequisites</h3>
+        <ul>
+            <li><strong>Python 3.10 or newer</strong> &mdash; verify with <code>python3 --version</code>.</li>
+            <li><strong>pip</strong> &mdash; the Python package installer (usually bundled with Python).</li>
+        </ul>
+
+        <h3>Clone and Install</h3>
+        <p>Clone the repository and set up a virtual environment:</p>
+        <pre><code>git clone https://github.com/GreenglassT/NeedleworkStudio.git
+cd NeedleworkStudio
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt</code></pre>
+
+        <h3>Initialize the Database</h3>
+        <p>Run the database initialization script to create all tables and seed the thread library:</p>
+        <pre><code>python3 init_db.py</code></pre>
+        <p>This seeds the database with 744 DMC threads and over 400 Anchor threads, giving you a complete reference library out of the box.</p>
+        <p><strong>Warning:</strong> <code>init_db.py</code> drops and recreates the entire database. Only run this for first-time setup or if you need a full reset. Running it on an existing installation will permanently delete all user data, patterns, and inventory.</p>
+
+        <h3>Create a User</h3>
+        <p>Create your first user account:</p>
+        <pre><code>python3 manage_users.py create</code></pre>
+
+        <h3>Run the Application</h3>
+        <p>For development or local testing, start the application directly with Python:</p>
+        <pre><code>python3 app.py</code></pre>
+        <p>The application will be available at <code>http://localhost:6969</code>.</p>
+
+        <h3>Production with Gunicorn</h3>
+        <p>For production deployments, use Gunicorn as the WSGI server:</p>
+        <pre><code>gunicorn -w 1 --threads 4 -b 0.0.0.0:6969 app:app</code></pre>
+        <p><strong>Important:</strong> You must use a single worker (<code>-w 1</code>). Needlework Studio uses an in-memory rate limiter that is not shared across processes. Running multiple workers would cause each worker to maintain its own independent rate-limit counters, making the rate limiting ineffective. The <code>--threads 4</code> flag provides concurrency within that single worker to handle multiple simultaneous requests.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

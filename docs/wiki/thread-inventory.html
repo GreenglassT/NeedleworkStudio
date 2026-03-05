@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thread Inventory — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link active">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Thread Inventory</h1>
+        <p class="page-sub">Browse, search, and track your embroidery thread collection across DMC and Anchor brands.</p>
+
+        <img src="../img/inventory-dark.jpg" data-dark="../img/inventory-dark.jpg" data-light="../img/inventory-light.jpg" alt="Thread inventory with DMC threads list" class="screenshot">
+        <p class="screenshot-caption">Thread inventory showing 744 DMC threads with search, filter, and status controls</p>
+
+        <h2>Overview</h2>
+        <p>The Thread Inventory is a comprehensive database of embroidery threads pre-loaded into Needlework Studio. It includes all <strong>744 DMC stranded cotton colors</strong> and over <strong>400 Anchor stranded cotton colors</strong>, each with accurate color swatches, official names, and thread numbers. You do not need to enter thread data manually &mdash; every color is ready to browse, search, and track from the moment you create your account.</p>
+        <p>The inventory serves two purposes: it acts as a reference catalog for all available threads, and it tracks which threads you personally own, need, or do not yet have. This information feeds into the materials calculator and helps you plan purchases for upcoming projects.</p>
+
+        <h2>Searching</h2>
+        <p>At the top of the inventory page, a search bar provides <strong>instant, real-time filtering</strong> as you type. You can search by:</p>
+        <ul>
+            <li><strong>Thread number</strong> &mdash; Type a number like <code>310</code> or <code>3865</code> to jump directly to that thread. Partial numbers work too: typing <code>38</code> will show all threads whose numbers start with 38.</li>
+            <li><strong>Thread name</strong> &mdash; Type a color name like <code>ecru</code>, <code>cranberry</code>, or <code>navy</code> to find threads by their official color names. The search is case-insensitive and matches anywhere in the name.</li>
+        </ul>
+        <p>Search results update instantly with each keystroke, so you can quickly narrow down the list without waiting for a page reload.</p>
+
+        <h2>Filtering</h2>
+        <p>Below the search bar, a set of filter controls lets you narrow the inventory by several criteria. Filters can be combined with each other and with the search bar for precise results.</p>
+
+        <h3>Brand Filter</h3>
+        <p>Toggle between <strong>DMC</strong> and <strong>Anchor</strong> to show only threads from that brand, or leave both active to see the entire inventory. This is useful when you work exclusively with one brand or want to compare equivalent colors across brands.</p>
+
+        <h3>Thread Category</h3>
+        <p>Filter threads by their category classification, such as standard stranded cotton, metallic threads, or other specialty types. This helps you focus on the thread type relevant to your current project.</p>
+
+        <h3>Ownership Status</h3>
+        <p>Three ownership status filters let you quickly view subsets of your collection:</p>
+        <ul>
+            <li><strong>Own</strong> &mdash; Show only threads you have marked as owned. This gives you a quick overview of your current stash.</li>
+            <li><strong>Need</strong> &mdash; Show threads you have flagged as needed. Use this as a shopping list when visiting a craft store.</li>
+            <li><strong>Don't Own</strong> &mdash; Show threads with no ownership status set. These are threads you have not yet categorized.</li>
+        </ul>
+
+        <h2>Status Tracking</h2>
+        <p>Each thread in the inventory has a set of tracking controls that let you record your relationship with that color.</p>
+
+        <h3>Ownership Buttons</h3>
+        <p>Three single-click buttons let you set the status of any thread:</p>
+        <ul>
+            <li><strong>Own</strong> &mdash; Click to mark this thread as part of your collection. The thread card will display a visual indicator showing it is owned.</li>
+            <li><strong>Need</strong> &mdash; Click to flag this thread as something you need to purchase. Useful for building shopping lists.</li>
+            <li><strong>Don't Own</strong> &mdash; Click to explicitly mark that you do not own this thread. This is the default state for all threads.</li>
+        </ul>
+        <p>Clicking a status button is a single-click action &mdash; there is no confirmation dialog. You can change the status at any time by clicking a different button.</p>
+
+        <h3>Skein Quantity</h3>
+        <p>For threads you own, you can track the number of skeins in your stash. Use the quantity field to record how many skeins of each color you have on hand. This information is used by the materials calculator to determine whether you need to purchase additional skeins for a new project.</p>
+
+        <h3>Notes</h3>
+        <p>Each thread has an optional free-text notes field where you can record any additional information. Common uses include noting the store where you purchased a thread, recording a dye lot number, or leaving a reminder about a color substitution you have used in the past.</p>
+
+        <h2>Similar Colors</h2>
+        <p>Needlework Studio includes a perceptual color matching feature powered by the <strong>CIEDE2000</strong> color difference algorithm. When viewing any thread, you can find visually similar colors across the entire inventory.</p>
+        <p>CIEDE2000 is an advanced color distance formula that accounts for how the human eye perceives color differences. Unlike simpler RGB distance calculations, it produces results that align closely with what you would judge as "similar" by eye. This is particularly useful for:</p>
+        <ul>
+            <li><strong>Finding substitutes</strong> &mdash; If your local store is out of a specific color, the similar colors feature can suggest close alternatives.</li>
+            <li><strong>Cross-brand matching</strong> &mdash; Find the closest Anchor equivalent to a DMC color, or vice versa.</li>
+            <li><strong>Building palettes</strong> &mdash; Discover colors that are close in hue but differ slightly in saturation or lightness, useful for shading and blending effects in pattern design.</li>
+        </ul>
+
+        <h2>Views</h2>
+        <p>The inventory can be displayed in two different view modes, and you can switch between them at any time using the view toggle buttons.</p>
+
+        <h3>Grid View</h3>
+        <p>Displays threads as a grid of color swatch cards. Each card shows the thread color, number, and name. Grid view is ideal for visual browsing and quickly scanning large numbers of colors. It makes efficient use of screen space and is the default view mode.</p>
+
+        <h3>List View</h3>
+        <p>Displays threads as a vertical list with one thread per row. Each row shows the color swatch, thread number, name, ownership status, and quantity. List view provides more detail at a glance and is better suited for inventory management tasks like updating quantities or reviewing your ownership status across many threads.</p>
+
+        <h3>Batch Selection</h3>
+        <p>In both views, you can select multiple threads at once for batch operations. Use the selection checkboxes to choose threads, then apply an action to all selected items simultaneously. This is significantly faster than updating threads one at a time when you return from a shopping trip with several new colors.</p>
+
+        <h2>Print-Friendly Thread List</h2>
+        <p>Needlework Studio can generate a print-friendly version of your thread inventory, optimized for paper output. This is useful for creating a physical reference list to take with you when shopping for threads. The printed list includes thread numbers, names, color swatches (rendered as colored blocks), and ownership status. You can filter and sort the inventory before printing to include only the threads relevant to your needs &mdash; for example, printing only threads with a "Need" status to create a focused shopping list.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

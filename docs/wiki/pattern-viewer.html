@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Viewer — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link active">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Pattern Viewer</h1>
+        <p class="page-sub">View, navigate, and track progress on your cross-stitch patterns with multiple display modes.</p>
+
+        <h2>Viewing Modes</h2>
+        <p>The Pattern Viewer offers three distinct viewing modes, each designed for a different stage of working with your pattern. You can switch between modes at any time using the mode toggle buttons in the viewer toolbar.</p>
+
+        <h3>Chart Mode</h3>
+        <p>Chart mode displays the pattern as a traditional cross-stitch chart &mdash; a grid of colored squares with symbol overlays. This is the standard way to read a cross-stitch pattern while stitching. Each grid cell shows a colored square with a unique symbol assigned to that thread color. The symbol overlays ensure that the chart remains readable even when printed in black and white or when two similar colors are used side by side.</p>
+        <p>Chart mode includes <strong>four-sided rulers</strong> along the top, bottom, left, and right edges of the grid. These rulers display stitch coordinates and make it easy to count your position on the fabric. The rulers follow your scroll position so they remain visible as you pan across the pattern.</p>
+        <p>You can toggle <strong>gridlines</strong> on or off. When gridlines are enabled, thin lines separate each stitch cell, making it easier to count stitches and follow rows. When gridlines are disabled, the cells sit flush against each other for a cleaner visual appearance.</p>
+
+        <h3>Thread Mode</h3>
+        <p>Thread mode renders the pattern with <strong>realistic stitch textures</strong> instead of flat colored squares. Each stitch is drawn to approximate the appearance of actual thread on fabric, showing the characteristic X shape of cross-stitches with simulated thread texture and shading. This mode gives you a preview of how the finished piece will look when stitched.</p>
+        <p>Thread mode is particularly useful for evaluating color choices, checking that gradients look natural, and getting a sense of the overall visual impact of the design before committing to stitching it.</p>
+
+        <h3>Zen Mode</h3>
+        <p>Zen mode provides a <strong>distraction-free, fullscreen</strong> viewing experience. When activated, the navigation bar, sidebar, toolbar, and all other interface elements are hidden, leaving only the pattern chart filling the entire screen. This mode is designed for focused stitching sessions where you want maximum screen space for the chart.</p>
+        <p>Press <kbd>Z</kbd> or click the zen mode button to enter zen mode. Press <kbd>Z</kbd> or <kbd>Escape</kbd> to exit back to the normal view.</p>
+
+        <h2>Legend Panel</h2>
+        <p>The legend panel is a sidebar that displays a list of all thread colors used in the current pattern. It serves as both a reference and a progress tracking tool.</p>
+
+        <h3>Thread List</h3>
+        <p>Each entry in the legend shows the thread's color swatch, symbol (as used in chart mode), thread number, name, and stitch count. The legend provides a complete bill of materials for the pattern, telling you exactly which threads you need and how many stitches of each color the pattern contains.</p>
+
+        <h3>Search</h3>
+        <p>The legend panel includes a search field that lets you filter the thread list by thread number or name. This is useful in patterns with many colors when you need to quickly find a specific thread.</p>
+
+        <h3>Resizable Sidebar</h3>
+        <p>The legend panel is resizable &mdash; drag its edge to make it wider or narrower according to your preference. This allows you to balance the space between the legend and the chart area. The panel can also be collapsed entirely to maximize the chart viewing area.</p>
+
+        <h3>Per-Color Progress Tracking</h3>
+        <p>Each color entry in the legend includes a progress toggle. You can mark individual colors as <strong>complete</strong> when you have finished stitching all instances of that color in the pattern. Completed colors are visually distinguished in the legend (dimmed or struck through), making it easy to see at a glance which colors remain. This per-color tracking is especially useful when stitching with the "cross-country" method, where you complete one color at a time across the entire pattern.</p>
+
+        <h2>Zoom Controls</h2>
+        <p>The viewer supports a wide zoom range from <strong>10% to 400%</strong>, giving you the flexibility to see the entire pattern at once or zoom in to inspect individual stitches.</p>
+        <ul>
+            <li><strong>Zoom in</strong> &mdash; Click the <kbd>+</kbd> button in the toolbar, press the <kbd>+</kbd> or <kbd>=</kbd> key, or use your mouse scroll wheel while holding <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd> on macOS).</li>
+            <li><strong>Zoom out</strong> &mdash; Click the <kbd>-</kbd> button, press the <kbd>-</kbd> key, or scroll down while holding <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>.</li>
+            <li><strong>Fit to window</strong> &mdash; Double-click the zoom percentage indicator to automatically fit the entire pattern within the visible area.</li>
+        </ul>
+        <p>The current zoom level is displayed as a percentage in the toolbar. At lower zoom levels (below 50%), symbols may be hidden automatically to keep the chart readable, showing only the color blocks.</p>
+
+        <h2>Display Toggles</h2>
+        <p>The viewer toolbar provides several toggle buttons that control what is displayed on the chart. These can be combined in any combination.</p>
+
+        <h3>Gridlines</h3>
+        <p>Toggles the thin lines between stitch cells on and off. Gridlines make it easier to count stitches but can add visual clutter at lower zoom levels. Press <kbd>G</kbd> to toggle gridlines.</p>
+
+        <h3>Symbols</h3>
+        <p>Toggles the symbol overlays on each stitch cell. When enabled, each cell displays a unique character or shape identifying its thread color. When disabled, only the color fill is shown. Press <kbd>S</kbd> to toggle symbols. Symbols are particularly important when working with a printed black-and-white chart or when the pattern contains colors that are hard to distinguish on screen.</p>
+
+        <h3>Stitches</h3>
+        <p>Toggles the visibility of different stitch types on the chart. You can selectively show or hide full stitches, part stitches (half, quarter, three-quarter), backstitches, and French knots. This is useful for focusing on one stitch type at a time during stitching &mdash; for example, hiding backstitches while you work on the cross-stitches, then hiding everything except backstitches when you are ready to outline.</p>
+
+        <h2>Keyboard Shortcuts</h2>
+        <p>The Pattern Viewer supports the following keyboard shortcuts for efficient navigation and control:</p>
+        <ul>
+            <li><kbd>Z</kbd> &mdash; Toggle zen mode (fullscreen distraction-free view)</li>
+            <li><kbd>G</kbd> &mdash; Toggle gridlines</li>
+            <li><kbd>S</kbd> &mdash; Toggle symbol overlays</li>
+            <li><kbd>+</kbd> / <kbd>=</kbd> &mdash; Zoom in</li>
+            <li><kbd>-</kbd> &mdash; Zoom out</li>
+            <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> &mdash; Pan the chart in the corresponding direction</li>
+            <li><kbd>Escape</kbd> &mdash; Exit zen mode</li>
+        </ul>
+
+        <h2>Progress Tracking</h2>
+        <p>Progress tracking in the Pattern Viewer works at the per-color level. As you stitch your way through the pattern, you can mark each color as complete in the legend panel. The viewer keeps a running count of how many colors are finished versus how many remain, giving you a clear sense of overall progress.</p>
+        <p>Progress data is saved as part of the pattern, so it persists across sessions. If you are using <a href="desktop-sync.html">Desktop Sync</a>, your progress is also synchronized between the desktop app and your server instance, allowing you to track progress from any device.</p>
+        <p>For broader project management features including pattern status tracking and materials calculation, see <a href="project-management.html">Project Management</a>.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

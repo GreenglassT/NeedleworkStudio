@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki — Needlework Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Mobile Toggle -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Wiki</h1>
+        <p class="page-sub">Documentation for Needlework Studio — user guides, setup instructions, and deployment.</p>
+
+        <h2>User Guide</h2>
+        <div class="wiki-index-grid">
+            <a href="getting-started.html" class="wiki-index-card">
+                <h3>Getting Started</h3>
+                <p>First-time setup, interface overview, and a quick walkthrough of the core features.</p>
+            </a>
+            <a href="thread-inventory.html" class="wiki-index-card">
+                <h3>Thread Inventory</h3>
+                <p>Browse DMC and Anchor threads, track ownership and skein quantities, and search by number or name.</p>
+            </a>
+            <a href="pattern-design.html" class="wiki-index-card">
+                <h3>Pattern Design</h3>
+                <p>Create patterns from images or from scratch using drawing tools, stitch types, mirror modes, and more.</p>
+            </a>
+            <a href="pattern-viewer.html" class="wiki-index-card">
+                <h3>Pattern Viewer</h3>
+                <p>View patterns in chart or thread mode with symbol overlays, zoom controls, and per-color progress tracking.</p>
+            </a>
+            <a href="import-export.html" class="wiki-index-card">
+                <h3>Import &amp; Export</h3>
+                <p>Import patterns from PDF, JSON, and OXS formats. Export to PDF with cover sheets, SVG, and more.</p>
+            </a>
+            <a href="project-management.html" class="wiki-index-card">
+                <h3>Project Management</h3>
+                <p>Organize your pattern library with search, sort, batch actions, forking, and materials calculation.</p>
+            </a>
+            <a href="desktop-sync.html" class="wiki-index-card">
+                <h3>Desktop Sync</h3>
+                <p>Set up bidirectional sync between the desktop app and your self-hosted server.</p>
+            </a>
+        </div>
+
+        <h2>Setup &amp; Deployment</h2>
+        <div class="wiki-index-grid">
+            <a href="installation.html" class="wiki-index-card">
+                <h3>Installation</h3>
+                <p>Install Needlework Studio via Docker, manual Python setup, or desktop installers for macOS, Windows, and Linux.</p>
+            </a>
+            <a href="administration.html" class="wiki-index-card">
+                <h3>Administration</h3>
+                <p>Manage users, configure application settings, back up data, and monitor the server.</p>
+            </a>
+            <a href="deployment.html" class="wiki-index-card">
+                <h3>Deployment</h3>
+                <p>Production deployment with reverse proxies, HTTPS, environment variables, and scaling considerations.</p>
+            </a>
+        </div>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

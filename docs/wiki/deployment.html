@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link active">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Deployment</h1>
+        <p class="page-sub">Production deployment strategies including reverse proxy configuration, HTTPS, systemd services, and security hardening.</p>
+
+        <h2>Reverse Proxy &amp; HTTPS</h2>
+        <p>In production, you should place Needlework Studio behind a reverse proxy that terminates SSL/TLS. This gives you HTTPS with automatic certificate management, and lets you serve the application on standard ports (80/443) alongside other services.</p>
+        <p>When running behind an SSL-terminating proxy, set the <code>HTTPS=true</code> environment variable so that session cookies are marked as <code>Secure</code> and only transmitted over encrypted connections.</p>
+
+        <h3>Caddy (Recommended)</h3>
+        <p><a href="https://caddyserver.com/">Caddy</a> is a modern web server that automatically provisions and renews Let's Encrypt certificates. It requires minimal configuration and is the simplest way to add HTTPS to your deployment.</p>
+        <p>Create a <code>docker-compose.yml</code> that runs both Caddy and Needlework Studio:</p>
+        <pre><code>services:
+  caddy:
+    image: caddy:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+  needlework-studio:
+    image: ghcr.io/greenglasst/needleworkstudio:latest
+    volumes:
+      - needlework-data:/data
+    environment:
+      - HTTPS=true
+    restart: unless-stopped
+
+volumes:
+  needlework-data:
+  caddy-data:
+  caddy-config:</code></pre>
+
+        <p>Create a <code>Caddyfile</code> in the same directory:</p>
+        <pre><code>needlework.example.com {
+    reverse_proxy needlework-studio:6969
+}</code></pre>
+
+        <p>Replace <code>needlework.example.com</code> with your actual domain name. Caddy will automatically obtain an SSL certificate from Let's Encrypt and handle renewals. No additional port mapping is needed for the Needlework Studio container because Caddy communicates with it over the internal Docker network.</p>
+
+        <h3>Other Reverse Proxies</h3>
+        <p>Needlework Studio works with any reverse proxy (Nginx, Apache, Traefik, etc.). The key requirements are:</p>
+        <ul>
+            <li>Proxy all traffic to the application on port <code>6969</code>.</li>
+            <li>Forward the <code>Host</code>, <code>X-Forwarded-For</code>, and <code>X-Forwarded-Proto</code> headers.</li>
+            <li>Set <code>HTTPS=true</code> on the Needlework Studio container when terminating SSL at the proxy.</li>
+        </ul>
+
+        <h2>Systemd Service</h2>
+        <p>For manual (non-Docker) installations on Linux, you can run Needlework Studio as a systemd service so it starts automatically on boot and restarts on failure.</p>
+        <p>Create a unit file at <code>/etc/systemd/system/needlework-studio.service</code>:</p>
+        <pre><code>[Unit]
+Description=Needlework Studio
+After=network.target
+
+[Service]
+Type=simple
+User=needlework
+Group=needlework
+WorkingDirectory=/opt/needlework-studio
+ExecStart=/opt/needlework-studio/venv/bin/gunicorn -w 1 --threads 4 -b 0.0.0.0:6969 app:app
+Restart=on-failure
+RestartSec=5
+Environment=HTTPS=true
+Environment=NEEDLEWORK_DATA_DIR=/opt/needlework-studio/data
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+        <p>Enable and start the service:</p>
+        <pre><code>sudo systemctl daemon-reload
+sudo systemctl enable needlework-studio
+sudo systemctl start needlework-studio</code></pre>
+
+        <p>Check that the service is running:</p>
+        <pre><code>sudo systemctl status needlework-studio</code></pre>
+
+        <p>View application logs:</p>
+        <pre><code>sudo journalctl -u needlework-studio -f</code></pre>
+
+        <h2>Docker with Auto-Restart</h2>
+        <p>The Docker Compose examples in this documentation include <code>restart: unless-stopped</code>, which ensures the container automatically restarts after a crash or a host reboot. This is the simplest way to achieve high availability with Docker.</p>
+        <p>The container will restart in all of the following scenarios:</p>
+        <ul>
+            <li>The application process crashes or exits with a non-zero code.</li>
+            <li>The Docker daemon restarts.</li>
+            <li>The host machine reboots.</li>
+        </ul>
+        <p>The only time the container will not restart is if you explicitly stop it with <code>docker compose down</code> or <code>docker stop</code>. If you want the container to restart even after an explicit stop, use <code>restart: always</code> instead.</p>
+
+        <h2>Security Notes</h2>
+        <p>Needlework Studio includes several built-in security measures. Understanding these will help you configure your deployment securely.</p>
+
+        <h3>CSRF Protection</h3>
+        <p>All state-changing requests are protected by CSRF tokens. These tokens are automatically included in forms rendered by the application and validated on the server for every POST, PUT, and DELETE request.</p>
+
+        <h3>Password Hashing</h3>
+        <p>User passwords are hashed using <strong>Argon2</strong>, the winner of the Password Hashing Competition. Argon2 is resistant to GPU-based and ASIC-based brute-force attacks and is considered the current best practice for password storage.</p>
+
+        <h3>Rate Limiting</h3>
+        <p>The application enforces rate limits to prevent abuse:</p>
+        <ul>
+            <li><strong>Login attempts:</strong> 5 requests per minute per IP address. This mitigates brute-force password attacks.</li>
+            <li><strong>Thread inventory updates:</strong> 60 requests per minute per user. This prevents accidental or automated flooding of the API.</li>
+        </ul>
+        <p>Rate limiting is implemented in-memory, which is why a single Gunicorn worker (<code>-w 1</code>) is required. See the <a href="installation.html">Installation</a> page for details on the Gunicorn configuration.</p>
+
+        <h3>HTTP Security Headers</h3>
+        <p>Needlework Studio sets the following security headers on all responses:</p>
+        <ul>
+            <li><strong>Content-Security-Policy (CSP):</strong> Restricts the sources from which scripts, styles, images, and other resources can be loaded, mitigating cross-site scripting (XSS) attacks.</li>
+            <li><strong>Strict-Transport-Security (HSTS):</strong> Instructs browsers to only access the application over HTTPS, preventing protocol downgrade attacks.</li>
+            <li><strong>X-Frame-Options:</strong> Prevents the application from being embedded in iframes on other sites, protecting against clickjacking attacks.</li>
+        </ul>
+
+        <h3>Secure Cookies</h3>
+        <p>When <code>HTTPS=true</code> is set, all session cookies are marked with the <code>Secure</code> flag, ensuring they are never transmitted over unencrypted HTTP connections. Cookies also use the <code>HttpOnly</code> and <code>SameSite</code> attributes to prevent JavaScript access and cross-site request attachment.</p>
+
+        <h3>Upload Limits</h3>
+        <p>To protect against denial-of-service through large file uploads:</p>
+        <ul>
+            <li><strong>File size limit:</strong> 25 MB maximum per upload. Requests exceeding this size are rejected before the file is saved to disk.</li>
+            <li><strong>Decompression bomb protection:</strong> Image processing is capped at 50 megapixels. This prevents malicious images with extreme dimensions from consuming excessive memory during processing.</li>
+        </ul>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

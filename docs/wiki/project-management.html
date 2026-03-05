@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Management — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link active">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Project Management</h1>
+        <p class="page-sub">Organize your pattern library, track stitching progress, and plan materials for your projects.</p>
+
+        <img src="../img/saved-patterns-dark.jpg" data-dark="../img/saved-patterns-dark.jpg" data-light="../img/saved-patterns-light.jpg" alt="Saved patterns gallery" class="screenshot">
+        <p class="screenshot-caption">The saved patterns gallery with search, sort, and batch actions</p>
+
+        <h2>Pattern Status</h2>
+        <p>Every saved pattern in Needlework Studio has a status that reflects where it stands in your workflow. There are three status levels:</p>
+        <ul>
+            <li><strong>Not Started</strong> &mdash; The pattern has been saved to your library but you have not begun stitching it. This is the default status for newly created or imported patterns.</li>
+            <li><strong>In Progress</strong> &mdash; You are actively stitching this pattern. Setting a pattern to "In Progress" moves it to the top of your attention and is reflected on the dashboard stats cards.</li>
+            <li><strong>Completed</strong> &mdash; You have finished stitching the pattern. Completed patterns remain in your library for reference but are visually distinguished from active projects.</li>
+        </ul>
+        <p>You can change a pattern's status from the pattern detail view or from the Saved Patterns gallery. The status is displayed as a badge on each pattern card, making it easy to see the state of your projects at a glance.</p>
+
+        <h2>Progress Tracking</h2>
+        <p>Beyond the high-level status, Needlework Studio tracks detailed progress at the per-color level within each pattern. In the <a href="pattern-viewer.html">Pattern Viewer</a>'s legend panel, you can mark individual thread colors as complete as you finish stitching them.</p>
+
+        <h3>Visual Progress Bars</h3>
+        <p>Each pattern card in the Saved Patterns gallery displays a visual progress bar that reflects how many of the pattern's colors you have marked as complete. The bar fills proportionally &mdash; if a pattern uses 20 colors and you have completed 10 of them, the bar shows 50% progress. This gives you a quick, visual sense of how far along each project is without opening it.</p>
+        <p>The progress bar uses a warm gold color scheme consistent with the application's design and is shown on both the gallery thumbnail cards and the pattern detail view.</p>
+
+        <h2>Saved Patterns Gallery</h2>
+        <p>The <strong>Saved Patterns</strong> page is your central pattern library. It displays all of your patterns as a gallery of thumbnail cards, with tools for searching, sorting, and managing your collection.</p>
+
+        <h3>Thumbnails</h3>
+        <p>Each pattern card shows a thumbnail preview of the pattern, rendered as a miniature version of the chart. The thumbnail gives you a visual reference for quickly identifying patterns without needing to open them. Thumbnails are generated automatically when a pattern is created or imported and are updated when you make changes in the editor.</p>
+
+        <h3>Search</h3>
+        <p>A search bar at the top of the gallery lets you filter patterns by name. Type any part of a pattern's name to instantly filter the gallery to matching results. This is essential as your library grows and you need to locate a specific pattern among dozens or hundreds.</p>
+
+        <h3>Sorting</h3>
+        <p>You can sort the pattern gallery by several criteria:</p>
+        <ul>
+            <li><strong>Name</strong> &mdash; Alphabetical order (A to Z or Z to A). Useful for finding patterns by name when you know what you are looking for.</li>
+            <li><strong>Date</strong> &mdash; Most recently modified first, or oldest first. The default sort order shows your most recently worked-on patterns at the top.</li>
+            <li><strong>Status</strong> &mdash; Group patterns by their status (In Progress first, then Not Started, then Completed). This puts your active projects front and center.</li>
+        </ul>
+
+        <h3>Batch Actions</h3>
+        <p>You can select multiple patterns at once and perform batch actions on the selection. Select patterns by clicking their selection checkboxes, then use the batch action menu. Available batch actions include:</p>
+        <ul>
+            <li><strong>Delete</strong> &mdash; Remove multiple patterns from your library at once. A confirmation dialog prevents accidental deletion.</li>
+            <li><strong>Status change</strong> &mdash; Set the status of all selected patterns simultaneously.</li>
+        </ul>
+        <p>Batch actions are a significant time saver when reorganizing your library or cleaning up patterns you no longer need.</p>
+
+        <h2>Pattern Cards</h2>
+        <p>Each pattern in the gallery is represented by a card that displays key information at a glance:</p>
+        <ul>
+            <li><strong>Thumbnail</strong> &mdash; A miniature rendering of the pattern chart.</li>
+            <li><strong>Pattern name</strong> &mdash; The name you assigned when creating or importing the pattern.</li>
+            <li><strong>Thread count</strong> &mdash; The number of distinct thread colors used in the pattern.</li>
+            <li><strong>Dimensions</strong> &mdash; The size of the pattern grid in stitches (width x height).</li>
+            <li><strong>Status badge</strong> &mdash; A colored badge indicating the pattern's current status (Not Started, In Progress, or Completed).</li>
+            <li><strong>Progress bar</strong> &mdash; A visual indicator of per-color completion progress.</li>
+        </ul>
+        <p>Click any pattern card to open it in the <a href="pattern-viewer.html">Pattern Viewer</a>.</p>
+
+        <h2>Forking Patterns</h2>
+        <p>The <strong>fork</strong> feature creates an independent duplicate of any pattern in your library. When you fork a pattern, Needlework Studio creates a complete copy with its own separate data &mdash; the grid, legend, part stitches, backstitches, French knots, and all metadata are duplicated. Changes to the fork do not affect the original pattern, and vice versa.</p>
+        <p>Forking is useful in several scenarios:</p>
+        <ul>
+            <li><strong>Experimenting with changes</strong> &mdash; Fork a pattern before trying a major color scheme change or design modification. If the experiment does not work out, you still have the original.</li>
+            <li><strong>Creating variations</strong> &mdash; Start from an existing pattern to create a different version, such as changing the color palette or adding a border.</li>
+            <li><strong>Preserving the original</strong> &mdash; Before heavily editing an imported pattern, fork it to keep a pristine copy of the original import.</li>
+        </ul>
+        <p>Forked patterns appear in your library with a default name based on the original (e.g., "My Pattern (fork)"), which you can rename at any time.</p>
+
+        <h2>Materials Calculator</h2>
+        <p>The materials calculator helps you determine how many skeins of each thread color you need for a pattern. It performs calculations based on the stitch data in the pattern and presents the results in a clear, actionable format.</p>
+
+        <h3>Calculation by Pattern</h3>
+        <p>Select a pattern to calculate its thread requirements. The calculator analyzes the stitch count for each color in the pattern, accounts for the different thread consumption of each stitch type (full stitches, half stitches, backstitches, French knots), and estimates the number of skeins required for each color. The calculation assumes standard DMC skein lengths and typical stitching coverage.</p>
+
+        <h3>Calculation by Stitch Count</h3>
+        <p>If you prefer to calculate materials manually, you can enter a stitch count directly. Specify the number of stitches and the calculator will estimate the thread length and skein quantity required. This is useful when planning a custom section of a larger pattern or when working with non-standard thread.</p>
+
+        <h3>Calculation by Fabric Size</h3>
+        <p>Enter the fabric dimensions and fabric count (stitches per inch) to calculate the maximum pattern size that will fit. This helps you choose the right fabric size before you begin a project, accounting for margins and framing allowances.</p>
+
+        <h3>Stash Calculator Mode</h3>
+        <p>The stash calculator mode cross-references the materials requirements with your <a href="thread-inventory.html">Thread Inventory</a>. For each color the pattern requires, the calculator checks how many skeins you own and tells you exactly how many additional skeins you need to purchase. This produces a focused shopping list that accounts for what you already have in your stash, preventing unnecessary duplicate purchases.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Design — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link active">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Pattern Design</h1>
+        <p class="page-sub">Create cross-stitch patterns from images or from scratch using a full-featured design editor.</p>
+
+        <img src="../img/pattern-editor-dark.jpg" data-dark="../img/pattern-editor-dark.jpg" data-light="../img/pattern-editor-light.jpg" alt="Full pattern editor with toolbar and canvas" class="screenshot">
+        <p class="screenshot-caption">The pattern editor with drawing tools, stitch types, and color legend</p>
+
+        <h2>Creating Patterns</h2>
+        <p>Needlework Studio offers two ways to start a new pattern, both accessible from the <strong>Create</strong> menu in the navigation bar.</p>
+
+        <h3>Image to Pattern</h3>
+        <p>The Image-to-Pattern converter transforms any photograph or image file into a stitchable cross-stitch chart. The workflow is as follows:</p>
+        <ol>
+            <li><strong>Upload an image</strong> &mdash; Select a file from your computer. Most common image formats are supported (JPEG, PNG, WebP, BMP, GIF).</li>
+            <li><strong>Configure grid size</strong> &mdash; Set the width of the resulting pattern in stitches, from <strong>10 to 500</strong>. The height is calculated automatically to maintain the image's aspect ratio. Larger grids produce more detailed patterns but require more stitching time and thread colors.</li>
+            <li><strong>Set color count</strong> &mdash; Choose how many thread colors the pattern should use, from <strong>2 to 34</strong>. Fewer colors produce a simpler, more stylized result. More colors capture finer detail and smoother gradients.</li>
+            <li><strong>Choose dithering</strong> &mdash; Dithering algorithms simulate additional colors by interleaving stitches of different colors. Options include no dithering (solid color blocks), Floyd-Steinberg dithering (natural-looking gradients), and other algorithms. Experiment with different settings to find the look you prefer.</li>
+            <li><strong>Crop the image</strong> &mdash; An inline crop tool lets you select the region of the image you want to convert, directly in the browser. You can adjust the crop rectangle before generating the pattern.</li>
+            <li><strong>Generate</strong> &mdash; Click the generate button to produce the pattern. The converter will quantize the image colors to the nearest DMC thread colors and produce a grid chart.</li>
+        </ol>
+        <p>After generation, the pattern opens in the design editor where you can refine it with the drawing tools described below.</p>
+
+        <h3>Blank Canvas</h3>
+        <p>The Blank Canvas option creates an empty grid at custom dimensions that you specify. Enter the desired width and height in stitches to create the canvas. This is ideal for designing patterns entirely from scratch &mdash; lettering, geometric designs, borders, or original artwork.</p>
+
+        <h2>Drawing Tools</h2>
+        <p>The pattern editor provides <strong>11 drawing tools</strong> in the toolbar. Select a tool by clicking its icon or pressing the corresponding keyboard shortcut.</p>
+
+        <h3>Pencil</h3>
+        <p>The primary drawing tool. Click or click-and-drag to place stitches of the currently selected color on the grid. The pencil respects the current brush size setting, allowing you to draw single stitches or larger blocks at once.</p>
+
+        <h3>Eraser</h3>
+        <p>Removes stitches from the grid. Click or drag to erase stitches. Like the pencil, the eraser respects the current brush size. Erased cells revert to the empty (background) state.</p>
+
+        <h3>Fill (Bucket)</h3>
+        <p>Flood-fills a contiguous region of the same color with the currently selected color. Click on any stitch to replace all connected stitches of that color with the new color. This is useful for quickly recoloring large areas of a pattern.</p>
+
+        <h3>Line</h3>
+        <p>Draws a straight line of stitches between two points. Click to set the start point, then click again to set the end point. The line is rendered using the current color and brush size. Lines snap to pixel-aligned angles for clean results.</p>
+
+        <h3>Rectangle</h3>
+        <p>Draws a rectangular outline or filled rectangle. Click to set one corner, then click again to set the opposite corner. You can toggle between outline-only and filled modes. Useful for borders, frames, and geometric designs.</p>
+
+        <h3>Ellipse</h3>
+        <p>Draws an elliptical or circular shape. Click to set the center, then drag to set the radius. Like the rectangle tool, you can toggle between outline and filled modes. On a stitch grid, circles and ellipses are approximated to the nearest whole stitches.</p>
+
+        <h3>Eyedropper</h3>
+        <p>Samples the color of a stitch on the canvas and sets it as the active color. Click any stitch to pick up its color. This is a quick way to switch to a color that is already in use in your pattern without searching through the color palette.</p>
+
+        <h3>Replace Color</h3>
+        <p>Replaces every instance of one color with another across the entire pattern. Select the replacement color, then click on any stitch of the color you want to replace. Every stitch of the target color in the pattern will change to the new color. This is a global operation and is useful for swapping thread colors throughout a design.</p>
+
+        <h3>Select</h3>
+        <p>Selects a rectangular region of the canvas for moving, copying, or deleting. Click and drag to define the selection area. Once selected, you can move the selection to a new position on the canvas. This tool is essential for rearranging elements of your design.</p>
+
+        <h3>Stitch</h3>
+        <p>Places specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, the stitch tool lets you place the six different stitch types described in the section below. Select the desired stitch type from the stitch picker before placing.</p>
+
+        <h3>Text</h3>
+        <p>Renders text onto the canvas using system fonts. Type your text, choose a font from the fonts installed on your system, set the size, and click to place it on the grid. The text is rasterized to stitches and becomes part of the pattern. This is particularly useful for adding names, dates, messages, or decorative lettering to your designs.</p>
+
+        <h2>Stitch Types</h2>
+        <p>Needlework Studio supports <strong>six stitch types</strong> that correspond to the standard stitches used in counted cross-stitch embroidery.</p>
+
+        <h3>Full Stitch</h3>
+        <p>The standard cross-stitch &mdash; an X shape that covers one square of the fabric grid. This is the most common stitch type and the default for the pencil tool. Full stitches are displayed as solid colored squares on the chart.</p>
+
+        <h3>Half Stitch</h3>
+        <p>A single diagonal line covering half of a grid square, going either from bottom-left to top-right or from top-left to bottom-right. Half stitches are used for lighter coverage, backgrounds, and blending effects. They use approximately half the thread of a full stitch.</p>
+
+        <h3>Quarter Stitch</h3>
+        <p>A small diagonal stitch that covers one quarter of a grid square. Quarter stitches start from a corner and end at the center of the square. They are used for fine detail work and smooth diagonal edges, especially in realistic or photographic patterns.</p>
+
+        <h3>Three-Quarter Stitch</h3>
+        <p>A combination of a half stitch and a quarter stitch, covering three-quarters of a grid square. This stitch type is commonly used to create smoother curves and diagonal lines than full stitches alone can achieve. It is especially useful for lettering and organic shapes.</p>
+
+        <h3>Backstitch</h3>
+        <p>A straight line stitch used for outlines, borders, and fine detail. Backstitches run along the edges of grid squares (rather than filling them) and can be placed horizontally, vertically, or diagonally. They are typically stitched after all cross-stitches are complete and are essential for defining shapes and adding crispness to a design.</p>
+
+        <h3>French Knot</h3>
+        <p>A small raised dot placed at the intersection of grid lines. French knots are used for eyes, flower centers, decorative dots, and other small accent details. They are represented on the chart as small circles or dots at grid intersections.</p>
+
+        <h2>Brush Sizes</h2>
+        <p>Several tools (including the pencil and eraser) support adjustable brush sizes. The available sizes are:</p>
+        <ul>
+            <li><strong>1x1</strong> &mdash; Single stitch. The most precise option for detailed work.</li>
+            <li><strong>2x2</strong> &mdash; A block of four stitches. Good for filling small areas quickly.</li>
+            <li><strong>3x3</strong> &mdash; A block of nine stitches. Useful for medium-scale fills.</li>
+            <li><strong>5x5</strong> &mdash; A block of twenty-five stitches. Speeds up large area work.</li>
+            <li><strong>9x9</strong> &mdash; A block of eighty-one stitches. The largest brush for rapid coverage of big areas.</li>
+        </ul>
+
+        <h2>Canvas Operations</h2>
+
+        <h3>Mirror and Symmetry Modes</h3>
+        <p>Symmetry modes automatically duplicate your strokes across an axis of symmetry. When enabled, every stitch you place is simultaneously mirrored on the opposite side of the canvas. Available symmetry modes include horizontal mirror (left-right), vertical mirror (top-bottom), and quad symmetry (both axes at once). These modes are invaluable for designing symmetric motifs, borders, and mandala-style patterns.</p>
+
+        <h3>Undo and Redo</h3>
+        <p>The editor maintains a history of up to <strong>50 levels</strong> of undo and redo. Press <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd> on macOS) to undo the last action, and <kbd>Ctrl+Y</kbd> (or <kbd>Cmd+Shift+Z</kbd>) to redo. You can also use the undo and redo buttons in the toolbar. The history tracks all drawing operations, color changes, and canvas modifications.</p>
+
+        <h3>Canvas Resize</h3>
+        <p>You can resize the canvas after creation without losing your existing work. The resize dialog lets you enter new dimensions and choose an <strong>anchor position</strong> that determines where the existing pattern content is placed within the new canvas size. For example, anchoring to the top-left will add new empty space to the right and bottom edges, while anchoring to the center will add equal space on all sides. This is useful for adding borders, extending a design, or trimming excess empty space.</p>
+
+        <h2>Color Management</h2>
+        <p>The color palette panel in the editor displays all colors currently used in the pattern. From this panel you can:</p>
+        <ul>
+            <li><strong>Add colors</strong> &mdash; Open the thread picker to add new DMC or Anchor colors to your pattern's palette. The picker supports search by number or name.</li>
+            <li><strong>Replace colors</strong> &mdash; Swap one color for another throughout the entire pattern using the Replace Color tool.</li>
+            <li><strong>Batch operations</strong> &mdash; Remove unused colors from the palette, or perform bulk color adjustments.</li>
+        </ul>
+
+        <h2>Keyboard Shortcuts</h2>
+        <p>The most commonly used tools and actions have keyboard shortcuts for faster workflow:</p>
+        <ul>
+            <li><kbd>P</kbd> &mdash; Pencil tool</li>
+            <li><kbd>E</kbd> &mdash; Eraser tool</li>
+            <li><kbd>F</kbd> &mdash; Fill tool</li>
+            <li><kbd>L</kbd> &mdash; Line tool</li>
+            <li><kbd>R</kbd> &mdash; Rectangle tool</li>
+            <li><kbd>O</kbd> &mdash; Ellipse tool</li>
+            <li><kbd>I</kbd> &mdash; Eyedropper tool</li>
+            <li><kbd>T</kbd> &mdash; Text tool</li>
+            <li><kbd>Ctrl+Z</kbd> / <kbd>Cmd+Z</kbd> &mdash; Undo</li>
+            <li><kbd>Ctrl+Y</kbd> / <kbd>Cmd+Shift+Z</kbd> &mdash; Redo</li>
+            <li><kbd>Ctrl+S</kbd> / <kbd>Cmd+S</kbd> &mdash; Save pattern</li>
+        </ul>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

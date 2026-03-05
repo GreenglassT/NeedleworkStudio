@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desktop Sync — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link active">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Desktop Sync</h1>
+        <p class="page-sub">Synchronize your patterns and thread inventory between the desktop app and a self-hosted Needlework Studio server.</p>
+
+        <h2>Overview</h2>
+        <p>The Needlework Studio desktop app can operate entirely offline as a standalone application, but it also supports <strong>bidirectional synchronization</strong> with a self-hosted Needlework Studio server. When sync is configured, your data flows in both directions &mdash; changes made on the desktop are pushed to the server, and changes made on the server (or from another synced desktop) are pulled to the desktop.</p>
+        <p>This means you can design patterns on your laptop, review them on your phone through the server's web interface, and track stitching progress from either device. All data stays in sync automatically.</p>
+
+        <h2>Setting Up Sync</h2>
+        <p>Pairing the desktop app with a server is a straightforward process:</p>
+        <ol>
+            <li><strong>Open the sync panel</strong> &mdash; Click the <strong>cloud icon</strong> in the desktop app's navigation bar. This opens the sync configuration panel.</li>
+            <li><strong>Enter the server URL</strong> &mdash; Type the full URL of your Needlework Studio server instance (for example, <code>https://needlework.example.com</code> or <code>http://192.168.1.50:5000</code>). The URL should point to the root of the application, not to a specific page.</li>
+            <li><strong>Enter your credentials</strong> &mdash; Provide the username and password for your account on the server. These credentials are used only once during the pairing process to authenticate and request an API token.</li>
+            <li><strong>Pair</strong> &mdash; Click the pair button. The desktop app sends your credentials to the server, which validates them and issues an <strong>API token</strong>. This token is stored securely on the desktop and used for all subsequent sync operations.</li>
+        </ol>
+
+        <h3>Security Note</h3>
+        <p>Your username and password are <strong>not stored</strong> on the desktop after pairing. They are sent to the server once to obtain an API token, and then discarded. Only the API token is retained. The token provides the desktop app with the ability to read and write your data on the server without needing to store your credentials. If you are concerned about token security, you can revoke it at any time by unpairing (see below).</p>
+
+        <h3>Server Requirements</h3>
+        <p>To use sync, you need a running Needlework Studio server that is accessible from the machine running the desktop app. The server can be on your local network (accessible by IP address) or exposed to the internet with a domain name. If you have not set up a server yet, see the <a href="installation.html">Installation</a> and <a href="deployment.html">Deployment</a> guides.</p>
+
+        <h2>How Sync Works</h2>
+        <p>Synchronization transfers data between the desktop app and the server to keep both copies up to date.</p>
+
+        <h3>Automatic Sync on Launch</h3>
+        <p>When the desktop app starts and a server is paired, it automatically performs a sync operation. This pulls any changes from the server (such as patterns you created via the web interface) and pushes any local changes that have not yet been synced. You do not need to take any action &mdash; sync happens in the background during startup.</p>
+
+        <h3>Manual Sync</h3>
+        <p>You can trigger a sync at any time by clicking the <strong>Sync Now</strong> button in the sync panel. This is useful if you have just made changes on the server and want them to appear on the desktop immediately without restarting the app, or if you want to ensure your latest desktop changes are pushed to the server before switching devices.</p>
+
+        <h2>What Syncs</h2>
+        <p>The sync process covers all of the core data in Needlework Studio. Here is a complete list of what is synchronized between the desktop and server:</p>
+
+        <h3>Saved Patterns</h3>
+        <p>All saved patterns are synced in full, including:</p>
+        <ul>
+            <li><strong>Grid data</strong> &mdash; The complete stitch grid with all full stitch placements and colors.</li>
+            <li><strong>Legend</strong> &mdash; The thread color legend with DMC/Anchor thread references, symbols, and color definitions.</li>
+            <li><strong>Part stitches</strong> &mdash; Half stitches, quarter stitches, and three-quarter stitches with their positions and orientations.</li>
+            <li><strong>Backstitches</strong> &mdash; All backstitch lines with start and end coordinates and thread color assignments.</li>
+            <li><strong>French knots</strong> &mdash; All French knot positions and their thread color assignments.</li>
+            <li><strong>Progress data</strong> &mdash; Per-color completion status, so your stitching progress is available on both devices.</li>
+            <li><strong>Thumbnails</strong> &mdash; Pattern thumbnail images for display in the gallery.</li>
+            <li><strong>Metadata</strong> &mdash; Pattern name, status (Not Started / In Progress / Completed), creation date, and modification timestamps.</li>
+        </ul>
+
+        <h3>Thread Inventory</h3>
+        <p>Your thread inventory data is synced across devices, including:</p>
+        <ul>
+            <li><strong>Ownership status</strong> &mdash; Whether each thread is marked as Own, Need, or Don't Own.</li>
+            <li><strong>Skein quantities</strong> &mdash; The number of skeins recorded for each thread.</li>
+            <li><strong>Notes</strong> &mdash; Any free-text notes you have attached to individual threads.</li>
+        </ul>
+
+        <h3>Deletions</h3>
+        <p>When you delete a pattern on one device, that deletion is propagated to the other device during the next sync. The pattern will be removed from both the desktop and the server. Deletions are tracked so that a deleted pattern does not reappear from the other device's copy.</p>
+
+        <h2>Conflict Resolution</h2>
+        <p>In cases where the same piece of data has been modified on both the desktop and the server since the last sync, a conflict occurs. Needlework Studio uses a <strong>last-write-wins</strong> strategy based on modification timestamps to resolve conflicts.</p>
+        <p>When two versions of the same pattern or thread record have different modification times, the version with the more recent timestamp is kept, and the older version is overwritten. This approach is simple and predictable: the most recent change always takes precedence.</p>
+        <p>In practice, conflicts are rare if you follow a natural workflow of making changes on one device at a time and syncing regularly. If you are concerned about accidental data loss, you can <a href="project-management.html">fork a pattern</a> before making major changes, which creates an independent backup copy that will not be affected by sync conflicts on the original.</p>
+
+        <h2>Status Indicator</h2>
+        <p>The sync status is communicated visually through the cloud icon in the desktop app's navigation bar. The icon changes color and animation to reflect the current state:</p>
+        <ul>
+            <li><strong>Gray</strong> &mdash; <em>Unpaired.</em> The desktop app is not connected to any server. Sync is not configured. Click the icon to set up pairing.</li>
+            <li><strong>Green</strong> &mdash; <em>Paired and idle.</em> The desktop app is paired with a server and the last sync completed successfully. Data is up to date.</li>
+            <li><strong>Gold pulse</strong> &mdash; <em>Syncing.</em> A sync operation is currently in progress. The icon pulses with a gold animation while data is being transferred. Avoid closing the app while syncing to ensure all data is transferred completely.</li>
+            <li><strong>Red</strong> &mdash; <em>Error.</em> The last sync attempt failed. This typically means the server is unreachable (network issue, server is down, or the URL has changed). Check your network connection and server status. The icon will return to green after a successful sync.</li>
+        </ul>
+
+        <h2>Unpairing</h2>
+        <p>If you want to disconnect the desktop app from the server, you can unpair at any time:</p>
+        <ol>
+            <li>Click the cloud icon to open the sync panel.</li>
+            <li>Click the <strong>Unpair</strong> button.</li>
+            <li>Confirm the action in the dialog.</li>
+        </ol>
+        <p>When you unpair, the following happens:</p>
+        <ul>
+            <li>The API token stored on the desktop is deleted.</li>
+            <li>The token is <strong>revoked on the server</strong>, so it cannot be reused even if someone were to recover it.</li>
+            <li>The desktop app returns to standalone mode. Your local data remains intact &mdash; nothing is deleted from the desktop. However, future changes on the server will no longer be pulled to the desktop, and local changes will no longer be pushed.</li>
+        </ul>
+        <p>You can re-pair with the same server (or a different one) at any time by going through the setup process again. Re-pairing will issue a new API token and resume synchronization.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

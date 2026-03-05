@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link active">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Administration</h1>
+        <p class="page-sub">Manage users, back up your data, and configure the application through environment variables.</p>
+
+        <h2>User Management</h2>
+        <p>All user management is handled through the <code>manage_users.py</code> command-line script. This script must be run on the server (or inside the Docker container) and provides the following commands:</p>
+
+        <h3>Available Commands</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>create</code></td>
+                    <td>Create a new user account. Prompts for username and password interactively.</td>
+                </tr>
+                <tr>
+                    <td><code>list</code></td>
+                    <td>List all user accounts with their status (enabled or disabled).</td>
+                </tr>
+                <tr>
+                    <td><code>password</code></td>
+                    <td>Reset a user's password. Prompts for the username and a new password.</td>
+                </tr>
+                <tr>
+                    <td><code>toggle</code></td>
+                    <td>Enable or disable a user account. Disabled users cannot log in but their data is preserved.</td>
+                </tr>
+                <tr>
+                    <td><code>delete</code></td>
+                    <td>Permanently delete a user account and all associated data.</td>
+                </tr>
+                <tr>
+                    <td><code>tokens</code></td>
+                    <td>List all API tokens for a given user.</td>
+                </tr>
+                <tr>
+                    <td><code>revoke</code></td>
+                    <td>Revoke a specific API token by its ID.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Usage Examples</h3>
+        <p>For a manual (non-Docker) installation, run commands directly:</p>
+        <pre><code>python3 manage_users.py create
+python3 manage_users.py list
+python3 manage_users.py password
+python3 manage_users.py toggle
+python3 manage_users.py delete
+python3 manage_users.py tokens
+python3 manage_users.py revoke &lt;token-id&gt;</code></pre>
+
+        <h3>Docker Usage</h3>
+        <p>When running inside Docker, prefix every command with <code>docker compose exec</code>:</p>
+        <pre><code>docker compose exec needlework-studio python3 manage_users.py create
+docker compose exec needlework-studio python3 manage_users.py list
+docker compose exec needlework-studio python3 manage_users.py password
+docker compose exec needlework-studio python3 manage_users.py toggle
+docker compose exec needlework-studio python3 manage_users.py delete
+docker compose exec needlework-studio python3 manage_users.py tokens
+docker compose exec needlework-studio python3 manage_users.py revoke &lt;token-id&gt;</code></pre>
+
+        <h2>Backups</h2>
+        <p>All Needlework Studio data &mdash; the SQLite database, uploaded images, and generated files &mdash; is stored in a single directory. This makes backups straightforward: just copy or archive that directory.</p>
+
+        <h3>Data Locations</h3>
+        <ul>
+            <li><strong>Docker:</strong> <code>/data</code> inside the container (mapped to the <code>needlework-data</code> volume).</li>
+            <li><strong>Manual install:</strong> The application directory itself, or the path specified by the <code>NEEDLEWORK_DATA_DIR</code> environment variable.</li>
+        </ul>
+
+        <h3>Docker Backup</h3>
+        <p>Create a compressed archive of the entire data directory from a running container:</p>
+        <pre><code>docker compose exec needlework-studio tar czf - /data > needlework-backup-$(date +%F).tar.gz</code></pre>
+        <p>This produces a timestamped file such as <code>needlework-backup-2025-06-15.tar.gz</code> in your current directory.</p>
+
+        <h3>Docker Restore</h3>
+        <p>To restore from a backup archive:</p>
+        <ol>
+            <li>Stop the running container:
+                <pre><code>docker compose down</code></pre>
+            </li>
+            <li>Remove the existing data volume:
+                <pre><code>docker volume rm needlework-data</code></pre>
+            </li>
+            <li>Recreate the volume and start a temporary container to extract the backup:
+                <pre><code>docker compose up -d
+docker compose exec -T needlework-studio tar xzf - -C / < needlework-backup-2025-06-15.tar.gz</code></pre>
+            </li>
+            <li>Restart the container to pick up the restored data:
+                <pre><code>docker compose restart</code></pre>
+            </li>
+        </ol>
+
+        <h3>Manual Backup</h3>
+        <p>For non-Docker installations, copy the data directory (or the entire application directory if <code>NEEDLEWORK_DATA_DIR</code> is not set) to a safe location:</p>
+        <pre><code>tar czf needlework-backup-$(date +%F).tar.gz /path/to/needlework/data</code></pre>
+        <p>Consider scheduling regular backups with a cron job to avoid data loss.</p>
+
+        <h2>Environment Variables</h2>
+        <p>Needlework Studio is configured through environment variables. Set these in your shell, a <code>.env</code> file alongside your <code>docker-compose.yml</code>, or your system's service manager configuration.</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Variable</th>
+                    <th>Default</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>PORT</code></td>
+                    <td><code>6969</code></td>
+                    <td>The port the application listens on. Change this if port 6969 conflicts with another service on your host.</td>
+                </tr>
+                <tr>
+                    <td><code>SECRET_KEY</code></td>
+                    <td>auto-generated</td>
+                    <td>The secret key used to encrypt user sessions. A random key is generated and persisted to disk on first run. You can override it with your own value if needed, but the auto-generated key is secure and sufficient for most deployments.</td>
+                </tr>
+                <tr>
+                    <td><code>HTTPS</code></td>
+                    <td><code>false</code></td>
+                    <td>Set to <code>true</code> when running behind an SSL-terminating reverse proxy. This marks session cookies as <code>Secure</code>, ensuring they are only sent over encrypted connections.</td>
+                </tr>
+                <tr>
+                    <td><code>FLASK_DEBUG</code></td>
+                    <td><code>0</code></td>
+                    <td>Enable Flask debug mode. Set to <code>1</code> for development only &mdash; this enables auto-reload and detailed error pages. Never enable in production.</td>
+                </tr>
+                <tr>
+                    <td><code>NEEDLEWORK_DATA_DIR</code></td>
+                    <td>app directory</td>
+                    <td>Override the default data and database storage location. By default, all data is stored in the application directory. Set this to an absolute path to store data elsewhere (useful for separating application code from persistent storage).</td>
+                </tr>
+                <tr>
+                    <td><code>DESKTOP_MODE</code></td>
+                    <td><code>false</code></td>
+                    <td>Enable auto-login without credentials. This is used internally by the desktop (Electron) app to bypass the login screen. Do not enable this on a server-hosted deployment &mdash; it would allow anyone to access the application without authentication.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Setting Variables with Docker Compose</h3>
+        <p>Add an <code>environment</code> section to your <code>docker-compose.yml</code>:</p>
+        <pre><code>services:
+  needlework-studio:
+    image: ghcr.io/greenglasst/needleworkstudio:latest
+    ports:
+      - "6969:6969"
+    volumes:
+      - needlework-data:/data
+    environment:
+      - HTTPS=true
+      - SECRET_KEY=your-custom-secret-key
+    restart: unless-stopped
+
+volumes:
+  needlework-data:</code></pre>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

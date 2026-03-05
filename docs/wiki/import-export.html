@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import &amp; Export — Needlework Studio Wiki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+    <div class="header-inner">
+        <a href="../index.html" class="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
+                <g transform="translate(8, 8) scale(2)">
+                    <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
+                    <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
+                </g>
+                <text x="82" y="38" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#e8dcc8" letter-spacing="0.5">Needlework</text>
+                <text x="82" y="64" font-family="'Cormorant Garamond', serif" font-size="30" font-weight="600" fill="#c8913a" letter-spacing="0.5">Studio</text>
+            </svg>
+        </a>
+        <button class="hamburger" aria-label="Menu">&#9776;</button>
+        <nav class="nav">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="index.html" class="nav-link active">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
+            <button class="theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+        <div class="nav-backdrop"></div>
+    </div>
+</header>
+
+<!-- Wiki Layout -->
+<div class="wiki-layout">
+    <button class="wiki-mobile-toggle">&#9660; Show navigation</button>
+
+    <!-- Sidebar -->
+    <aside class="wiki-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">User Guide</div>
+            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
+            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
+            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
+            <a href="import-export.html" class="sidebar-link active">Import &amp; Export</a>
+            <a href="project-management.html" class="sidebar-link">Project Management</a>
+            <a href="desktop-sync.html" class="sidebar-link">Desktop Sync</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Setup &amp; Deployment</div>
+            <a href="installation.html" class="sidebar-link">Installation</a>
+            <a href="administration.html" class="sidebar-link">Administration</a>
+            <a href="deployment.html" class="sidebar-link">Deployment</a>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="wiki-content">
+        <h1>Import &amp; Export</h1>
+        <p class="page-sub">Bring patterns into Needlework Studio from multiple file formats and export them for printing, sharing, or use in other software.</p>
+
+        <img src="../img/pdf-import-dark.jpg" data-dark="../img/pdf-import-dark.jpg" data-light="../img/pdf-import-light.jpg" alt="PDF import page" class="screenshot">
+        <p class="screenshot-caption">The PDF import interface for uploading cross-stitch pattern charts</p>
+
+        <h2>Import Formats</h2>
+        <p>Needlework Studio can import cross-stitch patterns from three file formats. All import options are available from the <strong>Create</strong> menu in the navigation bar.</p>
+
+        <h3>PDF Import</h3>
+        <p>The PDF importer is designed to handle cross-stitch chart PDFs &mdash; the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data.</p>
+        <p><strong>How it works:</strong></p>
+        <ol>
+            <li><strong>Upload</strong> &mdash; Select a PDF file from your computer using the file picker. The PDF should contain cross-stitch chart pages with a grid of symbols or colors.</li>
+            <li><strong>Preview</strong> &mdash; After upload, Needlework Studio displays a preview of the parsed pattern along with the extracted thread legend. Review the preview to verify that the chart was parsed correctly. The preview shows the full grid with colors and symbols as they were interpreted from the PDF.</li>
+            <li><strong>Name and save</strong> &mdash; Enter a name for the pattern and click save to add it to your library.</li>
+        </ol>
+        <p>The PDF parser works best with digitally-generated chart PDFs. Scanned or photographed charts may not parse as accurately due to image quality variations. If a PDF contains multiple chart pages, Needlework Studio will stitch them together into a single continuous pattern.</p>
+
+        <h3>JSON Import</h3>
+        <p>JSON is Needlework Studio's native pattern format. JSON files contain the complete pattern data structure including the stitch grid, thread legend, part stitches (half, quarter, three-quarter), backstitches, French knots, and all metadata. This format preserves every detail of the pattern with perfect fidelity.</p>
+        <p><strong>Common uses for JSON import:</strong></p>
+        <ul>
+            <li>Transferring patterns between Needlework Studio instances (for example, from one server to another).</li>
+            <li>Restoring a pattern from a backup.</li>
+            <li>Sharing patterns with other Needlework Studio users who do not have access to your server.</li>
+        </ul>
+        <p>To import a JSON file, select <strong>JSON Import</strong> from the Create menu, choose the file, review the preview, enter a name, and save.</p>
+
+        <h3>OXS Import</h3>
+        <p>OXS (Open Cross Stitch) is an XML-based standard format designed for interoperability between different cross-stitch software applications. Importing an OXS file allows you to bring patterns from other cross-stitch programs into Needlework Studio.</p>
+        <p>The OXS format supports full stitches, part stitches, backstitches, French knots, and thread color definitions. Needlework Studio maps the thread colors in the OXS file to the closest matching DMC or Anchor threads in its database, using perceptual color matching when an exact match is not available.</p>
+        <p>To import an OXS file, select <strong>OXS Import</strong> from the Create menu, choose the <code>.oxs</code> file, review the imported pattern, name it, and save.</p>
+
+        <h2>Import Workflow</h2>
+        <p>Regardless of the file format, the import workflow follows a consistent sequence:</p>
+        <ol>
+            <li><strong>Upload file</strong> &mdash; Select the file from your computer using the file picker dialog. The file is uploaded and processed on the server.</li>
+            <li><strong>Preview with legend</strong> &mdash; The imported pattern is displayed as a preview alongside its thread legend. Review the preview carefully to confirm that the pattern was parsed correctly. Check that the colors look right, the dimensions match what you expect, and the stitch types are properly represented.</li>
+            <li><strong>Name pattern</strong> &mdash; Enter a descriptive name for the pattern. This name will appear in your pattern library and can be changed later.</li>
+            <li><strong>Save</strong> &mdash; Click the save button to add the pattern to your library. The pattern is now available in the Saved Patterns gallery, where you can open it in the <a href="pattern-viewer.html">Pattern Viewer</a> or the <a href="pattern-design.html">Pattern Design</a> editor.</li>
+        </ol>
+
+        <h2>Export Formats</h2>
+        <p>Needlework Studio can export saved patterns in four formats. Export options are available from the pattern's detail view or the viewer toolbar.</p>
+
+        <h3>PDF Export</h3>
+        <p>The PDF exporter generates a multi-page document optimized for printing and offline use. The exported PDF includes:</p>
+        <ul>
+            <li><strong>Cover page</strong> &mdash; A title page showing the pattern name, a thumbnail preview of the design, overall dimensions in stitches, thread count, and other summary information.</li>
+            <li><strong>Tiled grid pages</strong> &mdash; The full pattern chart is split across multiple pages in a tiled layout, with each page showing a portion of the grid at a readable scale. Page-edge markers and overlap indicators help you align the pages when taping them together or navigating between sections. Each grid cell shows the color fill and symbol overlay.</li>
+            <li><strong>Legend page</strong> &mdash; A complete thread legend listing every color used in the pattern with its symbol, DMC or Anchor thread number, color name, stitch count, and a color swatch. This serves as your shopping list and reference while stitching.</li>
+        </ul>
+        <p>The PDF output is designed for standard letter or A4 paper sizes and uses high-contrast colors and symbols that remain legible when printed in black and white.</p>
+
+        <h3>SVG Export</h3>
+        <p>The SVG exporter produces a vector graphics file of the pattern chart. Because SVG is a vector format, the output can be scaled to any size without loss of quality. This makes it ideal for:</p>
+        <ul>
+            <li><strong>High-quality printing</strong> &mdash; Print the chart at any size, from a small reference card to a large poster.</li>
+            <li><strong>Editing in vector software</strong> &mdash; Open the SVG in applications like Inkscape, Adobe Illustrator, or Figma to add custom annotations, borders, or labels.</li>
+            <li><strong>Web publishing</strong> &mdash; Embed the chart on a website or blog post as a scalable image.</li>
+        </ul>
+        <p>The exported SVG includes the full grid with color fills and symbol overlays, matching the appearance of chart mode in the Pattern Viewer.</p>
+
+        <h3>OXS Export</h3>
+        <p>Export your pattern in the Open Cross Stitch XML format for compatibility with other cross-stitch software. The OXS file includes full stitches, part stitches, backstitches, French knots, and thread color definitions. This is the best format to use when you need to share a pattern with someone who uses a different cross-stitch application.</p>
+
+        <h3>JSON Export</h3>
+        <p>Export the pattern in Needlework Studio's native JSON format. The JSON file contains the complete pattern data with full fidelity, including:</p>
+        <ul>
+            <li>The stitch grid with all full stitch data</li>
+            <li>Part stitches (half, quarter, three-quarter) with position and orientation</li>
+            <li>Backstitches with start and end coordinates</li>
+            <li>French knots with positions</li>
+            <li>The complete thread legend with DMC/Anchor thread references</li>
+            <li>Pattern metadata (name, dimensions, creation date)</li>
+            <li>Progress tracking data</li>
+        </ul>
+        <p>JSON export is the recommended format for backups, archiving, and transferring patterns between Needlework Studio instances. It is the only format that guarantees no data loss during export and re-import.</p>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-copy">Needlework Studio &mdash; Open source, self-hosted</span>
+        <div class="footer-links">
+            <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
+            <a href="index.html">Wiki</a>
+            <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
