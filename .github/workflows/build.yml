@@ -47,6 +47,7 @@ jobs:
             artifact-name: "Needlework-Studio-Linux"
             artifact-glob: |
               electron/dist/*.AppImage
+              electron/dist/*.deb
               electron/dist/*.yml
             build-backend: bash build_backend.sh
 

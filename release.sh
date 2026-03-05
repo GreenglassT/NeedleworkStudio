@@ -62,6 +62,6 @@ gh release view "$TAG" --json assets --jq '.assets[].name'
 ASSET_COUNT=$(gh release view "$TAG" --json assets --jq '.assets | length')
 echo ""
 echo "$ASSET_COUNT assets uploaded"
-echo "Expected: macOS arm64 (.dmg, .zip), macOS x64 (.dmg, .zip), Windows (.exe), Linux (.AppImage) + update metadata"
+echo "Expected: macOS arm64 (.dmg, .zip), macOS x64 (.dmg, .zip), Windows (.exe), Linux (.AppImage, .deb) + update metadata"
 echo ""
 echo "https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/tag/$TAG"

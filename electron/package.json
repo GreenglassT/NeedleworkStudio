@@ -76,7 +76,7 @@
     },
     "linux": {
       "icon": "resources/icon.png",
-      "target": "AppImage",
+      "target": ["AppImage", "deb"],
       "category": "Graphics"
     }
   },
