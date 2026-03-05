@@ -37,9 +37,9 @@
         { key: '1\u20137',   desc: 'Stitch: Half/Quarter/\u00be/Petite/Back/Knot/Bead' },
         { key: '`',          desc: 'Toggle half-stitch direction' },
         { key: 'Del',        desc: 'Clear selection' },
-        { key: 'Ctrl+C',     desc: 'Copy selection' },
-        { key: 'Ctrl+V',     desc: 'Paste selection' },
-        { key: 'Esc',        desc: 'Cancel draw / deselect' },
+        { key: 'Ctrl+C',     desc: 'Copy selection (click to stamp)' },
+        { key: 'Ctrl+X',     desc: 'Cut selection (click to place)' },
+        { key: 'Esc',        desc: 'Cancel paste / draw / deselect' },
     ];
 
     function _buildRows(shortcuts) {

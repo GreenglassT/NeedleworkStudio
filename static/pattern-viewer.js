@@ -1187,6 +1187,9 @@ document.addEventListener('mouseup', function() {
 document.getElementById('canvas-area').addEventListener('mouseleave', function() {
     if (editor && editor.isActive()) editor.handleMouseLeave();
 });
+document.getElementById('canvas-area').addEventListener('contextmenu', function(e) {
+    if (editor && editor.isActive() && editor.handleContextMenu(e)) return;
+});
 
 /* ——— TOUCH PAN / PINCH ZOOM / EDITOR DRAW ——— */
 let _t1 = null, _t2 = null;

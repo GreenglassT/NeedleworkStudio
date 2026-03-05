@@ -69,13 +69,15 @@ function createPatternEditor(config) {
     /* Selection state */
     let _selStart      = null;
     let _selRect       = null;   // { c1, r1, c2, r2 } normalized
-    let _selBuffer     = null;   // { w, h, data:[...] }
+    let _selBuffer     = null;   // { w, h, data, part_stitches, backstitches, knots, beads, isCut }
     let _selOffset     = { dc: 0, dr: 0 };
     let _selDragging   = false;
     let _selMoving     = false;
     let _selMoveOrigin = null;
     let _marchPhase    = 0;
     let _marchRAF      = null;
+    let _pasteMode     = false;  // true when floating paste preview is active
+    let _pasteLoc      = null;   // { col, row } cursor position for paste placement
     let _eyedropTip    = null;
 
     /* Stitch tool state */
@@ -705,18 +707,36 @@ function createPatternEditor(config) {
                row >= _selRect.r1 + dr && row <= _selRect.r2 + dr;
     }
 
-    function _captureSelectionBuffer() {
+    function _captureSelectionBuffer(isCut) {
         if (!_selRect) return;
         const pd = getPatternData();
         const { c1, r1, c2, r2 } = _selRect;
         const w = c2 - c1 + 1, h = r2 - r1 + 1;
+        // Grid cells
         const data = new Array(w * h);
-        for (let r = 0; r < h; r++) {
-            for (let c = 0; c < w; c++) {
+        for (let r = 0; r < h; r++)
+            for (let c = 0; c < w; c++)
                 data[r * w + c] = pd.grid[(r1 + r) * pd.grid_w + (c1 + c)];
-            }
-        }
-        _selBuffer = { w, h, data };
+        // Part stitches (cell coords) — store relative to selection origin
+        const part_stitches = (pd.part_stitches || [])
+            .filter(s => _cellInRect(s.x, s.y, c1, r1, c2, r2))
+            .map(s => ({ x: s.x - c1, y: s.y - r1, type: s.type, dmc: s.dmc, dir: s.dir }));
+        // Backstitches (intersection coords) — both ends must be inside
+        const backstitches = (pd.backstitches || [])
+            .filter(bs => _intersectionInRect(bs.x1, bs.y1, c1, r1, c2, r2) &&
+                          _intersectionInRect(bs.x2, bs.y2, c1, r1, c2, r2))
+            .map(bs => ({ x1: bs.x1 - c1, y1: bs.y1 - r1, x2: bs.x2 - c1, y2: bs.y2 - r1, dmc: bs.dmc }));
+        // Knots (intersection coords)
+        const knots = (pd.knots || [])
+            .filter(k => _intersectionInRect(k.x, k.y, c1, r1, c2, r2))
+            .map(k => ({ x: k.x - c1, y: k.y - r1, dmc: k.dmc }));
+        // Beads (cell coords)
+        const beads = (pd.beads || [])
+            .filter(b => _cellInRect(b.x, b.y, c1, r1, c2, r2))
+            .map(b => ({ x: b.x - c1, y: b.y - r1, dmc: b.dmc }));
+        // Store cut source bounds so _commitPaste can clear them after _selRect is nulled
+        _selBuffer = { w, h, data, part_stitches, backstitches, knots, beads,
+                       isCut: !!isCut, cutSource: isCut ? { c1, r1, c2, r2 } : null };
     }
 
     function _rotateBufferCW() {
@@ -728,9 +748,13 @@ function createPatternEditor(config) {
         for (let r = 0; r < h; r++)
             for (let c = 0; c < w; c++)
                 nd[c * nW + (h - 1 - r)] = data[r * w + c];
-        _selBuffer = { w: nW, h: nH, data: nd };
-        _selRect.c2 = _selRect.c1 + nW - 1;
-        _selRect.r2 = _selRect.r1 + nH - 1;
+        // Rotate CW: (x,y) → (h-1-y, x) for cell coords, (x,y) → (h-y, x) for intersection coords
+        const rParts = (_selBuffer.part_stitches || []).map(s => ({ ...s, x: h - 1 - s.y, y: s.x }));
+        const rBS    = (_selBuffer.backstitches  || []).map(bs => ({ ...bs, x1: h - bs.y1, y1: bs.x1, x2: h - bs.y2, y2: bs.x2 }));
+        const rKnots = (_selBuffer.knots         || []).map(k => ({ ...k, x: h - k.y, y: k.x }));
+        const rBeads = (_selBuffer.beads         || []).map(b => ({ ...b, x: h - 1 - b.y, y: b.x }));
+        _selBuffer = { w: nW, h: nH, data: nd, part_stitches: rParts, backstitches: rBS, knots: rKnots, beads: rBeads, isCut: _selBuffer.isCut, cutSource: _selBuffer.cutSource };
+        if (_selRect) { _selRect.c2 = _selRect.c1 + nW - 1; _selRect.r2 = _selRect.r1 + nH - 1; }
         _redrawOverlay();
     }
 
@@ -742,7 +766,12 @@ function createPatternEditor(config) {
         for (let r = 0; r < h; r++)
             for (let c = 0; c < w; c++)
                 nd[r * w + (w - 1 - c)] = data[r * w + c];
-        _selBuffer = { w, h, data: nd };
+        // Flip horizontal: x → (w-1-x) for cell coords, x → (w-x) for intersection coords
+        const fParts = (_selBuffer.part_stitches || []).map(s => ({ ...s, x: w - 1 - s.x }));
+        const fBS    = (_selBuffer.backstitches  || []).map(bs => ({ ...bs, x1: w - bs.x1, x2: w - bs.x2 }));
+        const fKnots = (_selBuffer.knots         || []).map(k => ({ ...k, x: w - k.x }));
+        const fBeads = (_selBuffer.beads         || []).map(b => ({ ...b, x: w - 1 - b.x }));
+        _selBuffer = { w, h, data: nd, part_stitches: fParts, backstitches: fBS, knots: fKnots, beads: fBeads, isCut: _selBuffer.isCut, cutSource: _selBuffer.cutSource };
         _redrawOverlay();
     }
 
@@ -754,17 +783,79 @@ function createPatternEditor(config) {
         for (let r = 0; r < h; r++)
             for (let c = 0; c < w; c++)
                 nd[(h - 1 - r) * w + c] = data[r * w + c];
-        _selBuffer = { w, h, data: nd };
+        // Flip vertical: y → (h-1-y) for cell coords, y → (h-y) for intersection coords
+        const fParts = (_selBuffer.part_stitches || []).map(s => ({ ...s, y: h - 1 - s.y }));
+        const fBS    = (_selBuffer.backstitches  || []).map(bs => ({ ...bs, y1: h - bs.y1, y2: h - bs.y2 }));
+        const fKnots = (_selBuffer.knots         || []).map(k => ({ ...k, y: h - k.y }));
+        const fBeads = (_selBuffer.beads         || []).map(b => ({ ...b, y: h - 1 - b.y }));
+        _selBuffer = { w, h, data: nd, part_stitches: fParts, backstitches: fBS, knots: fKnots, beads: fBeads, isCut: _selBuffer.isCut, cutSource: _selBuffer.cutSource };
         _redrawOverlay();
     }
 
-    function _clearSelectionSource() {
+    /* Bounds helpers for cell coords (0..w-1) vs intersection coords (0..w) */
+    function _cellInRect(x, y, c1, r1, c2, r2) {
+        return x >= c1 && x <= c2 && y >= r1 && y <= r2;
+    }
+    function _intersectionInRect(x, y, c1, r1, c2, r2) {
+        return x >= c1 && x <= c2 + 1 && y >= r1 && y <= r2 + 1;
+    }
+
+    function _clearSelectionSource(bounds) {
+        const rect = bounds || _selRect;
+        if (!rect) return;
         const pd = getPatternData();
-        const { c1, r1, c2, r2 } = _selRect;
-        for (let r = r1; r <= r2; r++) {
-            for (let c = c1; c <= c2; c++) {
+        const { c1, r1, c2, r2 } = rect;
+        for (let r = r1; r <= r2; r++)
+            for (let c = c1; c <= c2; c++)
                 pd.grid[r * pd.grid_w + c] = 'BG';
+        if (pd.part_stitches) pd.part_stitches = pd.part_stitches.filter(s =>
+            !_cellInRect(s.x, s.y, c1, r1, c2, r2));
+        if (pd.backstitches) pd.backstitches = pd.backstitches.filter(bs =>
+            !(_intersectionInRect(bs.x1, bs.y1, c1, r1, c2, r2) &&
+              _intersectionInRect(bs.x2, bs.y2, c1, r1, c2, r2)));
+        if (pd.knots) pd.knots = pd.knots.filter(k =>
+            !_intersectionInRect(k.x, k.y, c1, r1, c2, r2));
+        if (pd.beads) pd.beads = pd.beads.filter(b =>
+            !_cellInRect(b.x, b.y, c1, r1, c2, r2));
+    }
+
+    /* Write buffer stitches at a destination offset */
+    function _pasteBufferAt(pd, buf, destCol, destRow) {
+        // Grid cells
+        for (let r = 0; r < buf.h; r++) {
+            for (let c = 0; c < buf.w; c++) {
+                const dr = destRow + r, dc = destCol + c;
+                if (dr >= 0 && dr < pd.grid_h && dc >= 0 && dc < pd.grid_w) {
+                    const val = buf.data[r * buf.w + c];
+                    if (val !== 'BG') pd.grid[dr * pd.grid_w + dc] = val;
+                }
             }
+        }
+        // Part stitches
+        for (const s of (buf.part_stitches || [])) {
+            const nx = destCol + s.x, ny = destRow + s.y;
+            if (nx >= 0 && nx < pd.grid_w && ny >= 0 && ny < pd.grid_h)
+                (pd.part_stitches || (pd.part_stitches = [])).push({ x: nx, y: ny, type: s.type, dmc: s.dmc, dir: s.dir });
+        }
+        // Backstitches
+        for (const bs of (buf.backstitches || [])) {
+            const nx1 = destCol + bs.x1, ny1 = destRow + bs.y1;
+            const nx2 = destCol + bs.x2, ny2 = destRow + bs.y2;
+            if (nx1 >= 0 && nx1 <= pd.grid_w && ny1 >= 0 && ny1 <= pd.grid_h &&
+                nx2 >= 0 && nx2 <= pd.grid_w && ny2 >= 0 && ny2 <= pd.grid_h)
+                (pd.backstitches || (pd.backstitches = [])).push({ x1: nx1, y1: ny1, x2: nx2, y2: ny2, dmc: bs.dmc });
+        }
+        // Knots
+        for (const k of (buf.knots || [])) {
+            const nx = destCol + k.x, ny = destRow + k.y;
+            if (nx >= 0 && nx <= pd.grid_w && ny >= 0 && ny <= pd.grid_h)
+                (pd.knots || (pd.knots = [])).push({ x: nx, y: ny, dmc: k.dmc });
+        }
+        // Beads
+        for (const b of (buf.beads || [])) {
+            const nx = destCol + b.x, ny = destRow + b.y;
+            if (nx >= 0 && nx < pd.grid_w && ny >= 0 && ny < pd.grid_h)
+                (pd.beads || (pd.beads = [])).push({ x: nx, y: ny, dmc: b.dmc });
         }
     }
 
@@ -772,27 +863,47 @@ function createPatternEditor(config) {
         if (!_selBuffer || !_selRect) return;
         if (_selOffset.dc === 0 && _selOffset.dr === 0) return;
         const pd = getPatternData();
-        const { c1, r1 } = _selRect;
-        const dc = _selOffset.dc, dr = _selOffset.dr;
         pushUndo();
-        // Clear source
         _clearSelectionSource();
-        // Write buffer at offset
-        for (let r = 0; r < _selBuffer.h; r++) {
-            for (let c = 0; c < _selBuffer.w; c++) {
-                const destR = r1 + dr + r, destC = c1 + dc + c;
-                if (destR >= 0 && destR < pd.grid_h && destC >= 0 && destC < pd.grid_w) {
-                    const val = _selBuffer.data[r * _selBuffer.w + c];
-                    if (val !== 'BG') pd.grid[destR * pd.grid_w + destC] = val;
-                }
-            }
-        }
+        _pasteBufferAt(pd, _selBuffer, _selRect.c1 + _selOffset.dc, _selRect.r1 + _selOffset.dr);
         _selBuffer = null;
         _selRect = null;
         _selOffset = { dc: 0, dr: 0 };
         _commitEdit();
         _stopMarchingAnts();
         _redrawOverlay();
+    }
+
+    /* ── Paste mode ── */
+    function _enterPasteMode() {
+        if (!_selBuffer) return;
+        _pasteMode = true;
+        _pasteLoc = null;
+        // Clear selection rect so marching ants stop — buffer is preserved
+        _selRect = null;
+        _selOffset = { dc: 0, dr: 0 };
+        _stopMarchingAnts();
+        _redrawOverlay();
+    }
+
+    function _exitPasteMode() {
+        _pasteMode = false;
+        _pasteLoc = null;
+        _redrawOverlay();
+    }
+
+    function _commitPaste(destCol, destRow) {
+        if (!_selBuffer) return;
+        const pd = getPatternData();
+        pushUndo();
+        if (_selBuffer.isCut && _selBuffer.cutSource) {
+            _clearSelectionSource(_selBuffer.cutSource);
+            _selBuffer.isCut = false;
+            _selBuffer.cutSource = null;
+        }
+        _pasteBufferAt(pd, _selBuffer, destCol, destRow);
+        _exitPasteMode();
+        _commitEdit();
     }
 
     function _cycleMirror() {
@@ -1745,6 +1856,7 @@ function createPatternEditor(config) {
     const _STITCH_TOOLS = new Set(Object.keys(_STITCH_MODES));
 
     function _setTool(tool) {
+        if (_pasteMode) _exitPasteMode();
         if (_painting) {
             _painting = false;
             _lastPaintCell = null;
@@ -1955,6 +2067,37 @@ function createPatternEditor(config) {
                 const r = (idx - c) / fpd.grid_w;
                 ctx.fillRect(offset.x + c * cp, offset.y + r * cp, cp, cp);
             }
+            ctx.restore();
+        }
+
+        // Paste mode floating preview (batched by color)
+        if (_pasteMode && _selBuffer && _pasteLoc) {
+            const lu = getLookup();
+            const bx = offset.x + _pasteLoc.col * cp, by = offset.y + _pasteLoc.row * cp;
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            // Group cells by hex color to minimize fillStyle switches
+            const colorCells = {};
+            for (let r = 0; r < _selBuffer.h; r++) {
+                for (let c = 0; c < _selBuffer.w; c++) {
+                    const val = _selBuffer.data[r * _selBuffer.w + c];
+                    if (val === 'BG') continue;
+                    const info = lu[val];
+                    if (!info) continue;
+                    (colorCells[info.hex] || (colorCells[info.hex] = [])).push(c, r);
+                }
+            }
+            for (const hex in colorCells) {
+                ctx.fillStyle = hex;
+                const arr = colorCells[hex];
+                for (let i = 0; i < arr.length; i += 2)
+                    ctx.fillRect(bx + arr[i] * cp, by + arr[i + 1] * cp, cp, cp);
+            }
+            ctx.globalAlpha = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#4a90e2';
+            ctx.strokeRect(bx, by, _selBuffer.w * cp, _selBuffer.h * cp);
             ctx.restore();
         }
 
@@ -2514,6 +2657,11 @@ function createPatternEditor(config) {
                 break;
             }
             case 'select':
+                if (_pasteMode) {
+                    // Click to place paste
+                    if (_pasteLoc) _commitPaste(_pasteLoc.col, _pasteLoc.row);
+                    return;
+                }
                 if (_selRect && _isInsideSelection(col, row)) {
                     // Start moving selection
                     _selMoving = true;
@@ -2609,8 +2757,13 @@ function createPatternEditor(config) {
             return;
         }
 
-        // Selection drag / move
+        // Selection drag / move / paste preview
         if (activeTool === 'select') {
+            if (_pasteMode && hoverStitch) {
+                _pasteLoc = { col: hoverStitch.col, row: hoverStitch.row };
+                _redrawOverlay();
+                return;
+            }
             if (_selDragging && hoverStitch) {
                 _selRect = {
                     c1: Math.min(_selStart.col, hoverStitch.col),
@@ -2743,6 +2896,24 @@ function createPatternEditor(config) {
     function handleMouseMove(e) { _handleToolMouseMove(e); }
     function handleMouseUp()    { _handleToolMouseUp(); }
 
+    /** Right-click to confirm a moved selection or place a paste */
+    function handleContextMenu(e) {
+        if (activeTool !== 'select') return false;
+        // Confirm a drag-moved selection
+        if (_selRect && _selBuffer && (_selOffset.dc !== 0 || _selOffset.dr !== 0)) {
+            e.preventDefault();
+            _commitMovedSelection();
+            return true;
+        }
+        // Confirm a paste placement
+        if (_pasteMode && _pasteLoc) {
+            e.preventDefault();
+            _commitPaste(_pasteLoc.col, _pasteLoc.row);
+            return true;
+        }
+        return false;
+    }
+
     /** @returns {boolean} true if the editor consumed the event */
     function handleKeyDown(e) {
         // Don't intercept keystrokes when typing in any input/textarea outside the editor toolbar
@@ -2782,15 +2953,21 @@ function createPatternEditor(config) {
                 _redrawOverlay();
                 return true;
             }
+            if (_pasteMode) {
+                _exitPasteMode();
+                return true;
+            }
             if (activeTool === 'select' && _selRect) {
                 _commitMovedSelection();
-                _selRect = null; _selBuffer = null;
+                _selRect = null;
                 _selOffset = { dc: 0, dr: 0 };
                 _stopMarchingAnts();
                 _redrawOverlay();
                 return true;
             }
         }
+        // Paste mode: only Escape (handled above) and click (handled in mouse down)
+        if (_pasteMode) return false;
         // Selection keyboard shortcuts
         if (activeTool === 'select' && _selRect) {
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -2806,31 +2983,22 @@ function createPatternEditor(config) {
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 e.preventDefault();
-                _captureSelectionBuffer();
+                _captureSelectionBuffer(false);
+                _enterPasteMode();
                 return true;
             }
-            // Rotate / flip selection (R/H/V intercepted before tool-switch shortcuts)
-            const sk = e.key.toLowerCase();
-            if (sk === 'r') { e.preventDefault(); _rotateBufferCW(); return true; }
-            if (sk === 'h') { e.preventDefault(); _flipBufferH(); return true; }
-            if (sk === 'v') { e.preventDefault(); _flipBufferV(); return true; }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'v' && _selBuffer) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
                 e.preventDefault();
-                pushUndo();
-                // Paste buffer at current selection position
-                const pd = getPatternData();
-                const dc = _selOffset.dc, dr = _selOffset.dr;
-                for (let r = 0; r < _selBuffer.h; r++) {
-                    for (let c = 0; c < _selBuffer.w; c++) {
-                        const destR = _selRect.r1 + dr + r, destC = _selRect.c1 + dc + c;
-                        if (destR >= 0 && destR < pd.grid_h && destC >= 0 && destC < pd.grid_w) {
-                            const val = _selBuffer.data[r * _selBuffer.w + c];
-                            if (val !== 'BG') pd.grid[destR * pd.grid_w + destC] = val;
-                        }
-                    }
-                }
-                _commitEdit();
+                _captureSelectionBuffer(true);
+                _enterPasteMode();
                 return true;
+            }
+            // Rotate / flip selection (R/H/V) — only bare keys, not Ctrl combos
+            if (!e.ctrlKey && !e.metaKey) {
+                const sk = e.key.toLowerCase();
+                if (sk === 'r') { e.preventDefault(); _rotateBufferCW(); return true; }
+                if (sk === 'h') { e.preventDefault(); _flipBufferH(); return true; }
+                if (sk === 'v') { e.preventDefault(); _flipBufferV(); return true; }
             }
         }
         if (e.key === ' ') {
@@ -2904,6 +3072,7 @@ function createPatternEditor(config) {
         _mirrorMode = localStorage.getItem('dmc-ed-mirror') || 'off';
         _brushSize = (function() { var v = parseInt(localStorage.getItem('dmc-ed-brush')); return _BRUSH_SIZES.includes(v) ? v : 1; })();
         _hoverCell = null;
+        _pasteMode = false; _pasteLoc = null;
         _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
         _selDragging = false; _selMoving = false;
         _stopMarchingAnts();
@@ -3144,6 +3313,7 @@ function createPatternEditor(config) {
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
+        handleContextMenu,
         handleMouseLeave,
         handleKeyDown,
         handleKeyUp,

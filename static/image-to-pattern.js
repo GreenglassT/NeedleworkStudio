@@ -1738,6 +1738,9 @@ async function maybeLoadSavedPattern() {
     area.addEventListener('mouseleave', function() {
         if (editorInstance && editorInstance.isActive()) editorInstance.handleMouseLeave();
     });
+    area.addEventListener('contextmenu', function(e) {
+        if (editorInstance && editorInstance.isActive() && editorInstance.handleContextMenu(e)) return;
+    });
 
     // Touch pan / pinch zoom / editor draw
     let _tStartDist = 0, _tStartScale = 1;
