@@ -458,6 +458,19 @@ def _ensure_saved_patterns_table():
                 except sqlite3.IntegrityError:
                     continue  # slug collision, retry
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sp_slug ON saved_patterns(slug)")
+    # --- Pattern tags ---
+    conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tags (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name       TEXT NOT NULL,
+        color      TEXT DEFAULT NULL,
+        UNIQUE(user_id, name))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ptags_user ON pattern_tags(user_id)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tag_map (
+        tag_id     INTEGER NOT NULL REFERENCES pattern_tags(id) ON DELETE CASCADE,
+        pattern_id INTEGER NOT NULL REFERENCES saved_patterns(id) ON DELETE CASCADE,
+        PRIMARY KEY (tag_id, pattern_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ptm_pattern ON pattern_tag_map(pattern_id)")
     conn.commit()
     conn.close()
 
@@ -2405,10 +2418,32 @@ def api_list_saved_patterns():
         (current_user.id,)
     )
     rows = []
+    pattern_ids = {}  # slug → index
     for r in cursor.fetchall():
         d = dict(r)
         d.update(_parse_progress_data(d.pop('progress_data', None)))
+        d['tags'] = []
+        pattern_ids[d['slug']] = len(rows)
         rows.append(d)
+
+    # Batch-fetch tags for all patterns
+    if rows:
+        tag_rows = conn.execute(
+            """SELECT sp.slug, pt.id, pt.name, pt.color
+                 FROM pattern_tag_map ptm
+                 JOIN pattern_tags pt ON pt.id = ptm.tag_id
+                 JOIN saved_patterns sp ON sp.id = ptm.pattern_id
+                WHERE sp.user_id = ?
+                ORDER BY pt.name""",
+            (current_user.id,)
+        ).fetchall()
+        for tr in tag_rows:
+            idx = pattern_ids.get(tr['slug'])
+            if idx is not None:
+                rows[idx]['tags'].append({
+                    'id': tr['id'], 'name': tr['name'], 'color': tr['color']
+                })
+
     return jsonify(rows)
 
 
@@ -2427,6 +2462,20 @@ def api_export_all_patterns():
             ORDER BY updated_at DESC""",
         (current_user.id,)
     )
+    # Pre-fetch tags per pattern
+    tag_map = {}  # slug → [tag_name, ...]
+    tag_rows = conn.execute(
+        """SELECT sp.slug, pt.name
+             FROM pattern_tag_map ptm
+             JOIN pattern_tags pt ON pt.id = ptm.tag_id
+             JOIN saved_patterns sp ON sp.id = ptm.pattern_id
+            WHERE sp.user_id = ?
+            ORDER BY pt.name""",
+        (current_user.id,)
+    ).fetchall()
+    for tr in tag_rows:
+        tag_map.setdefault(tr['slug'], []).append(tr['name'])
+
     buf = io.BytesIO()
     count = 0
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -2473,6 +2522,7 @@ def api_export_all_patterns():
                 'knots': knots,
                 'beads': beads,
                 'thumbnail': r.get('thumbnail') or '',
+                'tags': tag_map.get(slug, []),
             }
             zf.writestr(filename, json.dumps(payload, separators=(',', ':')))
             count += 1
@@ -2564,6 +2614,17 @@ def api_get_saved_pattern(pattern_slug):
         result['completed_dmcs'] = []
         result['stitched_cells'] = []
         result['accumulated_seconds'] = 0
+    # Fetch tags for this pattern
+    tag_rows = conn.execute(
+        """SELECT pt.id, pt.name, pt.color
+             FROM pattern_tag_map ptm
+             JOIN pattern_tags pt ON pt.id = ptm.tag_id
+            WHERE ptm.pattern_id = ?
+            ORDER BY pt.name""",
+        (result['id'],)
+    ).fetchall()
+    result['tags'] = [{'id': t['id'], 'name': t['name'], 'color': t['color']} for t in tag_rows]
+
     del result['source_image_path']  # don't expose internal path to client
     del result['progress_data']      # replaced by individual keys above
     del result['id']                 # don't expose internal integer id
@@ -2856,8 +2917,162 @@ def api_batch_saved_patterns():
         updated = cursor.rowcount
         return jsonify({'updated': updated}), 200
 
+    elif action == 'tag':
+        tag_ids = data.get('tag_ids', [])
+        mode = data.get('mode', 'add')  # 'add' | 'remove' | 'set'
+        if mode not in ('add', 'remove', 'set'):
+            return jsonify({'error': 'Invalid mode'}), 400
+        if not isinstance(tag_ids, list) or not all(isinstance(t, int) for t in tag_ids):
+            return jsonify({'error': 'tag_ids must be list of integers'}), 400
+        # Validate all tag_ids belong to current user
+        if tag_ids:
+            ph = ','.join('?' * len(tag_ids))
+            valid = cursor.execute(
+                f"SELECT id FROM pattern_tags WHERE id IN ({ph}) AND user_id = ?",
+                tag_ids + [current_user.id]).fetchall()
+            valid_ids = {r['id'] for r in valid}
+            tag_ids = [t for t in tag_ids if t in valid_ids]
+        for pid in ids:
+            if mode == 'set':
+                cursor.execute("DELETE FROM pattern_tag_map WHERE pattern_id = ?", (pid,))
+            if mode == 'remove':
+                for tid in tag_ids:
+                    cursor.execute("DELETE FROM pattern_tag_map WHERE tag_id = ? AND pattern_id = ?", (tid, pid))
+            elif mode in ('add', 'set'):
+                for tid in tag_ids:
+                    cursor.execute("INSERT OR IGNORE INTO pattern_tag_map (tag_id, pattern_id) VALUES (?, ?)", (tid, pid))
+        conn.commit()
+        return jsonify({'updated': len(ids)}), 200
+
     else:
-        return jsonify({'error': 'Unknown action. Use "delete" or "status".'}), 400
+        return jsonify({'error': 'Unknown action. Use "delete", "status", or "tag".'}), 400
+
+
+# ──── Tag CRUD ────────────────────────────────────────────
+_TAG_COLORS = {'red', 'orange', 'gold', 'green', 'blue', 'purple', 'pink', 'gray'}
+
+
+@app.route('/api/tags', methods=['GET'])
+@login_required
+@limiter.limit("30 per minute")
+def api_list_tags():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT pt.id, pt.name, pt.color,
+               COUNT(ptm.pattern_id) AS pattern_count
+        FROM pattern_tags pt
+        LEFT JOIN pattern_tag_map ptm ON ptm.tag_id = pt.id
+        WHERE pt.user_id = ?
+        GROUP BY pt.id
+        ORDER BY pt.name COLLATE NOCASE
+    """, (current_user.id,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/tags', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
+def api_create_tag():
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name or len(name) > 30:
+        return jsonify({'error': 'Tag name required (1-30 chars)'}), 400
+    color = data.get('color')
+    if color and color not in _TAG_COLORS:
+        color = None
+    conn = get_db()
+    # Check limit
+    count = conn.execute("SELECT COUNT(*) as c FROM pattern_tags WHERE user_id = ?",
+                         (current_user.id,)).fetchone()['c']
+    if count >= 20:
+        return jsonify({'error': 'Maximum 20 tags allowed'}), 400
+    try:
+        cursor = conn.execute(
+            "INSERT INTO pattern_tags (user_id, name, color) VALUES (?, ?, ?)",
+            (current_user.id, name, color))
+        conn.commit()
+        return jsonify({'id': cursor.lastrowid, 'name': name, 'color': color}), 201
+    except Exception:
+        return jsonify({'error': 'Tag name already exists'}), 409
+
+
+@app.route('/api/tags/<int:tag_id>', methods=['PATCH'])
+@login_required
+@limiter.limit("20 per minute")
+def api_update_tag(tag_id):
+    conn = get_db()
+    tag = conn.execute("SELECT * FROM pattern_tags WHERE id = ? AND user_id = ?",
+                       (tag_id, current_user.id)).fetchone()
+    if not tag:
+        return jsonify({'error': 'Tag not found'}), 404
+    data = request.get_json(silent=True) or {}
+    updates, params = [], []
+    if 'name' in data:
+        name = (data['name'] or '').strip()
+        if not name or len(name) > 30:
+            return jsonify({'error': 'Tag name required (1-30 chars)'}), 400
+        updates.append("name = ?")
+        params.append(name)
+    if 'color' in data:
+        color = data['color']
+        if color and color not in _TAG_COLORS:
+            color = None
+        updates.append("color = ?")
+        params.append(color)
+    if not updates:
+        return jsonify({'error': 'Nothing to update'}), 400
+    params.append(tag_id)
+    try:
+        conn.execute(f"UPDATE pattern_tags SET {', '.join(updates)} WHERE id = ?", params)
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception:
+        return jsonify({'error': 'Tag name already exists'}), 409
+
+
+@app.route('/api/tags/<int:tag_id>', methods=['DELETE'])
+@login_required
+@limiter.limit("20 per minute")
+def api_delete_tag(tag_id):
+    conn = get_db()
+    tag = conn.execute("SELECT id FROM pattern_tags WHERE id = ? AND user_id = ?",
+                       (tag_id, current_user.id)).fetchone()
+    if not tag:
+        return jsonify({'error': 'Tag not found'}), 404
+    conn.execute("DELETE FROM pattern_tag_map WHERE tag_id = ?", (tag_id,))
+    conn.execute("DELETE FROM pattern_tags WHERE id = ?", (tag_id,))
+    conn.commit()
+    return '', 204
+
+
+@app.route('/api/saved-patterns/<pattern_slug>/tags', methods=['PUT'])
+@login_required
+@limiter.limit("20 per minute")
+def api_set_pattern_tags(pattern_slug):
+    conn = get_db()
+    pat = conn.execute("SELECT id FROM saved_patterns WHERE slug = ? AND user_id = ?",
+                       (pattern_slug, current_user.id)).fetchone()
+    if not pat:
+        return jsonify({'error': 'Pattern not found'}), 404
+    data = request.get_json(silent=True) or {}
+    tag_ids = data.get('tag_ids', [])
+    if not isinstance(tag_ids, list):
+        return jsonify({'error': 'tag_ids must be array'}), 400
+    if len(tag_ids) > 10:
+        return jsonify({'error': 'Maximum 10 tags per pattern'}), 400
+    # Validate ownership
+    if tag_ids:
+        ph = ','.join('?' * len(tag_ids))
+        valid = conn.execute(
+            f"SELECT id FROM pattern_tags WHERE id IN ({ph}) AND user_id = ?",
+            tag_ids + [current_user.id]).fetchall()
+        tag_ids = [r['id'] for r in valid]
+    pid = pat['id']
+    conn.execute("DELETE FROM pattern_tag_map WHERE pattern_id = ?", (pid,))
+    for tid in tag_ids:
+        conn.execute("INSERT INTO pattern_tag_map (tag_id, pattern_id) VALUES (?, ?)", (tid, pid))
+    conn.commit()
+    return jsonify({'ok': True})
 
 
 @app.route('/pdf-to-pattern')

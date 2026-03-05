@@ -72,6 +72,25 @@ CREATE TABLE IF NOT EXISTS saved_patterns (
 CREATE INDEX IF NOT EXISTS idx_sp_user ON saved_patterns(user_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sp_slug ON saved_patterns(slug);
 
+-- Pattern tags (user-defined labels for organizing patterns)
+CREATE TABLE IF NOT EXISTS pattern_tags (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL,
+    color      TEXT DEFAULT NULL,  -- 'red','orange','gold','green','blue','purple','pink','gray'
+    UNIQUE(user_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ptags_user ON pattern_tags(user_id);
+
+CREATE TABLE IF NOT EXISTS pattern_tag_map (
+    tag_id     INTEGER NOT NULL REFERENCES pattern_tags(id) ON DELETE CASCADE,
+    pattern_id INTEGER NOT NULL REFERENCES saved_patterns(id) ON DELETE CASCADE,
+    PRIMARY KEY (tag_id, pattern_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ptm_pattern ON pattern_tag_map(pattern_id);
+
 -- API tokens for sync authentication
 CREATE TABLE IF NOT EXISTS api_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
