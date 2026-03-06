@@ -466,7 +466,8 @@
         }
 
         body.edit-mode-on #cell-mark-btn,
-        body.edit-mode-on .cell-progress-wrap { display: none; }
+        body.edit-mode-on .cell-progress-wrap,
+        body.edit-mode-on #floating-action-panel { display: none; }
 
         /* ——— ZEN / FULLSCREEN MODE ——— */
         body.zen-mode .site-header { display: none; }
@@ -557,6 +558,36 @@
         }
         .zen-exit-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
         body.zen-mode .zen-exit-btn { display: flex; }
+
+        /* ——— FLOATING ACTION PANEL ——— */
+        #floating-action-panel {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 310;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .fab-btn {
+            pointer-events: auto;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid var(--border-2);
+            background: var(--surface);
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.25);
+            transition: background var(--t), color var(--t), border-color var(--t);
+        }
+        .fab-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
+        .fab-btn.active { background: var(--gold); color: #1a1a1a; border-color: var(--gold-dim); }
 
         /* ——— LEGEND TOGGLE (default hidden, shown on mobile) ——— */
         .legend-toggle-btn { display: none; }
@@ -730,6 +761,12 @@
         </div>
     </div>
 
+</div>
+
+<div id="floating-action-panel">
+    <button class="fab-btn" id="marker-mode-btn" onclick="toggleMarkerMode()" title="Place Marker (B)">
+        <i class="ti ti-map-pin"></i>
+    </button>
 </div>
 
 <!-- Fork confirmation dialog -->

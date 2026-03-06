@@ -10,7 +10,26 @@
         /* solid --skip-bg override for card backgrounds */
         :root { --skip-bg: #2c1010; }
 
-        .brand-seg { flex-shrink: 0; }
+        .brand-seg {
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            padding: 0;
+            border-radius: 0;
+            gap: 6px;
+        }
+        .brand-seg-indicator { display: none; }
+        .brand-seg-btn {
+            padding: 5px 12px;
+            border: 1px solid var(--border-2);
+            border-radius: 20px;
+            background: transparent;
+            font-size: 12px;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+        }
+        .brand-seg-btn:hover:not(.active) { color: var(--text); }
+        .brand-seg-btn.active { color: var(--text); background: var(--surface-2); }
         .brand-badge {
             display: inline-block;
             font-family: 'IBM Plex Mono', monospace;
@@ -1014,6 +1033,7 @@
     function setBrand(brand) {
         currentBrand = brand;
         localStorage.setItem('inventoryBrand', brand);
+        fetch('/api/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inventoryBrand: brand }) });
         const seg = document.getElementById('brand-seg');
         const btns = seg.querySelectorAll('.brand-seg-btn');
         btns.forEach(b => b.classList.toggle('active', b.dataset.brand === brand));

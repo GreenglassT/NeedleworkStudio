@@ -92,6 +92,10 @@ let _cellDragToggle  = null;        // bool: true=marking, false=unmarking
 let _cellDragStart   = null;        // {col, row} for rectangle start
 let _cellDragEnd     = null;        // {col, row} for rectangle end
 
+/* ——— PLACE MARKERS ——— */
+let markedCells      = new Set();   // Set<string> of "col,row" keys
+let _markerMode      = false;       // true when place-marker mode is active
+
 /* ——— AUTOSAVE ——— */
 const _autosave = createAutosaver(
     'ns-autosave-' + PATTERN_SLUG,
@@ -302,6 +306,21 @@ function renderMain() {
         }
     }
 
+    // Place markers — bright gold borders, topmost layer
+    if (markedCells.size > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = Math.max(2, Math.min(3, cellPx * 0.15));
+        const hw = ctx.lineWidth / 2;
+        for (const key of markedCells) {
+            const parts = key.split(',');
+            const c = Number(parts[0]), r = Number(parts[1]);
+            ctx.strokeRect(gutX + c * cellPx + hw, gutY + r * cellPx + hw,
+                           cellPx - ctx.lineWidth, cellPx - ctx.lineWidth);
+        }
+        ctx.restore();
+    }
+
     // Clear overlay; re-apply highlight if one was active
     document.getElementById('overlay-canvas').getContext('2d')
         .clearRect(0, 0, W, H);
@@ -436,6 +455,7 @@ function _buildProgressPayload() {
     return JSON.stringify({ progress_data: {
         completed_dmcs: [...completedDmcs],
         stitched_cells: [...stitchedCells].sort((a, b) => a - b),
+        place_markers: [...markedCells],
         accumulated_seconds: _timerCurrentSeconds()
     }});
 }
@@ -469,6 +489,23 @@ function toggleCellMarkMode() {
     const area = document.getElementById('canvas-area');
     area.classList.toggle('cell-mark-mode', _cellMarkMode);
     if (_cellMarkMode && highlightDmc !== null) clearHighlight();
+}
+
+function toggleMarkerMode() {
+    _markerMode = !_markerMode;
+    const btn = document.getElementById('marker-mode-btn');
+    if (btn) btn.classList.toggle('active', _markerMode);
+    document.getElementById('canvas-area').style.cursor = _markerMode ? 'crosshair' : '';
+}
+
+function _handleMarkerClick(e) {
+    const cell = _canvasEventToCell(e);
+    if (!cell) return;
+    const key = cell.col + ',' + cell.row;
+    if (markedCells.has(key)) markedCells.delete(key);
+    else markedCells.add(key);
+    renderMain();
+    _scheduleProgressSave();
 }
 
 function _updateCellProgressBar() {
@@ -984,6 +1021,7 @@ function toggleEditMode() {
     } else {
         if (!isForked) { showForkDialog(); return; }
         if (_cellMarkMode) toggleCellMarkMode();
+        if (_markerMode) toggleMarkerMode();
         _editSnapshot = {
             grid: patternData.grid.slice(),
             legend: JSON.parse(JSON.stringify(patternData.legend)),
@@ -1134,6 +1172,11 @@ document.getElementById('canvas-area').addEventListener('mousedown', function(e)
     if (e.target.id === 'mini-canvas') return;
     if (editor && editor.isUIElement(e.target)) return;
     e.preventDefault();
+    // Place marker mode — intercept before cell-mark and editor
+    if (_markerMode && !editMode && e.button === 0) {
+        _handleMarkerClick(e);
+        return;
+    }
     // Cell marking mode — intercept before editor and pan
     if (_cellMarkMode && !editMode && e.button === 0) {
         _startCellMark(e.clientX, e.clientY);
@@ -1193,6 +1236,11 @@ function _touchToMouse(touch, target) {
 document.getElementById('canvas-area').addEventListener('touchstart', function(e) {
     const touches = e.touches;
     if (touches.length === 1) {
+        if (_markerMode && !editMode) {
+            e.preventDefault();
+            _handleMarkerClick(_touchToMouse(touches[0], e.target));
+            return;
+        }
         if (_cellMarkMode && !editMode) {
             e.preventDefault();
             _tEditorDrawing = false;
@@ -1424,6 +1472,14 @@ document.addEventListener('keydown', function(e) {
             return;
         }
     }
+    // B key — toggle place marker mode (viewer only)
+    if (e.key.toLowerCase() === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            toggleMarkerMode();
+            return;
+        }
+    }
 });
 document.addEventListener('keyup', function(e) {
     if (editor && editor.isActive()) editor.handleKeyUp(e);
@@ -1592,6 +1648,9 @@ async function init() {
         for (const dmc of (data.completed_dmcs || [])) completedDmcs.add(String(dmc));
         for (const idx of (data.stitched_cells || [])) {
             if (typeof idx === 'number' && patternData.grid[idx] !== 'BG') stitchedCells.add(idx);
+        }
+        for (const key of (data.place_markers || [])) {
+            if (typeof key === 'string' && /^\d+,\d+$/.test(key)) markedCells.add(key);
         }
 
         // Update header

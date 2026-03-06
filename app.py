@@ -1234,7 +1234,7 @@ _PREF_VALIDATORS = {
     'dmc-calc-skein-len':   lambda v: isinstance(v, (int, float)) and 0.1 <= v <= 100,
     'dmc-calc-efficiency':  lambda v: v in ('inefficient', 'average', 'efficient'),
     'dmc-calc-fabric-count': lambda v: v in (6, 8, 11, 14, 16, 18, 20, 22, 25, 28, 32),
-    'inventoryBrand':       lambda v: v in ('DMC', 'Anchor'),
+    'inventoryBrand':       lambda v: v in ('DMC', 'Anchor', ''),
 }
 
 
@@ -2763,11 +2763,13 @@ def api_get_saved_pattern(pattern_slug):
         pd_parsed = json.loads(pd) if pd else {}
         result['completed_dmcs'] = pd_parsed.get('completed_dmcs', [])
         result['stitched_cells'] = pd_parsed.get('stitched_cells', [])
+        result['place_markers'] = pd_parsed.get('place_markers', [])
         result['accumulated_seconds'] = pd_parsed.get('accumulated_seconds', 0)
     except (json.JSONDecodeError, KeyError, TypeError):
         result['generation_settings'] = None
         result['completed_dmcs'] = []
         result['stitched_cells'] = []
+        result['place_markers'] = []
         result['accumulated_seconds'] = 0
     # Fetch tags for this pattern
     tag_rows = conn.execute(
@@ -2910,6 +2912,13 @@ def api_update_saved_pattern(pattern_slug):
             return jsonify({'error': 'stitched_cells must be an array'}), 400
         if sc and not all(isinstance(i, int) and not isinstance(i, bool) and i >= 0 for i in sc):
             return jsonify({'error': 'stitched_cells must contain non-negative integers'}), 400
+        # Validate place_markers if present
+        pm = pd.get('place_markers', [])
+        if not isinstance(pm, list):
+            return jsonify({'error': 'place_markers must be an array'}), 400
+        _marker_re = re.compile(r'^\d{1,6},\d{1,6}$')
+        if pm and not all(isinstance(m, str) and _marker_re.match(m) for m in pm):
+            return jsonify({'error': 'place_markers must contain "col,row" strings'}), 400
         # Validate accumulated_seconds if present
         acc = pd.get('accumulated_seconds')
         if acc is not None:

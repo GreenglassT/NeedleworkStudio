@@ -391,6 +391,7 @@
         function setBrand(brand) {
             currentBrand = brand;
             localStorage.setItem('inventoryBrand', brand);
+            fetch('/api/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inventoryBrand: brand }) });
             const seg = document.getElementById('brand-seg');
             seg.querySelectorAll('.brand-seg-btn').forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
             _positionIndicator(seg);
