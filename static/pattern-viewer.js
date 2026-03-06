@@ -115,11 +115,12 @@ let _timerSessionStart = null; // Date.now() when current session started, null 
 let _timerInterval     = null; // setInterval handle for UI tick (1s)
 let _timerFlushInterval = null; // setInterval handle for DB flush (30s)
 let _timerDirty        = false; // true if unsaved seconds exist
-let legendSort = localStorage.getItem('dmc-legend-sort') || 'number'; // 'number' | 'stitches'
+function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
+let legendSort = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let legendFilter = '';            // search query for legend filtering
 const MAX_CELL_PX = 80;           // cap re-render resolution when zooming in
 let _snapTimer = null;
-let viewMode = localStorage.getItem('pv-viewMode') || 'chart';  // 'chart' | 'thread'
+let viewMode = localStorage.getItem('pv-viewMode') || _pref('dmc-viewMode', 'chart');  // 'chart' | 'thread'
 
 /* ——— EDITOR (shared module) ——— */
 let editMode = false;
@@ -630,15 +631,7 @@ function _renderTimerDisplay() {
     }
 }
 
-/* ——— PATTERN STATS (estimated remaining time + skein estimate) ——— */
-function _estimateSkeins(stitches, fabricCount) {
-    // Same formula as pattern-calculator: 3.8" thread per stitch at given fabric count,
-    // 2 strands, average efficiency (1.15), 8.7-yard skeins
-    // 2 strands baseline, 15% waste (average efficiency), 8.7-yard skeins
-    const threadPerStitch = (3.8 / fabricCount) * 1.15;
-    return stitches * threadPerStitch / 36 / 8.7;
-}
-
+/* ——— PATTERN STATS (estimated remaining time) ——— */
 function _updateETA() {
     const statsEl = document.getElementById('stats-display');
     if (!statsEl) return;
@@ -660,12 +653,7 @@ function _updateLegendTotals() {
     if (!totalsEl || !patternData || !patternData.legend) return;
     const legend = patternData.legend;
     const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
-    const totalSkeins = _estimateSkeins(totalSt, 14);
-    let text = `${legend.length} color${legend.length === 1 ? '' : 's'} \u00b7 ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
-    if (totalSkeins >= 0.1) {
-        text += ` \u00b7 ~${Math.ceil(totalSkeins)} skein${Math.ceil(totalSkeins) === 1 ? '' : 's'} (14ct)`;
-    }
-    totalsEl.textContent = text;
+    totalsEl.textContent = `${legend.length} color${legend.length === 1 ? '' : 's'} \u00b7 ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
 }
 
 function _timerFlush() {

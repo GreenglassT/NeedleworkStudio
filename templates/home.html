@@ -382,7 +382,7 @@
     <script src="{{ url_for('static', filename='brand-toggle.js') }}"></script>
     <script>
         /* ——— BRAND STATE ——— */
-        let currentBrand = localStorage.getItem('inventoryBrand') ?? 'DMC';
+        let currentBrand = (window.__PREFS__ && window.__PREFS__['inventoryBrand']) || localStorage.getItem('inventoryBrand') || 'DMC';
 
         function setBrand(brand) {
             currentBrand = brand;

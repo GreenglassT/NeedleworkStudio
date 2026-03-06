@@ -24,10 +24,11 @@ let editorInstance = null;
 let savedPatternName = null;
 let nativeW        = null;
 let nativeH        = null;
-let paletteBrand   = localStorage.getItem('inventoryBrand') || 'DMC';
+function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
+let paletteBrand   = _pref('inventoryBrand', 'DMC');
 let paletteFilter  = 'standard';
 let displayFilter  = 'both';
-let legendSort     = localStorage.getItem('dmc-legend-sort') || 'number'; // 'number' | 'stitches'
+let legendSort     = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let heightLocked     = true;
 let genDebounceTimer = null;
 let genController    = null;
@@ -119,9 +120,9 @@ uploadZone.addEventListener('drop', e => {
 });
 
 /* ——— Restore UI preferences ——— */
-if (localStorage.getItem('dmc-gridlines') === 'false')
+if (_pref('dmc-gridlines', true) === false || _pref('dmc-gridlines', 'true') === 'false')
     document.getElementById('gridlines-check').checked = false;
-if (localStorage.getItem('dmc-symbols') === 'false')
+if (_pref('dmc-symbols', true) === false || _pref('dmc-symbols', 'true') === 'false')
     document.getElementById('symbols-check').checked = false;
 if (legendSort !== 'number') {
     document.getElementById('sort-btn-number')?.classList.remove('active');

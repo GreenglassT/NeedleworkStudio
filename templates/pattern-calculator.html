@@ -38,61 +38,6 @@
             margin-bottom: 20px;
         }
 
-        /* ——— UPLOAD ZONE ——— */
-        .upload-zone {
-            --uz-hover-border: var(--gold-dim);
-            --uz-icon-size: 36px;
-            --uz-icon-mb: 12px;
-            --uz-icon-opacity: .5;
-            --uz-hint-size: 11px;
-            --uz-hint-color: var(--text-dim);
-        }
-
-        .upload-hint { letter-spacing: .04em; }
-
-        .upload-btn {
-            display: inline-block;
-            margin-top: 18px;
-            padding: 9px 22px;
-            border: 1px solid var(--gold-dim);
-            border-radius: var(--r);
-            color: var(--gold);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 12px;
-            letter-spacing: .08em;
-            background: transparent;
-            cursor: pointer;
-            transition: all var(--t);
-            pointer-events: none;
-        }
-
-        .upload-zone:hover .upload-btn {
-            background: var(--gold-dim);
-            color: var(--text);
-        }
-
-        /* ——— OR DIVIDER ——— */
-        .or-divider {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin: 24px 0 16px;
-        }
-        .or-divider::before, .or-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-        .or-divider span {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: .1em;
-            color: var(--text-dim);
-            white-space: nowrap;
-        }
-
         /* ——— SPINNER ——— */
         .spinner-wrap {
             display: none;
@@ -201,14 +146,13 @@
         .summary-bar.visible {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
         }
 
         .summary-top {
             display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 12px;
         }
 
         .summary-name {
@@ -228,21 +172,31 @@
             color: var(--gold);
             text-decoration: none;
             letter-spacing: .04em;
-            margin-left: 4px;
+            flex-shrink: 0;
             white-space: nowrap;
             transition: color var(--t);
+            margin-right: auto;
         }
         .view-pattern-link:hover { color: var(--gold-hover); }
 
         .summary-stats {
             display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
+            align-items: center;
+            gap: clamp(12px, 2vw, 24px);
+        }
+
+        .stat-group {
+            display: flex;
+            gap: clamp(12px, 2vw, 24px);
+            align-items: center;
+        }
+        .stat-group + .stat-group {
+            padding-left: clamp(12px, 2vw, 24px);
+            border-left: 1px solid var(--border);
         }
 
         .stat-item {
             text-align: center;
-            white-space: nowrap;
         }
 
         .stat-value {
@@ -261,6 +215,14 @@
             display: block;
         }
 
+        .stat-sub {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 1px;
+        }
+
         .action-btn {
             background: transparent;
             border: 1px solid var(--gold-dim);
@@ -273,11 +235,23 @@
             cursor: pointer;
             transition: all var(--t);
             white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .action-btn:hover {
             background: var(--gold-dim);
             color: var(--text);
+        }
+
+        .action-btn.primary {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: var(--bg);
+            font-weight: 600;
+        }
+        .action-btn.primary:hover {
+            background: var(--gold-hover);
+            border-color: var(--gold-hover);
         }
 
         .action-btn:disabled {
@@ -617,11 +591,11 @@
             .input-field { width: 100%; }
             .results-table th,
             .results-table td { padding: 9px 10px; font-size: 11px; }
-            .summary-top { flex-direction: column; align-items: flex-start; }
-            .summary-name { white-space: normal; }
+            .summary-top { flex-wrap: wrap; }
+            .summary-stats { flex-wrap: wrap; }
+            .summary-name { overflow: visible; white-space: normal; }
             .view-actions { margin-left: 0; }
             .qty-input { width: 46px; }
-            .upload-zone { padding: 32px 20px; }
             .mode-btn { padding: 10px 10px; font-size: 11px; min-width: 0; }
         }
 
@@ -630,7 +604,7 @@
             .site-header, .calc-card, .settings-bar, .view-bar,
             .action-btn, .qty-input, .mode-toggle, .info-card { display: none !important; }
             .summary-bar.visible { border: none; padding: 0 0 12px; }
-            .summary-name { font-size: 18px; white-space: normal; }
+            .summary-name { font-size: 18px; }
             .results-card.visible { border: none; padding: 0; }
             .main-wrap { padding: 0; max-width: 100%; }
             .results-table th, .results-table td { font-size: 10px; padding: 4px 8px; }
@@ -654,20 +628,10 @@
 
         <!-- ========== BY PATTERN MODE ========== -->
 
-        <!-- 1. Input card: upload PDF or select saved pattern -->
+        <!-- 1. Input card: select saved pattern -->
         <div class="calc-card" data-mode="pattern" id="pattern-upload-card">
             <h2 class="card-title">Load a Pattern</h2>
-            <p class="card-desc">Upload a cross-stitch PDF or select a saved pattern to calculate floss requirements</p>
-
-            <div class="upload-zone" id="upload-zone">
-                <input type="file" id="pdf-input" accept=".pdf" onchange="handleFile(this.files[0])">
-                <div class="upload-icon"><i class="ti ti-file-upload"></i></div>
-                <span class="upload-label">Drag &amp; drop a PDF here</span>
-                <span class="upload-hint">or click to browse</span>
-                <span class="upload-btn">Choose PDF</span>
-            </div>
-
-            <div class="or-divider"><span>or load a saved pattern</span></div>
+            <p class="card-desc">Select a saved pattern to calculate floss requirements</p>
 
             <select id="pattern-select" class="ctrl-select" onchange="loadSavedPattern()">
                 <option value="">— Select a saved pattern —</option>
@@ -715,11 +679,14 @@
         <!-- 3. Summary bar -->
         <div class="summary-bar" id="summary-bar" data-mode="pattern">
             <div class="summary-top">
-                <div class="summary-name">
-                    <span id="pattern-name"></span>
-                    <a class="view-pattern-link" id="view-pattern-link" style="display:none">View Pattern <i class="ti ti-arrow-right"></i></a>
-                </div>
-                <div class="summary-stats">
+                <span class="summary-name" id="pattern-name"></span>
+                <a class="view-pattern-link" id="view-pattern-link" style="display:none">View Pattern <i class="ti ti-arrow-right"></i></a>
+                <button class="action-btn primary" id="mark-need-btn" onclick="markAllNeed()">
+                    Mark unowned as Need
+                </button>
+            </div>
+            <div class="summary-stats">
+                <div class="stat-group">
                     <div class="stat-item">
                         <span class="stat-value" id="stat-colors">—</span>
                         <span class="stat-label">Colors</span>
@@ -728,6 +695,8 @@
                         <span class="stat-value" id="stat-stitches">—</span>
                         <span class="stat-label">Stitches</span>
                     </div>
+                </div>
+                <div class="stat-group">
                     <div class="stat-item">
                         <span class="stat-value" id="stat-have">—</span>
                         <span class="stat-label">Have Enough</span>
@@ -740,15 +709,15 @@
                         <span class="stat-value" id="stat-skeins">—</span>
                         <span class="stat-label">Skeins to Buy</span>
                     </div>
+                </div>
+                <div class="stat-group">
                     <div class="stat-item">
                         <span class="stat-value" id="stat-fabric">—</span>
                         <span class="stat-label">Fabric Size</span>
+                        <span class="stat-sub" id="stat-fabric-cut"></span>
                     </div>
                 </div>
             </div>
-            <button class="action-btn" id="mark-need-btn" onclick="markAllNeed()">
-                Mark unowned as Need
-            </button>
         </div>
 
         <!-- 4. View toggle + export -->
@@ -765,7 +734,7 @@
         <!-- 5. Results table -->
         <div class="results-card" id="results-card" data-mode="pattern">
             <div id="results-table-wrap">
-                <div class="no-results">Upload a PDF or select a saved pattern to see floss requirements</div>
+                <div class="no-results">Select a saved pattern to see floss requirements</div>
             </div>
         </div>
 
@@ -881,13 +850,14 @@
         let patternGridW = 0;
         let patternGridH = 0;
         let patternBrand = 'DMC';   // 'DMC' | 'Anchor'
-        let currentEfficiency = localStorage.getItem('dmc-calc-efficiency') || 'average';
+        function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
+        let currentEfficiency = _pref('dmc-calc-efficiency', 'average');
         let currentView = 'all';
         let sortKey = 'toBuy';
         let sortDir = -1;
         let allRows = [];
         let currentMode = 'pattern';   // 'pattern' | 'stitch' | 'fabric'
-        let quickEfficiency = localStorage.getItem('dmc-calc-efficiency') || 'average';
+        let quickEfficiency = _pref('dmc-calc-efficiency', 'average');
         let fabricUnit = localStorage.getItem('dmc-calc-fabric-unit') || 'stitches';
 
         const DEFAULT_SKEIN_LENGTH = 8.7;
@@ -1095,10 +1065,12 @@
                 }
 
                 // Restore saved preferences
-                const _savedStrands = localStorage.getItem('dmc-calc-strands');
-                const _savedSkeinLen = localStorage.getItem('dmc-calc-skein-len');
+                const _savedStrands = _pref('dmc-calc-strands', null);
+                const _savedSkeinLen = _pref('dmc-calc-skein-len', null);
+                const _savedFabricCount = _pref('dmc-calc-fabric-count', null);
                 if (_savedStrands) { document.getElementById('strands').value = _savedStrands; document.getElementById('q-strands').value = _savedStrands; }
                 if (_savedSkeinLen) { document.getElementById('skein-length').value = _savedSkeinLen; document.getElementById('q-skein-length').value = _savedSkeinLen; }
+                if (_savedFabricCount) { document.getElementById('fabric-count').value = _savedFabricCount; }
                 if (currentEfficiency !== 'average') _setActiveBtn('.efficiency-btn', 'eff', currentEfficiency);
                 if (quickEfficiency !== 'average') _setActiveBtn('.q-eff-btn', 'qeff', quickEfficiency);
                 if (fabricUnit !== 'stitches') setFabricUnit(fabricUnit);
@@ -1132,87 +1104,12 @@
                 toast('Could not load saved patterns.', { type: 'error' });
             }
 
-            // Set up drag-and-drop on upload zone
-            const zone = document.getElementById('upload-zone');
-            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-            zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-            zone.addEventListener('drop', e => {
-                e.preventDefault();
-                zone.classList.remove('drag-over');
-                const file = e.dataTransfer.files[0];
-                if (file) handleFile(file);
-            });
-        }
-
-        /* ——— PDF UPLOAD ——— */
-        async function handleFile(file) {
-            if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
-                showError('Please select a PDF file.');
-                return;
-            }
-
-            // Clear saved-pattern selection
-            document.getElementById('pattern-select').value = '';
-            patternId = null;
-
-            patternName = file.name.replace(/\.pdf$/i, '');
-            clearError();
-            showSpinner(true);
-            toggleResults(false);
-
-            const formData = new FormData();
-            formData.append('pdf', file);
-
-            try {
-                const resp = await fetch('/api/pattern/parse', { method: 'POST', body: formData });
-                const data = await resp.json();
-
-                if (!resp.ok || data.error) {
-                    showError(data.error || 'Failed to parse PDF.');
-                    showSpinner(false);
-                    return;
-                }
-
-                // Normalize to unified shape
-                patternData = (data.colors || []).map(c => ({
-                    dmc: c.dmc,
-                    name: c.name || '',
-                    hex: c.hex_color || '#555',
-                    stitches: c.effective_stitches || 0,
-                    status: c.inventory_status || 'dont_own',
-                    skein_qty: c.skein_qty || 0,
-                    thread_id: c.thread_id || null,
-                }));
-
-                // Store grid dimensions from PDF design info
-                const di = data.design_info || {};
-                patternGridW = di.width || 0;
-                patternGridH = di.height || 0;
-
-                // Apply detected settings from PDF
-                if (data.detected.fabric_count) {
-                    document.getElementById('fabric-count').value = data.detected.fabric_count;
-                }
-                if (data.detected.strands) {
-                    document.getElementById('strands').value = data.detected.strands;
-                }
-
-                showSpinner(false);
-                toggleResults(true);
-                recalculate();
-            } catch (err) {
-                showError('Network error: ' + err.message);
-                showSpinner(false);
-            }
         }
 
         /* ——— LOAD SAVED PATTERN ——— */
         async function loadSavedPattern() {
             const id = document.getElementById('pattern-select').value;
             if (!id) { toggleResults(false); return; }
-
-            // Clear file input
-            document.getElementById('pdf-input').value = '';
 
             clearError();
             showSpinner(true);
@@ -1407,11 +1304,15 @@
             const fabricCount = parseInt(document.getElementById('fabric-count').value);
             if (patternGridW && patternGridH && fabricCount) {
                 const margin = 3; // inches on each side for framing
-                const w = (patternGridW / fabricCount + margin * 2).toFixed(1);
-                const h = (patternGridH / fabricCount + margin * 2).toFixed(1);
-                document.getElementById('stat-fabric').textContent = `${w}" × ${h}"`;
+                const dw = (patternGridW / fabricCount).toFixed(1);
+                const dh = (patternGridH / fabricCount).toFixed(1);
+                const cw = (patternGridW / fabricCount + margin * 2).toFixed(1);
+                const ch = (patternGridH / fabricCount + margin * 2).toFixed(1);
+                document.getElementById('stat-fabric').textContent = `${dw}" × ${dh}"`;
+                document.getElementById('stat-fabric-cut').textContent = `Cut: ${cw}" × ${ch}"`;
             } else {
                 document.getElementById('stat-fabric').textContent = '—';
+                document.getElementById('stat-fabric-cut').textContent = '';
             }
 
             document.getElementById('mark-need-btn').disabled = !hasUnowned;

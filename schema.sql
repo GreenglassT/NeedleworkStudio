@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP
+    last_login TIMESTAMP,
+    preferences TEXT DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);

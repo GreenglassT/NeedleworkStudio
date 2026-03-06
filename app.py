@@ -350,6 +350,13 @@ def _inject_desktop_mode():
     return dict(desktop_mode=DESKTOP_MODE)
 
 
+@app.context_processor
+def _inject_user_prefs():
+    if current_user.is_authenticated:
+        return dict(user_prefs=_get_user_prefs(current_user.id))
+    return dict(user_prefs={})
+
+
 # --- API token authentication for sync ---
 from functools import wraps
 
@@ -543,6 +550,17 @@ def _seed_anchor_threads(conn):
             pass  # skip duplicates
     conn.commit()
     app.logger.info("Seeded %d Anchor threads", inserted)
+
+
+def _migrate_user_preferences():
+    """Add preferences column to users table if missing."""
+    conn = _get_db_direct()
+    cols = {r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if 'preferences' not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT '{}'")
+        conn.commit()
+        app.logger.info("Added preferences column to users table")
+    conn.close()
 
 
 def _pdf_parse_cover(page):
@@ -1142,6 +1160,51 @@ def _match_rgb_to_dmc(r, g, b):
 _PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※"
 _SYMBOLS_VERSION = "3"  # increment when _PATTERN_SYMBOLS changes
 
+# --- User preferences ---
+_DEFAULT_PREFS = {
+    'dmc-theme':            'system',
+    'dmc-gridlines':        True,
+    'dmc-symbols':          True,
+    'dmc-legend-sort':      'number',
+    'dmc-viewMode':         'chart',
+    'dmc-ed-mirror':        'off',
+    'dmc-ed-brush':         1,
+    'dmc-calc-strands':     2,
+    'dmc-calc-skein-len':   8.7,
+    'dmc-calc-efficiency':  'average',
+    'dmc-calc-fabric-count': 14,
+    'inventoryBrand':       'DMC',
+}
+
+_PREF_VALIDATORS = {
+    'dmc-theme':            lambda v: v in ('light', 'dark', 'system'),
+    'dmc-gridlines':        lambda v: isinstance(v, bool),
+    'dmc-symbols':          lambda v: isinstance(v, bool),
+    'dmc-legend-sort':      lambda v: v in ('number', 'stitches'),
+    'dmc-viewMode':         lambda v: v in ('chart', 'thread'),
+    'dmc-ed-mirror':        lambda v: v in ('off', 'horizontal', 'vertical', 'both'),
+    'dmc-ed-brush':         lambda v: v in (1, 2, 3, 5, 9),
+    'dmc-calc-strands':     lambda v: v in (1, 2, 3, 4),
+    'dmc-calc-skein-len':   lambda v: isinstance(v, (int, float)) and 0.1 <= v <= 100,
+    'dmc-calc-efficiency':  lambda v: v in ('inefficient', 'average', 'efficient'),
+    'dmc-calc-fabric-count': lambda v: v in (6, 8, 11, 14, 16, 18, 20, 22, 25, 28, 32),
+    'inventoryBrand':       lambda v: v in ('DMC', 'Anchor'),
+}
+
+
+def _get_user_prefs(user_id):
+    """Fetch user preferences merged with defaults."""
+    conn = _get_db_direct()
+    row = conn.execute("SELECT preferences FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    stored = {}
+    if row and row['preferences']:
+        try:
+            stored = json.loads(row['preferences'])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return {**_DEFAULT_PREFS, **stored}
+
 
 def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither, contrast, brightness, palette_filter='standard', pixel_art=False, crop=None, crop_shape='rect', palette_brand='DMC'):
     """Convert image bytes to a cross-stitch pattern dict."""
@@ -1689,6 +1752,80 @@ def stash_calculator():
     pattern = request.args.get('pattern', '')
     url = '/pattern-calculator' + ('?pattern=' + pattern if pattern else '')
     return redirect(url)
+
+
+@app.route('/settings')
+@login_required
+def settings_page():
+    """User settings and preferences."""
+    return render_template('settings.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
+
+
+@app.route('/api/preferences', methods=['GET'])
+@login_required
+def api_get_preferences():
+    """Return current user preferences."""
+    return jsonify(_get_user_prefs(current_user.id))
+
+
+@app.route('/api/preferences', methods=['PATCH'])
+@login_required
+@limiter.limit("30 per minute")
+def api_update_preferences():
+    """Update one or more user preferences."""
+    data = request.get_json(force=True)
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    prefs = _get_user_prefs(current_user.id)
+    errors = []
+    for key, value in data.items():
+        validator = _PREF_VALIDATORS.get(key)
+        if not validator:
+            continue  # silently skip unknown keys
+        if not validator(value):
+            errors.append(f'Invalid value for {key}')
+            continue
+        prefs[key] = value
+
+    if errors:
+        return jsonify({'error': '; '.join(errors)}), 400
+
+    # Write only non-default values to keep stored JSON small
+    stored = {k: v for k, v in prefs.items() if k in _DEFAULT_PREFS and v != _DEFAULT_PREFS[k]}
+    conn = get_db()
+    conn.execute("UPDATE users SET preferences = ? WHERE id = ?",
+                 (json.dumps(stored), current_user.id))
+    conn.commit()
+    return jsonify(prefs)
+
+
+@app.route('/api/account/password', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def api_change_password():
+    """Change the current user's password."""
+    data = request.get_json(force=True)
+    current_pw = data.get('current_password', '')
+    new_pw = data.get('new_password', '')
+
+    if not current_pw or not new_pw:
+        return jsonify({'error': 'Both current and new password are required'}), 400
+    if len(new_pw) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters'}), 400
+
+    conn = get_db()
+    row = conn.execute("SELECT password_hash FROM users WHERE id = ?",
+                       (current_user.id,)).fetchone()
+    if not row or not User.verify_password(row['password_hash'], current_pw):
+        return jsonify({'error': 'Current password is incorrect'}), 401
+
+    new_hash = ph.hash(new_pw)
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                 (new_hash, current_user.id))
+    conn.commit()
+    return jsonify({'ok': True})
 
 
 def _parse_floss_table(tables, text):
@@ -3703,6 +3840,7 @@ if os.path.exists(DB_PATH):
         _migrate_user_thread_status()
         _migrate_sync_tables()
         _migrate_pattern_symbols()
+        _migrate_user_preferences()
         _build_palette_lab()
 
     # Desktop mode: ensure a local user exists for auto-login

@@ -60,11 +60,12 @@ function createPatternEditor(config) {
     let _fillPreviewRegion = null;   // Set<number> of grid indices, or null
     let _fillPreviewCell   = null;   // { col, row } that generated the cached region
     function _clearFillPreview() { _fillPreviewRegion = null; _fillPreviewCell = null; }
-    let _mirrorMode    = localStorage.getItem('dmc-ed-mirror') || 'off';  // 'off' | 'horizontal' | 'vertical' | 'both'
+    function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
+    let _mirrorMode    = _pref('dmc-ed-mirror', 'off');  // 'off' | 'horizontal' | 'vertical' | 'both'
 
     /* Brush size state */
     const _BRUSH_SIZES = [1, 2, 3, 5, 9];
-    let _brushSize = (function() { var v = parseInt(localStorage.getItem('dmc-ed-brush')); return _BRUSH_SIZES.includes(v) ? v : 1; })();
+    let _brushSize = (function() { var v = parseInt(_pref('dmc-ed-brush', 1)); return _BRUSH_SIZES.includes(v) ? v : 1; })();
 
     /* Selection state */
     let _selStart      = null;
@@ -3069,8 +3070,8 @@ function createPatternEditor(config) {
         activeStitchMode = 'half';
         _halfDir = 'fwd';
         _hideTextPanel();
-        _mirrorMode = localStorage.getItem('dmc-ed-mirror') || 'off';
-        _brushSize = (function() { var v = parseInt(localStorage.getItem('dmc-ed-brush')); return _BRUSH_SIZES.includes(v) ? v : 1; })();
+        _mirrorMode = _pref('dmc-ed-mirror', 'off');
+        _brushSize = (function() { var v = parseInt(_pref('dmc-ed-brush', 1)); return _BRUSH_SIZES.includes(v) ? v : 1; })();
         _hoverCell = null;
         _pasteMode = false; _pasteLoc = null;
         _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
