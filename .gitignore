@@ -27,6 +27,7 @@ playwright.config.js
 
 # IDE / tool config
 .claude/
+.mcp.json
 .DS_Store
 
 # Test / dev artifacts
