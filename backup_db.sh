@@ -2,12 +2,13 @@
 # Daily backup of the DMC threads database.
 # Usage: ./backup_db.sh
 # Cron example (daily at 2am):
-#   0 2 * * * /home/trent/dmc-thread-db/backup_db.sh
+#   0 2 * * * /path/to/dmc-thread-db/backup_db.sh
 
 set -e
 
-DB="/home/trent/dmc-thread-db/dmc_threads.db"
-BACKUP_DIR="/home/trent/dmc-thread-db/backups"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DB="$SCRIPT_DIR/dmc_threads.db"
+BACKUP_DIR="$SCRIPT_DIR/backups"
 KEEP_DAYS=30
 
 mkdir -p "$BACKUP_DIR"

@@ -191,18 +191,22 @@ function setupAutoUpdater() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
 
     if (isMac) {
-      // macOS: go straight to releases page, no background download
+      // macOS: download the correct DMG directly via native save dialog
+      const archSuffix = process.arch === 'arm64' ? 'arm64-Apple' : 'x64-Intel';
+      const dmgName = `Needlework-Studio-${info.version}-${archSuffix}.dmg`;
+      const dmgUrl = `https://github.com/GreenglassT/NeedleworkStudio/releases/download/v${info.version}/${dmgName}`;
+
       dialog.showMessageBox(mainWindow, {
         type: 'info',
         title: 'Update Available',
         message: `Version v${info.version} is available.`,
-        detail: 'Click "Install Update" to download the latest version.',
-        buttons: ['Install Update', 'Later'],
+        detail: `Click "Download Update" to save the installer for your Mac (${archSuffix}).`,
+        buttons: ['Download Update', 'Later'],
         defaultId: 0,
         cancelId: 1,
       }).then(({ response }) => {
         if (response === 0) {
-          shell.openExternal('https://github.com/GreenglassT/NeedleworkStudio/releases/latest');
+          mainWindow.webContents.downloadURL(dmgUrl);
         }
       });
     } else {

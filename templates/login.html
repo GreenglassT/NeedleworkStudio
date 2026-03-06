@@ -5,7 +5,6 @@
 
 {% block header %}
     <div class="desktop-drag-bar"></div>
-    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
 {% endblock %}
 
 {% block head %}
@@ -15,10 +14,14 @@
         [data-theme="light"] { --skip-bg: #f5e8e8; }
 
         /* ——— THEME TOGGLE ——— */
+        .login-footer {
+            text-align: center;
+            padding-top: 18px;
+            margin-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
         .theme-toggle-btn {
-            position: fixed;
-            top: 16px;
-            right: 20px;
             background: var(--surface);
             border: 1px solid var(--border);
             color: var(--text-muted);
@@ -211,6 +214,9 @@
                 </div>
 
                 <button type="submit" class="login-btn">Sign In</button>
+                <div class="login-footer">
+                    <button type="button" class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
+                </div>
             </form>
         </div>
     </div>

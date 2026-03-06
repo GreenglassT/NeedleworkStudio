@@ -1,6 +1,9 @@
 /* ——— CONSTANTS ——— */
-const FABRIC_COLOR  = '#F5F0E8';
+// Fabric color is now dynamic: patternData.fabric_color (default '#F5F0E8')
 const FALLBACK_HEX  = '#888888';
+
+if (typeof initShortcutHelp === 'function')
+    initShortcutHelp(() => true);  // always in edit mode on this page
 
 /* ——— STATE ——— */
 let currentStep    = 'upload';
@@ -21,10 +24,10 @@ let editorInstance = null;
 let savedPatternName = null;
 let nativeW        = null;
 let nativeH        = null;
-let paletteBrand   = 'DMC';
+let paletteBrand   = _pref('inventoryBrand', 'DMC');
 let paletteFilter  = 'standard';
 let displayFilter  = 'both';
-let legendSort     = 'number';   // 'number' | 'stitches'
+let legendSort     = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let heightLocked     = true;
 let genDebounceTimer = null;
 let genController    = null;
@@ -114,6 +117,17 @@ uploadZone.addEventListener('drop', e => {
     const file = e.dataTransfer.files[0];
     if (file) handleImageSelect(file);
 });
+
+/* ——— Restore UI preferences ——— */
+if (_pref('dmc-gridlines', true) === false)
+    document.getElementById('gridlines-check').checked = false;
+if (_pref('dmc-symbols', true) === false)
+    document.getElementById('symbols-check').checked = false;
+if (legendSort !== 'number') {
+    document.getElementById('sort-btn-number')?.classList.remove('active');
+    document.getElementById('sort-btn-stitches')?.classList.add('active');
+}
+if (paletteBrand !== 'DMC') setBrand(paletteBrand);
 
 /* ——— FILE SELECT ——— */
 function handleImageSelect(file) {
@@ -612,6 +626,7 @@ function renderCropPreview() {
 /* ——— BRAND / PALETTE / DISPLAY FILTER ——— */
 function setBrand(brand) {
     paletteBrand = brand;
+    localStorage.setItem('inventoryBrand', brand);
     document.querySelectorAll('#brand-toggle .seg-btn').forEach((btn, i) => {
         btn.classList.toggle('active', ['DMC', 'Anchor'][i] === brand);
     });
@@ -716,6 +731,7 @@ async function generatePattern() {
         }
 
         patternData = data;
+        patternData.fabric_color = patternData.fabric_color || '#F5F0E8';
         legendData  = data.legend.slice();
         _lookupDirty = true;
         nativeW     = data.native_w || null;
@@ -850,7 +866,7 @@ function renderCanvas(skipFit) {
 
     if (showStitch) {
         /* ——— STITCH VIEW ——— */
-        const fabColor = FABRIC_COLOR;
+        const fabColor = patternData.fabric_color || '#F5F0E8';
         ctx.fillStyle = fabColor;
         ctx.fillRect(0, 0, W, H);
         /* Fabric texture: weave + aida dots (before stitches so it's behind them) */
@@ -1035,7 +1051,7 @@ function ensureEditor() {
             const stitchMode = document.getElementById('stitch-check').checked;
 
             if (stitchMode) {
-                const fabColor = FABRIC_COLOR;
+                const fabColor = patternData.fabric_color || '#F5F0E8';
                 ctx.fillStyle = fabColor;
                 ctx.fillRect(x, y, cp, cp);
                 if (dmc !== 'BG') {
@@ -1082,7 +1098,7 @@ function ensureEditor() {
         onDirty:          () => { _scheduleAutosave(); },
         onClean:          () => {},
         onSave:           null,
-        symbolSet:        "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※",
+        symbolSet:        (window._PAGE_CONFIG && window._PAGE_CONFIG.patternSymbols) || "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※",
     });
     editorInstance.injectUI();
 }
@@ -1213,6 +1229,7 @@ function filteredLegend() {
 
 function setLegendSort(mode) {
     legendSort = mode;
+    localStorage.setItem('dmc-legend-sort', mode);
     document.getElementById('sort-btn-number')?.classList.toggle('active', mode === 'number');
     document.getElementById('sort-btn-stitches')?.classList.toggle('active', mode === 'stitches');
     if (editorInstance && editorInstance.isActive()) renderEditLegend(); else renderKey();
@@ -1501,6 +1518,7 @@ async function confirmSave() {
                 backstitches:         patternData.backstitches || [],
                 knots:                patternData.knots || [],
                 beads:                patternData.beads || [],
+                fabric_color:         patternData.fabric_color || '#F5F0E8',
                 thumbnail,
                 generation_settings:  genSettings,
                 image_source:         imageSource,
@@ -1601,6 +1619,7 @@ async function maybeLoadSavedPattern() {
                 grid_w: saved.grid_w,
                 grid_h: saved.grid_h,
                 legend: saved.legend_data,
+                fabric_color: saved.fabric_color || '#F5F0E8',
             };
             legendData = saved.legend_data.slice();
             _lookupDirty = true;
@@ -1632,6 +1651,7 @@ async function maybeLoadSavedPattern() {
                 backstitches:  saved.backstitches || [],
                 knots:         saved.knots || [],
                 beads:         saved.beads || [],
+                fabric_color:  saved.fabric_color || '#F5F0E8',
             };
             legendData = saved.legend_data.slice();
             _lookupDirty = true;
@@ -1721,6 +1741,9 @@ async function maybeLoadSavedPattern() {
     // Hover cell highlight — clear on leave
     area.addEventListener('mouseleave', function() {
         if (editorInstance && editorInstance.isActive()) editorInstance.handleMouseLeave();
+    });
+    area.addEventListener('contextmenu', function(e) {
+        if (editorInstance && editorInstance.isActive() && editorInstance.handleContextMenu(e)) return;
     });
 
     // Touch pan / pinch zoom / editor draw

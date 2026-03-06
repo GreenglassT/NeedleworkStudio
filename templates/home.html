@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard — Needlework Studio{% endblock %}
-{% block brand_eyebrow %}Thread Collection{% endblock %}
+{% block brand_eyebrow %}Dashboard{% endblock %}
 
 {% block head %}
     <style>
@@ -17,7 +17,9 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 14px;
-            margin-bottom: 28px;
+            margin-bottom: 40px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border);
         }
 
         .stat-card {
@@ -25,6 +27,14 @@
             border: 1px solid var(--border);
             border-radius: var(--r-lg);
             padding: 22px 24px;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color var(--t), background var(--t);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-2);
+            background: var(--surface-2);
         }
 
         .stat-value {
@@ -81,7 +91,9 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 14px;
-            margin-bottom: 32px;
+            margin-bottom: 40px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border);
         }
 
         .pattern-card {
@@ -104,7 +116,7 @@
         .pattern-thumb {
             width: 100%;
             aspect-ratio: 1;
-            background: var(--surface-2);
+            background: var(--surface-3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -146,6 +158,16 @@
             letter-spacing: .03em;
         }
 
+        .pattern-tags-row { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+        .tag-chip-xs {
+            display: inline-flex; align-items: center; gap: 2px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 7px; letter-spacing: .04em;
+            padding: 1px 5px; border-radius: 8px;
+            border: 1px solid var(--border-2); color: var(--text-dim);
+            white-space: nowrap; line-height: 1.4;
+        }
+        .tag-chip-xs .tag-dot-xs { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+
         .pattern-progress {
             display: flex;
             align-items: center;
@@ -155,7 +177,7 @@
 
         .pattern-progress-bar {
             flex: 1;
-            height: 3px;
+            height: 5px;
             background: var(--border);
             border-radius: 2px;
             overflow: hidden;
@@ -267,6 +289,27 @@
             .stats-row { grid-template-columns: repeat(2, 1fr); }
         }
 
+        /* ——— Brand toggle as filter buttons ——— */
+        .brand-seg {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            gap: 6px;
+        }
+        .brand-seg-indicator { display: none; }
+        .brand-seg-btn {
+            padding: 5px 12px;
+            border: 1px solid var(--border-2);
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 400;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+        }
+        .brand-seg-btn:hover:not(.active) { color: var(--text); }
+        .brand-seg-btn.active { color: var(--text); background: var(--surface-2); }
+
         @media (max-width: 560px) {
             .section-header { gap: 8px; }
             .brand-seg { order: 3; }
@@ -288,22 +331,22 @@
             <a href="/inventory" class="section-link">View Inventory <i class="ti ti-arrow-right"></i></a>
         </div>
         <div class="stats-row">
-            <div class="stat-card">
+            <a href="/inventory?status=owned" class="stat-card">
                 <span class="stat-value v-owned" id="stat-owned">—</span>
                 <span class="stat-label">Owned</span>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/inventory?status=need" class="stat-card">
                 <span class="stat-value v-need" id="stat-need">—</span>
                 <span class="stat-label">Need</span>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/inventory?status=dont_own" class="stat-card">
                 <span class="stat-value v-skip" id="stat-dont-own">—</span>
                 <span class="stat-label">Don't Own</span>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/saved-patterns" class="stat-card">
                 <span class="stat-value" id="stat-patterns" style="color: var(--gold);">—</span>
                 <span class="stat-label">Saved Patterns</span>
-            </div>
+            </a>
         </div>
 
         <!-- Recent Patterns -->
@@ -343,7 +386,7 @@
     <script src="{{ url_for('static', filename='brand-toggle.js') }}"></script>
     <script>
         /* ——— BRAND STATE ——— */
-        let currentBrand = localStorage.getItem('inventoryBrand') ?? 'DMC';
+        let currentBrand = _pref('inventoryBrand', 'DMC');
 
         function setBrand(brand) {
             currentBrand = brand;
@@ -390,28 +433,55 @@
                     return;
                 }
 
+                function relTime(iso) {
+                    if (!iso) return '';
+                    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+                    const s = Math.floor((Date.now() - d) / 1000);
+                    if (s < 60) return 'Just now';
+                    const m = Math.floor(s / 60);
+                    if (m < 60) return m === 1 ? '1 min ago' : m + ' min ago';
+                    const h = Math.floor(m / 60);
+                    if (h < 24) return h === 1 ? '1 hour ago' : h + ' hours ago';
+                    const dy = Math.floor(h / 24);
+                    if (dy === 1) return 'Yesterday';
+                    if (dy < 7) return dy + ' days ago';
+                    const wk = Math.floor(dy / 7);
+                    if (wk < 5) return wk === 1 ? '1 week ago' : wk + ' weeks ago';
+                    const mo = Math.floor(dy / 30);
+                    if (mo < 12) return mo === 1 ? '1 month ago' : mo + ' months ago';
+                    return Math.floor(dy / 365) + ' years ago';
+                }
+                const TAG_HEX = {red:'#d06060',orange:'#d08840',gold:'#c8913a',green:'#5a9a5a',blue:'#5080b8',purple:'#8868b0',pink:'#c06888',gray:'#888'};
                 grid.innerHTML = recent.map(p => {
                     const thumbHtml = p.thumbnail
                         ? `<img src="${escHtml(p.thumbnail)}" alt="${escHtml(p.name)}">`
                         : `<span class="pattern-thumb-empty"><i class="ti ti-needle"></i></span>`;
                     const meta = `${p.grid_w} × ${p.grid_h} · ${p.color_count} color${p.color_count === 1 ? '' : 's'}`;
                     const st = p.project_status || 'not_started';
-                    const total = p.color_count || 0;
-                    const done = st === 'completed' ? total : (p.completed_count || 0);
+                    const total = (p.grid_w || 0) * (p.grid_h || 0);
+                    const done = st === 'completed' ? total : (p.stitched_cell_count || 0);
                     const pct = total ? Math.round(done / total * 100) : 0;
                     const fillCls = done === 0 ? 'ppf-zero' : (done >= total ? 'ppf-done' : 'ppf-partial');
                     const textCls = done >= total && total > 0 ? 'ppt-done' : '';
                     const progressHtml = total > 0 ? `
                                 <div class="pattern-progress">
                                     <div class="pattern-progress-bar"><div class="pattern-progress-fill ${fillCls}" style="width:${pct}%"></div></div>
-                                    <span class="pattern-progress-text ${textCls}">${done}/${total}</span>
+                                    <span class="pattern-progress-text ${textCls}">${pct}%</span>
                                 </div>` : '';
+                    const tags = (p.tags || []).slice(0, 3);
+                    const tagOverflow = (p.tags || []).length - 3;
+                    const tagsHtml = tags.length ? '<div class="pattern-tags-row">' +
+                        tags.map(t => `<span class="tag-chip-xs"><span class="tag-dot-xs" style="background:${TAG_HEX[t.color]||TAG_HEX.gray}"></span>${escHtml(t.name)}</span>`).join('') +
+                        (tagOverflow > 0 ? `<span class="tag-chip-xs">+${tagOverflow}</span>` : '') +
+                        '</div>' : '';
+                    const timeAgo = relTime(p.updated_at);
+                    const timeHtml = timeAgo ? `<div class="pattern-meta" style="margin-top:2px;opacity:.7"><i class="ti ti-clock" style="font-size:10px;vertical-align:-1px;margin-right:3px"></i>${escHtml(timeAgo)}</div>` : '';
                     return `
                         <a href="/view/${p.slug}" class="pattern-card">
                             <div class="pattern-thumb">${thumbHtml}</div>
                             <div class="pattern-info">
                                 <div class="pattern-name">${escHtml(p.name)}</div>
-                                <div class="pattern-meta">${escHtml(meta)}</div>${progressHtml}
+                                <div class="pattern-meta">${escHtml(meta)}</div>${timeHtml}${tagsHtml}${progressHtml}
                             </div>
                         </a>`;
                 }).join('');

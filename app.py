@@ -12,10 +12,11 @@ import math
 import io
 import time
 import shutil
+import zipfile
 import logging
 import secrets
 import string
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 logging.basicConfig(
     level=logging.INFO,
@@ -349,6 +350,13 @@ def _inject_desktop_mode():
     return dict(desktop_mode=DESKTOP_MODE)
 
 
+@app.context_processor
+def _inject_user_prefs():
+    if current_user.is_authenticated:
+        return dict(user_prefs=_get_user_prefs(current_user.id))
+    return dict(user_prefs={})
+
+
 # --- API token authentication for sync ---
 from functools import wraps
 
@@ -457,6 +465,21 @@ def _ensure_saved_patterns_table():
                 except sqlite3.IntegrityError:
                     continue  # slug collision, retry
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sp_slug ON saved_patterns(slug)")
+    if 'fabric_color' not in existing:
+        conn.execute("ALTER TABLE saved_patterns ADD COLUMN fabric_color TEXT DEFAULT '#F5F0E8'")
+    # --- Pattern tags ---
+    conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tags (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name       TEXT NOT NULL,
+        color      TEXT DEFAULT NULL,
+        UNIQUE(user_id, name))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ptags_user ON pattern_tags(user_id)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tag_map (
+        tag_id     INTEGER NOT NULL REFERENCES pattern_tags(id) ON DELETE CASCADE,
+        pattern_id INTEGER NOT NULL REFERENCES saved_patterns(id) ON DELETE CASCADE,
+        PRIMARY KEY (tag_id, pattern_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ptm_pattern ON pattern_tag_map(pattern_id)")
     conn.commit()
     conn.close()
 
@@ -531,6 +554,17 @@ def _seed_anchor_threads(conn):
     app.logger.info("Seeded %d Anchor threads", inserted)
 
 
+def _migrate_user_preferences():
+    """Add preferences column to users table if missing."""
+    conn = _get_db_direct()
+    cols = {r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if 'preferences' not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT '{}'")
+        conn.commit()
+        app.logger.info("Added preferences column to users table")
+    conn.close()
+
+
 def _pdf_parse_cover(page):
     """Return (grid_w, grid_h, title) from cover page."""
     text = page.extract_text() or ''
@@ -546,19 +580,34 @@ def _pdf_parse_cover(page):
 
 
 def _pdf_parse_legend(page):
-    """Return list of {dmc, name, legend_count} from legend page text."""
+    """Return list of {dmc, brand, name, legend_count} from legend page text.
+
+    Supports DMC (``DMC 310 Black 245``) and Anchor (``Anchor 1 White 245``
+    or ``ANC 1 White 245``) legend formats.
+    """
     text = page.extract_text() or ''
     entries = []
     seen = set()
     for line in text.split('\n'):
-        m = re.search(r'DMC\s+(\S+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$', line.strip())
+        stripped = line.strip()
+        # DMC: "DMC 310 Black 245"
+        m = re.search(r'DMC\s+(\S+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$', stripped)
         if m:
-            dmc = m.group(1).strip()
-            name = m.group(2).strip()
-            count = int(m.group(3))
-            if dmc not in seen:
-                entries.append({'dmc': dmc, 'name': name, 'legend_count': count})
-                seen.add(dmc)
+            brand, number = 'DMC', m.group(1).strip()
+            name, count = m.group(2).strip(), int(m.group(3))
+        else:
+            # Anchor: "Anchor 1 White 245" or "ANC 1 White 245"
+            m = re.search(r'(?:Anchor|ANC)\s+(\d+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$',
+                          stripped, re.IGNORECASE)
+            if m:
+                brand, number = 'Anchor', m.group(1).strip()
+                name, count = m.group(2).strip(), int(m.group(3))
+            else:
+                continue
+        key = f'{brand}:{number}'
+        if key not in seen:
+            entries.append({'dmc': number, 'brand': brand, 'name': name, 'legend_count': count})
+            seen.add(key)
     return entries
 
 
@@ -648,6 +697,59 @@ def _validate_grid_dims(grid_w, grid_h):
     return True, None
 
 
+def _lookup_threads_by_number(conn, user_id, brand, numbers, extra_fields=()):
+    """Look up threads by brand + number list with per-user status.
+
+    Always returns: number, hex_color, name, category, status.
+    Pass extra_fields=('id', 'skein_qty') for additional columns.
+    Returns dict keyed by thread number.
+    """
+    if not numbers:
+        return {}
+    base_cols = ['t.number', 't.hex_color', 't.name', 't.category',
+                 "COALESCE(u.status, 'dont_own') AS status"]
+    if 'id' in extra_fields:
+        base_cols.insert(0, 't.id')
+    if 'skein_qty' in extra_fields:
+        base_cols.append("COALESCE(u.skein_qty, 0) AS skein_qty")
+    ph = ','.join('?' * len(numbers))
+    rows = conn.execute(
+        f"""SELECT {', '.join(base_cols)}
+            FROM threads t
+            LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
+            WHERE t.brand = ? AND t.number IN ({ph})""",
+        [user_id, brand] + list(numbers)
+    ).fetchall()
+    return {r['number']: r for r in rows}
+
+
+def _insert_pattern_with_slug(cursor, **kwargs):
+    """Insert a saved pattern with auto-generated slug, retrying on collision.
+
+    Returns the slug on success, or None after 5 failed attempts.
+    """
+    for _attempt in range(5):
+        slug = _generate_slug()
+        try:
+            cursor.execute(
+                """INSERT INTO saved_patterns
+                       (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
+                        thumbnail, source_image_path, generation_settings,
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (slug, kwargs['user_id'], kwargs['name'], kwargs['grid_w'], kwargs['grid_h'],
+                 kwargs['color_count'], kwargs['grid_json'], kwargs['legend_json'],
+                 kwargs.get('thumbnail'), kwargs.get('source_image_path'),
+                 kwargs.get('gen_settings_json'),
+                 kwargs['ps_json'], kwargs['bs_json'], kwargs['kn_json'], kwargs['bd_json'],
+                 kwargs.get('brand', 'DMC'), kwargs.get('fabric_color', '#F5F0E8'))
+            )
+            return slug
+        except sqlite3.IntegrityError:
+            continue
+    return None
+
+
 def _serialize_stitch_layers(data):
     """Serialize part_stitches/backstitches/knots/beads from request data.
     Handles lists (serialize), strings (pass through), or None (default '[]').
@@ -702,22 +804,16 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     # -- Legend (last page) --
     legend_entries = _pdf_parse_legend(plumber_pdf.pages[-1])
     if not legend_entries:
-        raise ValueError("No DMC entries found in legend")
+        raise ValueError("No thread entries found in legend (expected DMC or Anchor)")
 
     # Build color reference from app's thread database (with per-user status)
     db = get_db()
     uid = current_user.id
-    all_dmcs = [e['dmc'] for e in legend_entries]
-    _ph = ','.join('?' * len(all_dmcs))
-    _rows = db.execute(
-        f"""SELECT t.number, t.hex_color, t.category,
-                   COALESCE(u.status, 'dont_own') AS status
-            FROM threads t
-            LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-            WHERE t.brand = 'DMC' AND t.number IN ({_ph})""",
-        [uid] + all_dmcs
-    ).fetchall()
-    _thread_info = {r['number']: r for r in _rows}
+    # Query threads for each brand present in the legend
+    _thread_info = {}
+    for brand in {e['brand'] for e in legend_entries}:
+        brand_numbers = [e['dmc'] for e in legend_entries if e['brand'] == brand]
+        _thread_info.update(_lookup_threads_by_number(db, uid, brand, brand_numbers))
     dmc_hex = {}
     for e in legend_entries:
         row = _thread_info.get(e['dmc'])
@@ -1110,6 +1206,50 @@ def _match_rgb_to_dmc(r, g, b):
 _PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※"
 _SYMBOLS_VERSION = "3"  # increment when _PATTERN_SYMBOLS changes
 
+# --- User preferences ---
+_DEFAULT_PREFS = {
+    'dmc-theme':            'system',
+    'dmc-gridlines':        True,
+    'dmc-symbols':          True,
+    'dmc-legend-sort':      'number',
+    'dmc-viewMode':         'chart',
+    'dmc-ed-mirror':        'off',
+    'dmc-ed-brush':         1,
+    'dmc-calc-strands':     2,
+    'dmc-calc-skein-len':   8.7,
+    'dmc-calc-efficiency':  'average',
+    'dmc-calc-fabric-count': 14,
+    'inventoryBrand':       'DMC',
+}
+
+_PREF_VALIDATORS = {
+    'dmc-theme':            lambda v: v in ('light', 'dark', 'system'),
+    'dmc-gridlines':        lambda v: isinstance(v, bool),
+    'dmc-symbols':          lambda v: isinstance(v, bool),
+    'dmc-legend-sort':      lambda v: v in ('number', 'stitches'),
+    'dmc-viewMode':         lambda v: v in ('chart', 'thread'),
+    'dmc-ed-mirror':        lambda v: v in ('off', 'horizontal', 'vertical', 'both'),
+    'dmc-ed-brush':         lambda v: v in (1, 2, 3, 5, 9),
+    'dmc-calc-strands':     lambda v: v in (1, 2, 3, 4),
+    'dmc-calc-skein-len':   lambda v: isinstance(v, (int, float)) and 0.1 <= v <= 100,
+    'dmc-calc-efficiency':  lambda v: v in ('inefficient', 'average', 'efficient'),
+    'dmc-calc-fabric-count': lambda v: v in (6, 8, 11, 14, 16, 18, 20, 22, 25, 28, 32),
+    'inventoryBrand':       lambda v: v in ('DMC', 'Anchor'),
+}
+
+
+def _get_user_prefs(user_id):
+    """Fetch user preferences merged with defaults."""
+    conn = get_db()
+    row = conn.execute("SELECT preferences FROM users WHERE id = ?", (user_id,)).fetchone()
+    stored = {}
+    if row and row['preferences']:
+        try:
+            stored = json.loads(row['preferences'])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return {**_DEFAULT_PREFS, **stored}
+
 
 def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither, contrast, brightness, palette_filter='standard', pixel_art=False, crop=None, crop_shape='rect', palette_brand='DMC'):
     """Convert image bytes to a cross-stitch pattern dict."""
@@ -1208,18 +1348,8 @@ def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither
 
     # Cross-reference inventory (with per-user status)
     conn = get_db()
-    cursor = conn.cursor()
     uid = current_user.id
-    placeholders = ','.join('?' * len(sorted_threads))
-    cursor.execute(
-        f"""SELECT t.number, COALESCE(u.status, 'dont_own') AS status,
-                   t.hex_color, t.name, t.category
-            FROM threads t
-            LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-            WHERE t.brand = ? AND t.number IN ({placeholders})""",
-        [uid, palette_brand] + sorted_threads
-    )
-    thread_lookup = {r['number']: r for r in cursor.fetchall()}
+    thread_lookup = _lookup_threads_by_number(conn, uid, palette_brand, sorted_threads)
     legend = []
     for num in sorted_threads:
         row = thread_lookup.get(num)
@@ -1659,6 +1789,94 @@ def stash_calculator():
     return redirect(url)
 
 
+@app.route('/settings')
+@login_required
+def settings_page():
+    """User settings and preferences."""
+    return render_template('settings.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
+
+
+@app.route('/api/preferences', methods=['GET'])
+@login_required
+def api_get_preferences():
+    """Return current user preferences."""
+    return jsonify(_get_user_prefs(current_user.id))
+
+
+@app.route('/api/preferences', methods=['PATCH'])
+@login_required
+@limiter.limit("30 per minute")
+def api_update_preferences():
+    """Update one or more user preferences."""
+    data = request.get_json(force=True)
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    prefs = _get_user_prefs(current_user.id)
+    errors = []
+    for key, value in data.items():
+        validator = _PREF_VALIDATORS.get(key)
+        if not validator:
+            continue  # silently skip unknown keys
+        if not validator(value):
+            errors.append(f'Invalid value for {key}')
+            continue
+        prefs[key] = value
+
+    if errors:
+        return jsonify({'error': '; '.join(errors)}), 400
+
+    # Write only non-default values to keep stored JSON small
+    stored = {k: v for k, v in prefs.items() if k in _DEFAULT_PREFS and v != _DEFAULT_PREFS[k]}
+    conn = get_db()
+    conn.execute("UPDATE users SET preferences = ? WHERE id = ?",
+                 (json.dumps(stored), current_user.id))
+    conn.commit()
+    return jsonify(prefs)
+
+
+@app.route('/api/preferences/reset', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def api_reset_preferences():
+    """Reset all preferences to defaults."""
+    conn = get_db()
+    conn.execute("UPDATE users SET preferences = '{}' WHERE id = ?",
+                 (current_user.id,))
+    conn.commit()
+    return jsonify(_DEFAULT_PREFS)
+
+
+@app.route('/api/account/password', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def api_change_password():
+    """Change the current user's password."""
+    data = request.get_json(force=True)
+    current_pw = data.get('current_password', '')
+    new_pw = data.get('new_password', '')
+
+    if not current_pw or not new_pw:
+        return jsonify({'error': 'Both current and new password are required'}), 400
+    if len(new_pw) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters'}), 400
+    if len(new_pw) > 1024:
+        return jsonify({'error': 'Password too long'}), 400
+
+    conn = get_db()
+    row = conn.execute("SELECT password_hash FROM users WHERE id = ?",
+                       (current_user.id,)).fetchone()
+    if not row or not User.verify_password(row['password_hash'], current_pw):
+        return jsonify({'error': 'Current password is incorrect'}), 403
+
+    new_hash = ph.hash(new_pw)
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                 (new_hash, current_user.id))
+    conn.commit()
+    return jsonify({'ok': True})
+
+
 def _parse_floss_table(tables, text):
     """
     Given a list of pdfplumber tables and raw page text, find and parse the floss/color table.
@@ -1897,20 +2115,10 @@ def parse_pattern():
 
             # Cross-reference inventory (per-user status)
             conn = get_db()
-            cursor = conn.cursor()
             uid = current_user.id
             dmc_nums = [c['dmc'] for c in colors]
-            _ph = ','.join('?' * len(dmc_nums))
-            cursor.execute(
-                f"""SELECT t.id, t.number, t.hex_color, t.name,
-                           COALESCE(u.status, 'dont_own') AS status,
-                           COALESCE(u.skein_qty, 0) AS skein_qty
-                    FROM threads t
-                    LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-                    WHERE t.brand = 'DMC' AND t.number IN ({_ph})""",
-                [uid] + dmc_nums
-            )
-            _tlookup = {r['number']: r for r in cursor.fetchall()}
+            _tlookup = _lookup_threads_by_number(conn, uid, 'DMC', dmc_nums,
+                                                  extra_fields=('id', 'skein_qty'))
             for color in colors:
                 row = _tlookup.get(color['dmc'])
                 if row:
@@ -2025,7 +2233,8 @@ def mark_need():
 @login_required
 def image_to_pattern():
     """Image to cross-stitch pattern generator page."""
-    return render_template('image-to-pattern.html')
+    return render_template('image-to-pattern.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
 
 
 @app.route('/api/image/session-source')
@@ -2253,30 +2462,24 @@ def api_save_pattern():
     if brand not in ('DMC', 'Anchor'):
         brand = 'DMC'
 
+    # Fabric color
+    fabric_color = data.get('fabric_color', '#F5F0E8')
+    if not isinstance(fabric_color, str) or not re.match(r'^#[0-9a-fA-F]{6}$', fabric_color):
+        fabric_color = '#F5F0E8'
+
     # New stitch layers (optional — default to empty arrays)
     ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(data)
 
     conn = get_db()
     cursor = conn.cursor()
-    slug = _generate_slug()
-    inserted = False
-    for _attempt in range(5):
-        try:
-            cursor.execute(
-                """INSERT INTO saved_patterns
-                       (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
-                        thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (slug, current_user.id, name, grid_w, grid_h, color_count,
-                 grid_json, legend_json, thumbnail, source_image_path, gen_settings_json,
-                 ps_json, bs_json, kn_json, bd_json, brand)
-            )
-            inserted = True
-            break
-        except sqlite3.IntegrityError:
-            slug = _generate_slug()
-    if not inserted:
+    slug = _insert_pattern_with_slug(
+        cursor, user_id=current_user.id, name=name, grid_w=grid_w, grid_h=grid_h,
+        color_count=color_count, grid_json=grid_json, legend_json=legend_json,
+        thumbnail=thumbnail, source_image_path=source_image_path,
+        gen_settings_json=gen_settings_json,
+        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand,
+        fabric_color=fabric_color)
+    if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
 
@@ -2339,30 +2542,23 @@ def api_import_pattern():
     if brand not in ('DMC', 'Anchor'):
         brand = 'DMC'
 
+    # Fabric color
+    fabric_color = data.get('fabric_color', '#F5F0E8')
+    if not isinstance(fabric_color, str) or not re.match(r'^#[0-9a-fA-F]{6}$', fabric_color):
+        fabric_color = '#F5F0E8'
+
     # v2 stitch layers
     ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(data)
 
     conn = get_db()
     cursor = conn.cursor()
-    slug = _generate_slug()
-    inserted = False
-    for _attempt in range(5):
-        try:
-            cursor.execute(
-                """INSERT INTO saved_patterns
-                       (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
-                        thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (slug, current_user.id, name, grid_w, grid_h, color_count,
-                 grid_json, legend_json, thumbnail, None, None,
-                 ps_json, bs_json, kn_json, bd_json, brand)
-            )
-            inserted = True
-            break
-        except sqlite3.IntegrityError:
-            slug = _generate_slug()
-    if not inserted:
+    slug = _insert_pattern_with_slug(
+        cursor, user_id=current_user.id, name=name, grid_w=grid_w, grid_h=grid_h,
+        color_count=color_count, grid_json=grid_json, legend_json=legend_json,
+        thumbnail=thumbnail,
+        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand,
+        fabric_color=fabric_color)
+    if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
 
@@ -2385,11 +2581,127 @@ def api_list_saved_patterns():
         (current_user.id,)
     )
     rows = []
+    pattern_ids = {}  # slug → index
     for r in cursor.fetchall():
         d = dict(r)
         d.update(_parse_progress_data(d.pop('progress_data', None)))
+        d['tags'] = []
+        pattern_ids[d['slug']] = len(rows)
         rows.append(d)
+
+    # Batch-fetch tags for all patterns
+    if rows:
+        tag_rows = conn.execute(
+            """SELECT sp.slug, pt.id, pt.name, pt.color
+                 FROM pattern_tag_map ptm
+                 JOIN pattern_tags pt ON pt.id = ptm.tag_id
+                 JOIN saved_patterns sp ON sp.id = ptm.pattern_id
+                WHERE sp.user_id = ?
+                ORDER BY pt.name""",
+            (current_user.id,)
+        ).fetchall()
+        for tr in tag_rows:
+            idx = pattern_ids.get(tr['slug'])
+            if idx is not None:
+                rows[idx]['tags'].append({
+                    'id': tr['id'], 'name': tr['name'], 'color': tr['color']
+                })
+
     return jsonify(rows)
+
+
+@app.route('/api/saved-patterns/export-all', methods=['GET'])
+@limiter.limit("5 per minute")
+@login_required
+def api_export_all_patterns():
+    """Download a ZIP of all user patterns as JSON files."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT slug, name, grid_w, grid_h, grid_data, legend_data, thumbnail,
+                  part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color
+             FROM saved_patterns
+            WHERE user_id = ?
+            ORDER BY updated_at DESC""",
+        (current_user.id,)
+    )
+    # Pre-fetch tags per pattern
+    tag_map = {}  # slug → [tag_name, ...]
+    tag_rows = conn.execute(
+        """SELECT sp.slug, pt.name
+             FROM pattern_tag_map ptm
+             JOIN pattern_tags pt ON pt.id = ptm.tag_id
+             JOIN saved_patterns sp ON sp.id = ptm.pattern_id
+            WHERE sp.user_id = ?
+            ORDER BY pt.name""",
+        (current_user.id,)
+    ).fetchall()
+    for tr in tag_rows:
+        tag_map.setdefault(tr['slug'], []).append(tr['name'])
+
+    buf = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for row in cursor:
+            r = dict(row)
+            slug = r['slug']
+            # Sanitize name for filename: keep alphanumeric, spaces, hyphens, underscores
+            safe_name = re.sub(r'[^\w\s-]', '', r['name']).strip()
+            safe_name = re.sub(r'\s+', '-', safe_name).lower()
+            filename = f"{slug}-{safe_name}.json" if safe_name else f"{slug}.json"
+
+            try:
+                grid_data = json.loads(r['grid_data'])
+                legend_raw = json.loads(r['legend_data'])
+                part_stitches = json.loads(r['part_stitches_data'] or '[]')
+                backstitches = json.loads(r['backstitches_data'] or '[]')
+                knots = json.loads(r['knots_data'] or '[]')
+                beads = json.loads(r['beads_data'] or '[]')
+            except (json.JSONDecodeError, TypeError):
+                app.logger.exception("Skipping corrupted pattern %s during export-all", slug)
+                continue
+
+            # Strip legend to essential fields (matches client-side exportJSON)
+            legend_data = []
+            for e in legend_raw:
+                legend_data.append({
+                    'dmc': e.get('dmc'), 'hex': e.get('hex'), 'name': e.get('name'),
+                    'symbol': e.get('symbol'), 'stitches': e.get('stitches'),
+                    'category': e.get('category'),
+                })
+
+            payload = {
+                'format': 'needlework-studio',
+                'version': 1,
+                'exported_at': datetime.utcnow().isoformat() + 'Z',
+                'name': r['name'],
+                'brand': r.get('brand') or 'DMC',
+                'fabric_color': r.get('fabric_color') or '#F5F0E8',
+                'grid_w': r['grid_w'],
+                'grid_h': r['grid_h'],
+                'grid_data': grid_data,
+                'legend_data': legend_data,
+                'part_stitches': part_stitches,
+                'backstitches': backstitches,
+                'knots': knots,
+                'beads': beads,
+                'thumbnail': r.get('thumbnail') or '',
+                'tags': tag_map.get(slug, []),
+            }
+            zf.writestr(filename, json.dumps(payload, separators=(',', ':')))
+            count += 1
+
+    if count == 0:
+        return jsonify({'error': 'No patterns to export'}), 404
+
+    buf.seek(0)
+    date_str = datetime.utcnow().strftime('%Y-%m-%d')
+    return send_file(
+        buf,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'needlework-studio-backup-{date_str}.zip',
+    )
 
 
 @app.route('/api/saved-patterns/<pattern_slug>', methods=['GET'])
@@ -2401,7 +2713,7 @@ def api_get_saved_pattern(pattern_slug):
     cursor.execute(
         """SELECT id, slug, name, grid_w, grid_h, color_count, grid_data, legend_data, thumbnail,
                   created_at, updated_at, source_image_path, generation_settings, progress_data,
-                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand
+                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color
              FROM saved_patterns
             WHERE slug = ? AND user_id = ?""",
         (pattern_slug, current_user.id)
@@ -2427,20 +2739,11 @@ def api_get_saved_pattern(pattern_slug):
     uid = current_user.id
     dmc_numbers = [e['dmc'] for e in result['legend_data'] if e.get('dmc')]
     if dmc_numbers:
-        placeholders = ','.join('?' * len(dmc_numbers))
-        cursor.execute(
-            f"""SELECT t.id, t.number,
-                       COALESCE(u.status, 'dont_own') AS status,
-                       COALESCE(u.skein_qty, 0) AS skein_qty
-                FROM threads t
-                LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-                WHERE t.brand = ? AND t.number IN ({placeholders})""",
-            [uid, pattern_brand] + dmc_numbers
-        )
-        rows = cursor.fetchall()
-        live_status = {r['number']: r['status'] for r in rows}
-        live_qty = {r['number']: r['skein_qty'] or 0 for r in rows}
-        live_id = {r['number']: r['id'] for r in rows}
+        _live = _lookup_threads_by_number(conn, uid, pattern_brand, dmc_numbers,
+                                           extra_fields=('id', 'skein_qty'))
+        live_status = {n: r['status'] for n, r in _live.items()}
+        live_qty = {n: r['skein_qty'] or 0 for n, r in _live.items()}
+        live_id = {n: r['id'] for n, r in _live.items()}
         for entry in result['legend_data']:
             dmc = entry.get('dmc')
             if dmc in live_status:
@@ -2466,6 +2769,17 @@ def api_get_saved_pattern(pattern_slug):
         result['completed_dmcs'] = []
         result['stitched_cells'] = []
         result['accumulated_seconds'] = 0
+    # Fetch tags for this pattern
+    tag_rows = conn.execute(
+        """SELECT pt.id, pt.name, pt.color
+             FROM pattern_tag_map ptm
+             JOIN pattern_tags pt ON pt.id = ptm.tag_id
+            WHERE ptm.pattern_id = ?
+            ORDER BY pt.name""",
+        (result['id'],)
+    ).fetchall()
+    result['tags'] = [{'id': t['id'], 'name': t['name'], 'color': t['color']} for t in tag_rows]
+
     del result['source_image_path']  # don't expose internal path to client
     del result['progress_data']      # replaced by individual keys above
     del result['id']                 # don't expose internal integer id
@@ -2557,6 +2871,11 @@ def api_update_saved_pattern(pattern_slug):
         if bd_json is not None:
             fields.append('beads_data=?')
             params.append(bd_json)
+        fabric_color = data.get('fabric_color')
+        if fabric_color is not None:
+            if isinstance(fabric_color, str) and re.match(r'^#[0-9a-fA-F]{6}$', fabric_color):
+                fields.append('fabric_color=?')
+                params.append(fabric_color)
         params.extend([pattern_id, current_user.id])
         cursor.execute(
             f'UPDATE saved_patterns SET {",".join(fields)} WHERE id=? AND user_id=?',
@@ -2758,8 +3077,162 @@ def api_batch_saved_patterns():
         updated = cursor.rowcount
         return jsonify({'updated': updated}), 200
 
+    elif action == 'tag':
+        tag_ids = data.get('tag_ids', [])
+        mode = data.get('mode', 'add')  # 'add' | 'remove' | 'set'
+        if mode not in ('add', 'remove', 'set'):
+            return jsonify({'error': 'Invalid mode'}), 400
+        if not isinstance(tag_ids, list) or not all(isinstance(t, int) for t in tag_ids):
+            return jsonify({'error': 'tag_ids must be list of integers'}), 400
+        # Validate all tag_ids belong to current user
+        if tag_ids:
+            ph = ','.join('?' * len(tag_ids))
+            valid = cursor.execute(
+                f"SELECT id FROM pattern_tags WHERE id IN ({ph}) AND user_id = ?",
+                tag_ids + [current_user.id]).fetchall()
+            valid_ids = {r['id'] for r in valid}
+            tag_ids = [t for t in tag_ids if t in valid_ids]
+        for pid in ids:
+            if mode == 'set':
+                cursor.execute("DELETE FROM pattern_tag_map WHERE pattern_id = ?", (pid,))
+            if mode == 'remove':
+                for tid in tag_ids:
+                    cursor.execute("DELETE FROM pattern_tag_map WHERE tag_id = ? AND pattern_id = ?", (tid, pid))
+            elif mode in ('add', 'set'):
+                for tid in tag_ids:
+                    cursor.execute("INSERT OR IGNORE INTO pattern_tag_map (tag_id, pattern_id) VALUES (?, ?)", (tid, pid))
+        conn.commit()
+        return jsonify({'updated': len(ids)}), 200
+
     else:
-        return jsonify({'error': 'Unknown action. Use "delete" or "status".'}), 400
+        return jsonify({'error': 'Unknown action. Use "delete", "status", or "tag".'}), 400
+
+
+# ──── Tag CRUD ────────────────────────────────────────────
+_TAG_COLORS = {'red', 'orange', 'gold', 'green', 'blue', 'purple', 'pink', 'gray'}
+
+
+@app.route('/api/tags', methods=['GET'])
+@login_required
+@limiter.limit("30 per minute")
+def api_list_tags():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT pt.id, pt.name, pt.color,
+               COUNT(ptm.pattern_id) AS pattern_count
+        FROM pattern_tags pt
+        LEFT JOIN pattern_tag_map ptm ON ptm.tag_id = pt.id
+        WHERE pt.user_id = ?
+        GROUP BY pt.id
+        ORDER BY pt.name COLLATE NOCASE
+    """, (current_user.id,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/tags', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
+def api_create_tag():
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name or len(name) > 30:
+        return jsonify({'error': 'Tag name required (1-30 chars)'}), 400
+    color = data.get('color')
+    if color and color not in _TAG_COLORS:
+        color = None
+    conn = get_db()
+    # Check limit
+    count = conn.execute("SELECT COUNT(*) as c FROM pattern_tags WHERE user_id = ?",
+                         (current_user.id,)).fetchone()['c']
+    if count >= 20:
+        return jsonify({'error': 'Maximum 20 tags allowed'}), 400
+    try:
+        cursor = conn.execute(
+            "INSERT INTO pattern_tags (user_id, name, color) VALUES (?, ?, ?)",
+            (current_user.id, name, color))
+        conn.commit()
+        return jsonify({'id': cursor.lastrowid, 'name': name, 'color': color}), 201
+    except Exception:
+        return jsonify({'error': 'Tag name already exists'}), 409
+
+
+@app.route('/api/tags/<int:tag_id>', methods=['PATCH'])
+@login_required
+@limiter.limit("20 per minute")
+def api_update_tag(tag_id):
+    conn = get_db()
+    tag = conn.execute("SELECT * FROM pattern_tags WHERE id = ? AND user_id = ?",
+                       (tag_id, current_user.id)).fetchone()
+    if not tag:
+        return jsonify({'error': 'Tag not found'}), 404
+    data = request.get_json(silent=True) or {}
+    updates, params = [], []
+    if 'name' in data:
+        name = (data['name'] or '').strip()
+        if not name or len(name) > 30:
+            return jsonify({'error': 'Tag name required (1-30 chars)'}), 400
+        updates.append("name = ?")
+        params.append(name)
+    if 'color' in data:
+        color = data['color']
+        if color and color not in _TAG_COLORS:
+            color = None
+        updates.append("color = ?")
+        params.append(color)
+    if not updates:
+        return jsonify({'error': 'Nothing to update'}), 400
+    params.append(tag_id)
+    try:
+        conn.execute(f"UPDATE pattern_tags SET {', '.join(updates)} WHERE id = ?", params)
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception:
+        return jsonify({'error': 'Tag name already exists'}), 409
+
+
+@app.route('/api/tags/<int:tag_id>', methods=['DELETE'])
+@login_required
+@limiter.limit("20 per minute")
+def api_delete_tag(tag_id):
+    conn = get_db()
+    tag = conn.execute("SELECT id FROM pattern_tags WHERE id = ? AND user_id = ?",
+                       (tag_id, current_user.id)).fetchone()
+    if not tag:
+        return jsonify({'error': 'Tag not found'}), 404
+    conn.execute("DELETE FROM pattern_tag_map WHERE tag_id = ?", (tag_id,))
+    conn.execute("DELETE FROM pattern_tags WHERE id = ?", (tag_id,))
+    conn.commit()
+    return '', 204
+
+
+@app.route('/api/saved-patterns/<pattern_slug>/tags', methods=['PUT'])
+@login_required
+@limiter.limit("20 per minute")
+def api_set_pattern_tags(pattern_slug):
+    conn = get_db()
+    pat = conn.execute("SELECT id FROM saved_patterns WHERE slug = ? AND user_id = ?",
+                       (pattern_slug, current_user.id)).fetchone()
+    if not pat:
+        return jsonify({'error': 'Pattern not found'}), 404
+    data = request.get_json(silent=True) or {}
+    tag_ids = data.get('tag_ids', [])
+    if not isinstance(tag_ids, list):
+        return jsonify({'error': 'tag_ids must be array'}), 400
+    if len(tag_ids) > 10:
+        return jsonify({'error': 'Maximum 10 tags per pattern'}), 400
+    # Validate ownership
+    if tag_ids:
+        ph = ','.join('?' * len(tag_ids))
+        valid = conn.execute(
+            f"SELECT id FROM pattern_tags WHERE id IN ({ph}) AND user_id = ?",
+            tag_ids + [current_user.id]).fetchall()
+        tag_ids = [r['id'] for r in valid]
+    pid = pat['id']
+    conn.execute("DELETE FROM pattern_tag_map WHERE pattern_id = ?", (pid,))
+    for tid in tag_ids:
+        conn.execute("INSERT INTO pattern_tag_map (tag_id, pattern_id) VALUES (?, ?)", (tid, pid))
+    conn.commit()
+    return jsonify({'ok': True})
 
 
 @app.route('/pdf-to-pattern')
@@ -2783,7 +3256,8 @@ def oxs_to_pattern():
 @app.route('/create-pattern')
 @login_required
 def create_pattern():
-    return render_template('create-pattern.html')
+    return render_template('create-pattern.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
 
 
 @app.route('/api/pdf/import', methods=['POST'])
@@ -3389,6 +3863,7 @@ if os.path.exists(DB_PATH):
         _migrate_user_thread_status()
         _migrate_sync_tables()
         _migrate_pattern_symbols()
+        _migrate_user_preferences()
         _build_palette_lab()
 
     # Desktop mode: ensure a local user exists for auto-login

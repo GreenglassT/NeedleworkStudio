@@ -125,7 +125,9 @@
         .pattern-card.selected .card-select-check { background: var(--gold); border-color: var(--gold); color: #000; }
         body.selection-mode .pattern-card { cursor: pointer; }
         body.selection-mode .card-actions { display: none; }
-        body.selection-mode .card-name { pointer-events: none; }
+        body.selection-mode .card-name,
+        body.selection-mode .card-thumb,
+        body.selection-mode .card-view-row { pointer-events: none; }
         body.selection-mode .status-select,
         body.selection-mode .dmc-dropdown { pointer-events: none; }
 
@@ -163,13 +165,17 @@
         .bulk-btn.bulk-done:hover     { border-color: var(--owned); color: var(--owned); }
 
         .card-thumb {
-            background: var(--surface-2);
+            background: #fff;
             height: 160px;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             border-radius: var(--r-lg) var(--r-lg) 0 0;
+            text-decoration: none;
+            color: inherit;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
         }
 
         .thumb-img {
@@ -185,11 +191,11 @@
         .thumb-placeholder { font-size: 40px; opacity: 0.2; }
 
         .card-body {
-            padding: 14px 16px 10px;
+            padding: 10px 16px 6px;
             flex: 1;
         }
 
-        .card-name-wrap { margin-bottom: 8px; }
+        .card-name-wrap { margin-bottom: 4px; }
 
         .card-name {
             display: block;
@@ -229,36 +235,79 @@
 
         .card-actions {
             display: flex;
-            flex-direction: column;
             gap: 6px;
-            padding: 0 16px 14px;
+            padding: 0 16px 8px;
+            align-items: center;
+            position: relative;
         }
 
-        .card-btn-row {
-            display: flex;
-            gap: 6px;
+        .card-actions .status-select { flex: 1; }
+
+        .card-view-row {
+            padding: 0 16px 10px;
         }
 
-        .card-btn {
-            flex: 1;
-            padding: 7px 10px;
-            background: transparent;
+        .card-view-btn {
+            display: block;
+            width: 100%;
+            padding: 7px 12px;
+            background: var(--surface-2);
             border: 1px solid var(--border-2);
             border-radius: var(--r);
             color: var(--text-muted);
             font-family: 'IBM Plex Mono', monospace;
             font-size: 10px;
             letter-spacing: .04em;
-            text-align: center;
             text-decoration: none;
+            text-align: center;
             cursor: pointer;
             transition: all var(--t);
+        }
+
+        .card-view-btn:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
+
+        .card-overflow-btn {
+            padding: 7px 10px;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all var(--t);
         }
 
-        .card-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+        .card-overflow-btn:hover,
+        .card-overflow-btn.open {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
+
+        .card-dropdown-wrap:has(.card-overflow-menu) {
+            position: static;
+            flex: none;
+        }
+
+        .card-dropdown-menu.card-overflow-menu {
+            left: auto;
+            right: 0;
+            bottom: 100%;
+            margin-bottom: 4px;
+            width: 220px;
+        }
+
+        .card-dropdown-menu i.ti {
+            margin-right: 6px;
+            font-size: 14px;
+            vertical-align: -1px;
+        }
 
         /* ——— CARD DROPDOWN MENUS ——— */
         .card-dropdown-wrap {
@@ -494,7 +543,7 @@
 
         .progress-bar {
             flex: 1;
-            height: 4px;
+            height: 5px;
             background: var(--border);
             border-radius: 2px;
             overflow: hidden;
@@ -574,6 +623,135 @@
         .modal-btn-primary { background:var(--need-bg); border-color:var(--need-border); color:var(--need); }
         .modal-btn-primary:hover { border-color:var(--need); }
         .modal-all-owned { text-align:center; padding:30px 20px; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:18px; color:var(--text-dim); }
+
+        /* ——— TAG CHIPS ——— */
+        .tag-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .04em;
+            padding: 3px 10px; border-radius: 20px; cursor: pointer;
+            border: 1px solid var(--border-2); background: transparent; color: var(--text-muted);
+            transition: all var(--t); white-space: nowrap;
+        }
+        .tag-chip:hover { border-color: var(--gold-dim); color: var(--text); }
+        .tag-chip.active { border-width: 2px; padding: 2px 9px; }
+        .tag-chip .tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+        .tag-chip-sm {
+            display: inline-flex; align-items: center; gap: 3px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: .04em;
+            padding: 1px 6px; border-radius: 10px;
+            border: 1px solid var(--border-2); background: transparent; color: var(--text-dim);
+            white-space: nowrap; line-height: 1.5;
+        }
+        .tag-chip-sm .tag-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Tag color variants */
+        .tc-red    .tag-dot { background: #d06060; }
+        .tc-orange .tag-dot { background: #d08840; }
+        .tc-gold   .tag-dot { background: #c8913a; }
+        .tc-green  .tag-dot { background: #5a9a5a; }
+        .tc-blue   .tag-dot { background: #5080b8; }
+        .tc-purple .tag-dot { background: #8868b0; }
+        .tc-pink   .tag-dot { background: #c06888; }
+        .tc-gray   .tag-dot { background: #888; }
+
+        .tag-chip.active.tc-red    { border-color: #d06060; color: #d06060; background: rgba(208,96,96,.1); }
+        .tag-chip.active.tc-orange { border-color: #d08840; color: #d08840; background: rgba(208,136,64,.1); }
+        .tag-chip.active.tc-gold   { border-color: #c8913a; color: #c8913a; background: rgba(200,145,58,.1); }
+        .tag-chip.active.tc-green  { border-color: #5a9a5a; color: #5a9a5a; background: rgba(90,154,90,.1); }
+        .tag-chip.active.tc-blue   { border-color: #5080b8; color: #5080b8; background: rgba(80,128,184,.1); }
+        .tag-chip.active.tc-purple { border-color: #8868b0; color: #8868b0; background: rgba(136,104,176,.1); }
+        .tag-chip.active.tc-pink   { border-color: #c06888; color: #c06888; background: rgba(192,104,136,.1); }
+        .tag-chip.active.tc-gray   { border-color: #888;    color: #888;    background: rgba(136,136,136,.1); }
+
+        /* Tag filter row */
+        .tag-filter-row {
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 16px; flex-wrap: wrap;
+        }
+
+        /* Card tags row */
+        .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .card-tags .tag-overflow {
+            font-family: 'IBM Plex Mono', monospace; font-size: 8px; color: var(--text-dim);
+            padding: 1px 4px;
+        }
+
+        /* ——— TAG POPOVER ——— */
+        .tag-popover {
+            position: absolute; bottom: calc(100% + 6px); left: 0; right: 0;
+            background: var(--surface); border: 1px solid var(--border-2);
+            border-radius: var(--r); z-index: 55; min-width: 200px;
+            box-shadow: 0 -4px 16px rgba(0,0,0,.25); padding: 8px 0;
+            max-height: 280px; overflow-y: auto;
+        }
+        .tag-popover-item {
+            display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer;
+            transition: background var(--t);
+        }
+        .tag-popover-item:hover { background: var(--surface-2); }
+        .tag-popover-item input[type="checkbox"] { accent-color: var(--gold); flex-shrink: 0; }
+        .tag-popover-item .tag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .tag-popover-item label {
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-muted);
+            cursor: pointer; flex: 1;
+        }
+        .tag-popover-sep { height: 1px; background: var(--border); margin: 4px 0; }
+        .tag-popover-add {
+            display: flex; gap: 6px; padding: 6px 12px; align-items: center;
+        }
+        .tag-popover-add input {
+            flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+            padding: 4px 8px; border: 1px solid var(--border-2); border-radius: var(--r);
+            background: transparent; color: var(--text); outline: none;
+        }
+        .tag-popover-add input:focus { border-color: var(--gold-dim); }
+        .tag-popover-add button {
+            font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+            padding: 4px 10px; border: 1px solid var(--gold-dim); border-radius: var(--r);
+            background: transparent; color: var(--gold); cursor: pointer;
+            transition: all var(--t);
+        }
+        .tag-popover-add button:hover { background: var(--gold-dim); color: var(--text); }
+
+        /* ——— TAG MANAGEMENT MODAL ——— */
+        .tag-mgmt-list { list-style: none; padding: 0; margin: 0; }
+        .tag-mgmt-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .tag-mgmt-item:last-child { border-bottom: none; }
+        .tag-mgmt-color-btn {
+            width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent;
+            cursor: pointer; transition: border-color var(--t); flex-shrink: 0;
+        }
+        .tag-mgmt-color-btn:hover { border-color: var(--text-muted); }
+        .tag-mgmt-color-btn.active { border-color: var(--text); }
+        .tag-mgmt-name {
+            flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text);
+            background: transparent; border: 1px solid transparent; border-radius: var(--r);
+            padding: 3px 6px; transition: border-color var(--t); outline: none;
+        }
+        .tag-mgmt-name:hover { border-color: var(--border-2); }
+        .tag-mgmt-name:focus { border-color: var(--gold-dim); }
+        .tag-mgmt-count {
+            font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--text-dim);
+            min-width: 40px; text-align: right;
+        }
+        .tag-mgmt-del {
+            background: none; border: none; color: var(--text-dim); cursor: pointer;
+            font-size: 14px; padding: 2px 6px; transition: color var(--t);
+        }
+        .tag-mgmt-del:hover { color: var(--skip); }
+        .tag-color-picker {
+            display: flex; gap: 4px; padding: 6px 0;
+        }
+        .tag-color-swatch {
+            width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: border-color var(--t);
+        }
+        .tag-color-swatch:hover { border-color: var(--text-muted); }
+        .tag-color-swatch.active { border-color: var(--text); }
     </style>
     <script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}"></script>
     <script src="{{ url_for('static', filename='stitch-renderer.js') }}"></script>
@@ -594,6 +772,7 @@
                     <a href="/image-to-pattern">Convert Image</a>
                     <a href="/pdf-to-pattern">Import PDF</a>
                     <a href="/json-to-pattern">Import JSON</a>
+                    <a href="/oxs-to-pattern">Import OXS</a>
                     <a href="/create-pattern">Blank Canvas</a>
                 </div>
             </div>
@@ -615,7 +794,11 @@
                 <option value="name-za">Name Z–A</option>
             </select>
             <button class="select-btn" id="select-btn" onclick="toggleSelectionMode()">Select</button>
+            <button class="select-btn" onclick="openTagMgmt()"><i class="ti ti-tag"></i> Tags</button>
+            <button class="select-btn" id="backup-all-btn" onclick="backupAll()" title="Download all patterns as ZIP"><i class="ti ti-download"></i> Backup All</button>
         </div>
+
+        <div class="tag-filter-row" id="tag-filter-row" style="display:none"></div>
 
         <div class="select-all-bar" id="select-all-bar">
             <div class="select-all-inner">
@@ -641,6 +824,7 @@
                 <button class="bulk-btn bulk-todo"     onclick="bulkSetStatus('not_started')">Not Started</button>
                 <button class="bulk-btn bulk-progress" onclick="bulkSetStatus('in_progress')">In Progress</button>
                 <button class="bulk-btn bulk-done"     onclick="bulkSetStatus('completed')">Completed</button>
+                <button class="bulk-btn" onclick="bulkTag()"><i class="ti ti-tag"></i> Tag</button>
                 <div class="card-dropdown-wrap" style="flex:none">
                     <button class="bulk-btn" id="bulk-export-btn" onclick="toggleCardMenu(event, 'bulk-export')"><i class="ti ti-download"></i> Export <span style="font-size:9px">▾</span></button>
                     <div class="card-dropdown-menu" data-menu="bulk-export">
@@ -665,6 +849,37 @@
                 <div class="state-msg"><div class="spinner"></div></div>
             </div>
             <div class="modal-ft" id="shopping-modal-footer"></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="tag-mgmt-modal" style="display:none">
+        <div class="modal-box" style="max-width:440px">
+            <div class="modal-hd">
+                <div class="modal-title">Manage Tags</div>
+                <button class="modal-close" onclick="closeTagMgmt()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body" id="tag-mgmt-body">
+                <ul class="tag-mgmt-list" id="tag-mgmt-list"></ul>
+            </div>
+            <div class="modal-ft">
+                <input type="text" id="tag-mgmt-new-name" placeholder="New tag name…" maxlength="30"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();addTagFromMgmt();}"
+                       style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 10px;border:1px solid var(--border-2);border-radius:var(--r);background:transparent;color:var(--text);outline:none">
+                <button class="modal-btn modal-btn-primary" onclick="addTagFromMgmt()">Add Tag</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="bulk-tag-modal" style="display:none">
+        <div class="modal-box" style="max-width:400px">
+            <div class="modal-hd">
+                <div class="modal-title">Tag Selected Patterns</div>
+                <button class="modal-close" onclick="closeBulkTagModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body" id="bulk-tag-body"></div>
+            <div class="modal-ft">
+                <button class="modal-btn modal-btn-primary" onclick="applyBulkTags()">Apply</button>
+                <button class="modal-btn" onclick="closeBulkTagModal()">Cancel</button>
+            </div>
         </div>
     </div>
 {% endblock %}
@@ -709,6 +924,22 @@
         let activeFilter = '';
         let selectionMode = false;
         let selectedIds   = new Set();
+        let allTags = [];          // [{id, name, color, pattern_count}]
+        let activeTagIds = new Set();
+
+        const TAG_COLORS = {
+            red:    '#d06060', orange: '#d08840', gold: '#c8913a', green: '#5a9a5a',
+            blue:   '#5080b8', purple: '#8868b0', pink:  '#c06888', gray:  '#888',
+        };
+
+        function _tagDotHtml(color, cls) {
+            const c = TAG_COLORS[color] || TAG_COLORS.gray;
+            return `<span class="${cls || 'tag-dot'}" style="background:${c}"></span>`;
+        }
+
+        function _tagChipClass(color) {
+            return color ? 'tc-' + color : 'tc-gray';
+        }
 
         function _showSkeletons() {
             const gallery = document.getElementById('gallery');
@@ -726,9 +957,14 @@
         async function loadGallery() {
             _showSkeletons();
             try {
-                const resp = await fetch('/api/saved-patterns');
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                allPatterns = await resp.json();
+                const [pResp, tResp] = await Promise.all([
+                    fetch('/api/saved-patterns'),
+                    fetch('/api/tags'),
+                ]);
+                if (!pResp.ok) throw new Error('HTTP ' + pResp.status);
+                allPatterns = await pResp.json();
+                if (tResp.ok) allTags = await tResp.json();
+                _renderTagFilterRow();
                 _applyFilter();
             } catch (err) {
                 document.getElementById('gallery').innerHTML = '';
@@ -750,6 +986,12 @@
 
             if (query) {
                 filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(query));
+            }
+
+            if (activeTagIds.size) {
+                filtered = filtered.filter(p =>
+                    (p.tags || []).some(t => activeTagIds.has(t.id))
+                );
             }
 
             // Sort
@@ -826,8 +1068,8 @@
         }
 
         function _calcProgress(p, status) {
-            const total = p.color_count || 0;
-            const done = status === 'completed' ? total : (p.completed_count || 0);
+            const total = (p.grid_w || 0) * (p.grid_h || 0);
+            const done = status === 'completed' ? total : (p.stitched_cell_count || 0);
             const pct = total ? Math.round(done / total * 100) : 0;
             const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
             const textClass = done >= total && total > 0 ? 'pt-done' : '';
@@ -845,13 +1087,13 @@
             const progressHtml = total > 0 ? `
                         <div class="progress-badge">
                             <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
-                            <span class="progress-text ${textClass}">${done}/${total}</span>
+                            <span class="progress-text ${textClass}">${pct}%</span>
                         </div>` : '';
             return `
                 <div class="pattern-card${selectedIds.has(p.slug) ? ' selected' : ''}" data-id="${p.slug}" data-status="${st}"
                      onclick="cardClick(event, this, '${p.slug}')">
                     <span class="card-select-check"><i class="ti ti-check"></i></span>
-                    <div class="card-thumb">${thumbHtml}</div>
+                    <a href="/view/${p.slug}" class="card-thumb">${thumbHtml}</a>
                     <div class="card-body">
                         <div class="card-name-wrap">
                             <span class="card-name" onclick="startRename(this, '${p.slug}')">${escHtml(p.name)}</span>
@@ -861,40 +1103,34 @@
                                    onkeydown="nameInputKey(event, this, '${p.slug}')">
                         </div>
                         <div class="card-meta">${p.grid_w} × ${p.grid_h} &middot; ${p.color_count} colors</div>
-                        <div class="card-meta">${dateStr}</div>${progressHtml}
+                        <div class="card-meta">${dateStr}</div>${_renderCardTags(p)}${progressHtml}
+                    </div>
+                    <div class="card-actions">
                         <select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
                             <option value="not_started"${sel('not_started')}>Not Started</option>
                             <option value="in_progress"${sel('in_progress')}>In Progress</option>
                             <option value="completed"${sel('completed')}>Completed</option>
                         </select>
-                    </div>
-                    <div class="card-actions">
-                        <div class="card-btn-row">
-                            <a href="/view/${p.slug}" class="card-btn">View</a>
-                            <a href="/image-to-pattern?load=${p.slug}" class="card-btn">Edit</a>
-                        </div>
-                        <div class="card-btn-row">
-                            <div class="card-dropdown-wrap">
-                                <button class="card-dropdown-btn" onclick="toggleCardMenu(event, 'tools')">Tools \u25be</button>
-                                <div class="card-dropdown-menu" data-menu="tools">
-                                    <button data-pid="${p.slug}" data-pname="${escHtml(p.name)}" onclick="openShoppingModal(this.dataset.pid, this.dataset.pname)">Shopping List</button>
-                                    <a href="/pattern-calculator?pattern=${p.slug}">Project Materials Calculator</a>
-                                    <button onclick="duplicatePattern('${p.slug}', this)">Duplicate</button>
-                                    <div class="card-dropdown-sep"></div>
-                                    <button class="card-menu-danger" onclick="deletePattern('${p.slug}', this)">Delete</button>
-                                </div>
-                            </div>
-                            <div class="card-dropdown-wrap">
-                                <button class="card-dropdown-btn" onclick="toggleCardMenu(event, 'export')">Export \u25be</button>
-                                <div class="card-dropdown-menu" data-menu="export">
-                                    <button onclick="exportPDF('${p.slug}', this)">PDF</button>
-                                    <button onclick="exportSVG('${p.slug}', this)">SVG</button>
-                                    <button onclick="exportOXS('${p.slug}', this)">OXS</button>
-                                    <button onclick="exportJSON('${p.slug}', this)">JSON</button>
-                                </div>
+                        <div class="card-dropdown-wrap">
+                            <button class="card-overflow-btn" onclick="toggleCardMenu(event, 'overflow')" title="Actions"><i class="ti ti-dots"></i></button>
+                            <div class="card-dropdown-menu card-overflow-menu" data-menu="overflow">
+                                <a href="/image-to-pattern?load=${p.slug}"><i class="ti ti-pencil"></i> Edit</a>
+                                <div class="card-dropdown-sep"></div>
+                                <button data-pid="${p.slug}" data-pname="${escHtml(p.name)}" onclick="openShoppingModal(this.dataset.pid, this.dataset.pname)"><i class="ti ti-shopping-cart"></i> Shopping List</button>
+                                <a href="/pattern-calculator?pattern=${p.slug}"><i class="ti ti-calculator"></i> Materials Calculator</a>
+                                <button onclick="openTagPopover('${p.slug}', this)"><i class="ti ti-tag"></i> Tags</button>
+                                <button onclick="duplicatePattern('${p.slug}', this)"><i class="ti ti-copy"></i> Duplicate</button>
+                                <div class="card-dropdown-sep"></div>
+                                <button onclick="exportPDF('${p.slug}', this)">Export PDF</button>
+                                <button onclick="exportSVG('${p.slug}', this)">Export SVG</button>
+                                <button onclick="exportOXS('${p.slug}', this)">Export OXS</button>
+                                <button onclick="exportJSON('${p.slug}', this)">Export JSON</button>
+                                <div class="card-dropdown-sep"></div>
+                                <button class="card-menu-danger" onclick="deletePattern('${p.slug}', this)"><i class="ti ti-trash"></i> Delete</button>
                             </div>
                         </div>
                     </div>
+                    <div class="card-view-row"><a href="/view/${p.slug}" class="card-view-btn">View</a></div>
                 </div>
             `;
         }
@@ -918,7 +1154,7 @@
                     fill.style.width = pct + '%';
                     const txt = badge.querySelector('.progress-text');
                     txt.className = `progress-text ${textClass}`;
-                    txt.textContent = `${done}/${p.color_count || 0}`;
+                    txt.textContent = `${pct}%`;
                 }
 
                 if (activeFilter && newStatus !== activeFilter) {
@@ -1072,6 +1308,7 @@
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
                     beads: p.beads || [],
+                    fabric_color: p.fabric_color || '#F5F0E8',
                 };
                 downloadBlob(JSON.stringify(payload, null, 2),
                     patternSlug(p.name) + '_' + p.grid_w + 'x' + p.grid_h + '.json',
@@ -1185,7 +1422,10 @@
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
-                closeShoppingModal();
+                if (document.getElementById('shopping-modal').style.display !== 'none') { closeShoppingModal(); return; }
+                if (document.getElementById('tag-mgmt-modal').style.display !== 'none') { closeTagMgmt(); return; }
+                if (document.getElementById('bulk-tag-modal').style.display !== 'none') { closeBulkTagModal(); return; }
+                if (_activePopover) { closeTagPopover(); return; }
                 if (selectionMode) toggleSelectionMode();
             }
         });
@@ -1194,6 +1434,7 @@
             const btn = e.target.closest('.filter-btn');
             if (!btn) return;
             activeFilter = btn.dataset.filter;
+            localStorage.setItem('dmc-pat-status', activeFilter);
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             _applyFilter();
@@ -1240,6 +1481,16 @@
                 if (!saveResp.ok) throw new Error('HTTP ' + saveResp.status);
                 const saved = await saveResp.json();
 
+                // Copy tags from source to duplicate
+                const srcTags = (src.tags || []).map(t => t.id);
+                if (srcTags.length) {
+                    await fetch('/api/saved-patterns/' + saved.slug + '/tags', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tag_ids: srcTags }),
+                    }).catch(() => {});
+                }
+
                 // Add to cache and re-render
                 allPatterns.unshift({
                     slug: saved.slug,
@@ -1250,8 +1501,10 @@
                     thumbnail: body.thumbnail,
                     project_status: 'not_started',
                     completed_count: 0,
+                    stitched_cell_count: 0,
                     updated_at: new Date().toISOString(),
                     created_at: new Date().toISOString(),
+                    tags: src.tags || [],
                 });
                 _applyFilter();
                 toast('Pattern duplicated.', { type: 'success' });
@@ -1266,10 +1519,21 @@
         function cardClick(event, el, id) {
             if (!selectionMode) return;
             // Don't intercept clicks on interactive elements
-            if (event.target.closest('a, button, input, select, textarea')) return;
+            if (event.target.closest('a, button, input, select, textarea, .card-dropdown-menu')) return;
             event.preventDefault();
             togglePatternSelection(id);
             el.classList.toggle('selected', selectedIds.has(id));
+        }
+
+        function backupAll() {
+            const btn = document.getElementById('backup-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> Backing up…';
+            window.location.href = '/api/saved-patterns/export-all';
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-download"></i> Backup All';
+            }, 5000);
         }
 
         function toggleSelectionMode() {
@@ -1398,6 +1662,7 @@
                             backstitches: p.backstitches || [],
                             knots: p.knots || [],
                             beads: p.beads || [],
+                            fabric_color: p.fabric_color || '#F5F0E8',
                         })),
                     };
                     downloadBlob(JSON.stringify(payload, null, 2), 'patterns-batch-' + ids.length + '.json', 'application/json');
@@ -1421,11 +1686,369 @@
             }
         }
 
-        // Init sort dropdown and restore saved preference
+        /* ——— TAG HELPERS ——— */
+        function _renderCardTags(p) {
+            const tags = p.tags || [];
+            if (!tags.length) return '';
+            const max = 3;
+            const visible = tags.slice(0, max);
+            const overflow = tags.length - max;
+            let html = '<div class="card-tags">';
+            for (const t of visible) {
+                html += `<span class="tag-chip-sm ${_tagChipClass(t.color)}">${_tagDotHtml(t.color, 'tag-dot')} ${escHtml(t.name)}</span>`;
+            }
+            if (overflow > 0) html += `<span class="tag-overflow">+${overflow}</span>`;
+            html += '</div>';
+            return html;
+        }
+
+        function _renderTagFilterRow() {
+            const row = document.getElementById('tag-filter-row');
+            if (!allTags.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+            row.style.display = 'flex';
+            let html = '';
+            for (const t of allTags) {
+                const active = activeTagIds.has(t.id) ? ' active' : '';
+                html += `<button class="tag-chip ${_tagChipClass(t.color)}${active}" data-tag-id="${t.id}" onclick="toggleTagFilter(${t.id})">${_tagDotHtml(t.color, 'tag-dot')} ${escHtml(t.name)}</button>`;
+            }
+            row.innerHTML = html;
+        }
+
+        function toggleTagFilter(tagId) {
+            if (activeTagIds.has(tagId)) activeTagIds.delete(tagId);
+            else activeTagIds.add(tagId);
+            _saveTagFilterState();
+            _renderTagFilterRow();
+            _applyFilter();
+        }
+
+        function _saveTagFilterState() {
+            localStorage.setItem('dmc-pat-tags', JSON.stringify([...activeTagIds]));
+        }
+
+        function _restoreTagFilterState() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('dmc-pat-tags') || '[]');
+                activeTagIds = new Set(saved);
+            } catch (_) {}
+        }
+
+        /* ——— TAG POPOVER (per-card) ——— */
+        let _activePopover = null;
+
+        function openTagPopover(slug, btn) {
+            closeAllCardMenus();
+            closeTagPopover();
+
+            const card = btn.closest('.pattern-card');
+            const actionsDiv = card.querySelector('.card-actions');
+            const p = allPatterns.find(x => x.slug === slug);
+            const pTagIds = new Set((p && p.tags || []).map(t => t.id));
+
+            const pop = document.createElement('div');
+            pop.className = 'tag-popover';
+            pop.onclick = e => e.stopPropagation();
+
+            let html = '';
+            for (const t of allTags) {
+                const checked = pTagIds.has(t.id) ? ' checked' : '';
+                html += `<div class="tag-popover-item" onclick="togglePopoverTag(this)">
+                    <input type="checkbox" data-tag-id="${t.id}"${checked}>
+                    ${_tagDotHtml(t.color, 'tag-dot')}
+                    <label>${escHtml(t.name)}</label>
+                </div>`;
+            }
+            html += '<div class="tag-popover-sep"></div>';
+            html += `<div class="tag-popover-add">
+                <input type="text" placeholder="New tag…" maxlength="30" onkeydown="if(event.key==='Enter')addTagFromPopover(this,'${slug}')">
+                <button onclick="addTagFromPopover(this.previousElementSibling,'${slug}')">Add</button>
+            </div>`;
+            pop.innerHTML = html;
+            pop.dataset.slug = slug;
+            pop.dataset.initialTagIds = JSON.stringify([...pTagIds]);
+
+            actionsDiv.style.position = 'relative';
+            actionsDiv.appendChild(pop);
+            _activePopover = pop;
+
+            // Close on outside click
+            setTimeout(() => document.addEventListener('click', _closePopoverOutside, { once: true }), 0);
+        }
+
+        function _closePopoverOutside() {
+            closeTagPopover();
+        }
+
+        function closeTagPopover() {
+            if (_activePopover) {
+                // Save changes before closing
+                _savePopoverTags();
+                _activePopover.remove();
+                _activePopover = null;
+            }
+        }
+
+        function togglePopoverTag(item) {
+            const cb = item.querySelector('input[type="checkbox"]');
+            cb.checked = !cb.checked;
+        }
+
+        async function _savePopoverTags() {
+            if (!_activePopover) return;
+            const slug = _activePopover.dataset.slug;
+            const tagIds = [];
+            _activePopover.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                tagIds.push(parseInt(cb.dataset.tagId));
+            });
+
+            // Skip save if nothing changed
+            const initial = new Set(JSON.parse(_activePopover.dataset.initialTagIds || '[]'));
+            if (tagIds.length === initial.size && tagIds.every(id => initial.has(id))) return;
+
+            try {
+                const resp = await fetch('/api/saved-patterns/' + slug + '/tags', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tag_ids: tagIds }),
+                });
+                if (resp.ok) {
+                    const p = allPatterns.find(x => x.slug === slug);
+                    if (p) {
+                        p.tags = tagIds.map(id => {
+                            const t = allTags.find(x => x.id === id);
+                            return t ? { id: t.id, name: t.name, color: t.color } : null;
+                        }).filter(Boolean);
+                    }
+                    _applyFilter();
+                }
+            } catch (_) { toast('Could not save tags.', { type: 'error' }); }
+        }
+
+        async function _createTag(name) {
+            const resp = await fetch('/api/tags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            if (!resp.ok) { const d = await resp.json(); toast(d.error || 'Failed', { type: 'error' }); return null; }
+            const tag = await resp.json();
+            allTags.push({ ...tag, pattern_count: 0 });
+            _renderTagFilterRow();
+            return tag;
+        }
+
+        async function addTagFromPopover(input, slug) {
+            const name = input.value.trim();
+            if (!name) return;
+            try {
+                const tag = await _createTag(name);
+                if (!tag) return;
+                input.value = '';
+                const pop = _activePopover;
+                const sep = pop.querySelector('.tag-popover-sep');
+                const item = document.createElement('div');
+                item.className = 'tag-popover-item';
+                item.onclick = function() { togglePopoverTag(this); };
+                item.innerHTML = `<input type="checkbox" data-tag-id="${tag.id}" checked>
+                    ${_tagDotHtml(tag.color, 'tag-dot')}
+                    <label>${escHtml(tag.name)}</label>`;
+                sep.before(item);
+            } catch (_) { toast('Could not create tag.', { type: 'error' }); }
+        }
+
+        /* ——— TAG MANAGEMENT MODAL ——— */
+        function openTagMgmt() {
+            document.getElementById('tag-mgmt-modal').style.display = 'flex';
+            _renderTagMgmtList();
+        }
+
+        function closeTagMgmt() {
+            document.getElementById('tag-mgmt-modal').style.display = 'none';
+            _renderTagFilterRow();
+            _applyFilter();
+        }
+
+        function _renderTagMgmtList() {
+            const list = document.getElementById('tag-mgmt-list');
+            if (!allTags.length) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-family:\'IBM Plex Mono\',monospace;font-size:11px">No tags yet. Add one below.</div>';
+                return;
+            }
+            list.innerHTML = allTags.map(t => `
+                <li class="tag-mgmt-item" data-tag-id="${t.id}">
+                    <button class="tag-mgmt-color-btn" style="background:${TAG_COLORS[t.color] || TAG_COLORS.gray}"
+                            onclick="showColorPicker(this, ${t.id})"></button>
+                    <input class="tag-mgmt-name" value="${escHtml(t.name)}" maxlength="30"
+                           onblur="renameTag(${t.id}, this)" onkeydown="if(event.key==='Enter')this.blur()">
+                    <span class="tag-mgmt-count">${t.pattern_count || 0}</span>
+                    <button class="tag-mgmt-del" onclick="deleteTag(${t.id})" title="Delete tag">&times;</button>
+                </li>
+            `).join('');
+        }
+
+        function showColorPicker(btn, tagId) {
+            // Remove existing picker
+            document.querySelectorAll('.tag-color-picker').forEach(p => p.remove());
+            const picker = document.createElement('div');
+            picker.className = 'tag-color-picker';
+            const tag = allTags.find(t => t.id === tagId);
+            for (const [name, hex] of Object.entries(TAG_COLORS)) {
+                const active = (tag && tag.color === name) ? ' active' : '';
+                picker.innerHTML += `<span class="tag-color-swatch${active}" style="background:${hex}" data-color="${name}" onclick="setTagColor(${tagId}, '${name}', this)"></span>`;
+            }
+            btn.closest('.tag-mgmt-item').after(picker);
+        }
+
+        async function setTagColor(tagId, color, swatch) {
+            try {
+                const resp = await fetch('/api/tags/' + tagId, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ color }),
+                });
+                if (resp.ok) {
+                    const t = allTags.find(x => x.id === tagId);
+                    if (t) t.color = color;
+                    // Update all patterns that have this tag
+                    for (const p of allPatterns) {
+                        const pt = (p.tags || []).find(x => x.id === tagId);
+                        if (pt) pt.color = color;
+                    }
+                    _renderTagMgmtList();
+                }
+            } catch (_) { toast('Could not update color.', { type: 'error' }); }
+        }
+
+        async function renameTag(tagId, input) {
+            const name = input.value.trim();
+            if (!name) return;
+            const t = allTags.find(x => x.id === tagId);
+            if (t && t.name === name) return;
+            try {
+                const resp = await fetch('/api/tags/' + tagId, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name }),
+                });
+                if (resp.ok) {
+                    if (t) t.name = name;
+                    for (const p of allPatterns) {
+                        const pt = (p.tags || []).find(x => x.id === tagId);
+                        if (pt) pt.name = name;
+                    }
+                }
+            } catch (_) { toast('Could not rename tag.', { type: 'error' }); }
+        }
+
+        async function deleteTag(tagId) {
+            const ok = await confirmDialog('Delete this tag? It will be removed from all patterns.', {
+                confirmText: 'Delete', danger: true
+            });
+            if (!ok) return;
+            try {
+                const resp = await fetch('/api/tags/' + tagId, { method: 'DELETE' });
+                if (resp.ok || resp.status === 204) {
+                    allTags = allTags.filter(t => t.id !== tagId);
+                    activeTagIds.delete(tagId);
+                    _saveTagFilterState();
+                    for (const p of allPatterns) {
+                        if (p.tags) p.tags = p.tags.filter(t => t.id !== tagId);
+                    }
+                    _renderTagMgmtList();
+                }
+            } catch (_) { toast('Could not delete tag.', { type: 'error' }); }
+        }
+
+        async function addTagFromMgmt() {
+            const input = document.getElementById('tag-mgmt-new-name');
+            const name = input.value.trim();
+            if (!name) return;
+            try {
+                const tag = await _createTag(name);
+                if (!tag) return;
+                input.value = '';
+                _renderTagMgmtList();
+            } catch (_) { toast('Could not create tag.', { type: 'error' }); }
+        }
+
+        /* ——— BULK TAG ——— */
+        function bulkTag() {
+            if (!selectedIds.size) return;
+            const body = document.getElementById('bulk-tag-body');
+            if (!allTags.length) {
+                body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-family:\'IBM Plex Mono\',monospace;font-size:11px">No tags created yet. <a href="#" onclick="event.preventDefault();closeBulkTagModal();openTagMgmt();" style="color:var(--gold)">Create tags</a> first.</div>';
+            } else {
+                body.innerHTML = allTags.map(t => `<div class="tag-popover-item" onclick="togglePopoverTag(this)">
+                    <input type="checkbox" data-tag-id="${t.id}">
+                    ${_tagDotHtml(t.color, 'tag-dot')}
+                    <label>${escHtml(t.name)}</label>
+                </div>`).join('');
+            }
+            document.getElementById('bulk-tag-modal').style.display = 'flex';
+        }
+
+        function closeBulkTagModal() {
+            document.getElementById('bulk-tag-modal').style.display = 'none';
+        }
+
+        async function applyBulkTags() {
+            const tagIds = [];
+            document.querySelectorAll('#bulk-tag-body input[type="checkbox"]:checked').forEach(cb => {
+                tagIds.push(parseInt(cb.dataset.tagId));
+            });
+            if (!tagIds.length) { toast('No tags selected.', { type: 'error' }); return; }
+            try {
+                const resp = await fetch('/api/saved-patterns/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'tag', slugs: Array.from(selectedIds), tag_ids: tagIds, mode: 'add' }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                // Update local data
+                const tagObjs = tagIds.map(id => {
+                    const t = allTags.find(x => x.id === id);
+                    return t ? { id: t.id, name: t.name, color: t.color } : null;
+                }).filter(Boolean);
+                for (const p of allPatterns) {
+                    if (selectedIds.has(p.slug)) {
+                        const existing = new Set((p.tags || []).map(t => t.id));
+                        for (const t of tagObjs) {
+                            if (!existing.has(t.id)) {
+                                if (!p.tags) p.tags = [];
+                                p.tags.push(t);
+                            }
+                        }
+                    }
+                }
+                closeBulkTagModal();
+                _applyFilter();
+                toast('Tags applied.', { type: 'success' });
+            } catch (err) {
+                toast('Could not apply tags: ' + err.message, { type: 'error' });
+            }
+        }
+
+        // Init sort dropdown and restore saved preferences
         Dropdown.init(document.getElementById('sort-select'), { variant: 'pill' });
         const savedPatSort = localStorage.getItem('dmc-pat-sort');
         if (savedPatSort) document.getElementById('sort-select').value = savedPatSort;
+        const savedPatStatus = localStorage.getItem('dmc-pat-status');
+        if (savedPatStatus) {
+            activeFilter = savedPatStatus;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === savedPatStatus);
+            });
+        }
 
+        _restoreTagFilterState();
         loadGallery();
+
+        // Close tag management modal on overlay click / Escape
+        document.getElementById('tag-mgmt-modal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeTagMgmt();
+        });
+        document.getElementById('bulk-tag-modal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeBulkTagModal();
+        });
     </script>
 {% endblock %}

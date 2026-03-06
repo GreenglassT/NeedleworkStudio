@@ -1124,11 +1124,11 @@
                 <div class="canvas-card" id="canvas-card">
                     <div class="canvas-toolbar">
                         <label class="gridlines-label">
-                            <input type="checkbox" id="gridlines-check" checked onchange="renderCanvas()">
+                            <input type="checkbox" id="gridlines-check" checked onchange="localStorage.setItem('dmc-gridlines',this.checked);renderCanvas()">
                             Gridlines
                         </label>
                         <label class="gridlines-label">
-                            <input type="checkbox" id="symbols-check" checked onchange="onSymbolsToggle()">
+                            <input type="checkbox" id="symbols-check" checked onchange="localStorage.setItem('dmc-symbols',this.checked);onSymbolsToggle()">
                             Symbols
                         </label>
                         <label class="gridlines-label">
@@ -1288,5 +1288,7 @@
 {% block scripts %}
     <script src="{{ url_for('static', filename='stitch-renderer.js') }}?v={{ v }}"></script>
     <script src="{{ url_for('static', filename='editor.js') }}?v={{ v }}"></script>
+    <script src="{{ url_for('static', filename='shortcut-help.js') }}?v={{ v }}"></script>
+    <script>window._PAGE_CONFIG = { patternSymbols: {{ pattern_symbols | tojson }} };</script>
     <script src="{{ url_for('static', filename='image-to-pattern.js') }}?v={{ v }}"></script>
 {% endblock %}

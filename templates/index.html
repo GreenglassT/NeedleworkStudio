@@ -2,7 +2,7 @@
 
 {% block title %}Thread Inventory — Needlework Studio{% endblock %}
 
-{% block brand_eyebrow %}<span id="brand-eyebrow-text">Thread Collection</span>{% endblock %}
+{% block brand_eyebrow %}<span id="brand-eyebrow-text">Needlework Studio</span>{% endblock %}
 {% block brand_name %}Thread Inventory{% endblock %}
 
 {% block head %}
@@ -286,13 +286,19 @@
             min-width: 0;
         }
         .card-number {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 15px;
+            position: absolute;
+            bottom: 6px;
+            left: 8px;
+            z-index: 1;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
             font-weight: 600;
-            color: var(--text-dim);
-            white-space: nowrap;
-            margin-left: auto;
-            flex-shrink: 0;
+            color: #fff;
+            background: rgba(0,0,0,.55);
+            padding: 2px 7px;
+            border-radius: 3px;
+            letter-spacing: .03em;
+            line-height: 1;
         }
         .card-cat {
             font-family: 'IBM Plex Mono', monospace;
@@ -331,18 +337,18 @@
 
         .sim-btn {
             width: 100%;
-            padding: 5px;
+            padding: 6px;
             border: 1px solid var(--border);
             border-radius: 4px;
             background: transparent;
             color: var(--text-dim);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 10px;
+            font-size: 16px;
             cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: .08em;
             transition: all var(--t);
             margin-bottom: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .sim-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
@@ -450,15 +456,17 @@
         .lbtn.s-skip { background: var(--skip-bg);  border-color: var(--skip);  color: var(--skip);  }
 
         .lbtn-sim {
-            padding: calc(4px * var(--zoom, 1)) calc(9px * var(--zoom, 1));
+            padding: 4px 8px;
             border: 1px solid var(--border);
             border-radius: 4px;
             background: transparent;
             color: var(--text-dim);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: calc(10px * var(--zoom, 1));
+            font-size: 14px;
             cursor: pointer;
-            transition: border-color var(--t), color var(--t);
+            transition: all var(--t);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .lbtn-sim:hover { border-color: var(--gold-dim); color: var(--gold); }
@@ -697,7 +705,9 @@
             border: 2px solid rgba(255,255,255,.6); background: rgba(0,0,0,.4);
             display: flex; align-items: center; justify-content: center;
             font-size: 11px; color: transparent; transition: all var(--t); pointer-events: none;
+            opacity: 0;
         }
+        body.selecting .card-select-check { opacity: 1; }
         .thread-card.selected .card-select-check { background: var(--gold); border-color: var(--gold); color: #000; }
         .list-select-check {
             width: 20px; height: 20px; border-radius: 50%;
@@ -746,6 +756,74 @@
         .skein-input:focus, .list-skein-input:focus { outline:none; border-color:var(--gold-dim); }
         .skein-input::-webkit-inner-spin-button,
         .list-skein-input::-webkit-inner-spin-button { opacity:1; }
+
+        /* ——— COMPACT CARD DETAILS ——— */
+        .card-details-wrap {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height .25s ease, opacity .2s ease;
+        }
+        .card-details-wrap.expanded {
+            max-height: calc(120px * var(--zoom, 1));
+            opacity: 1;
+        }
+        .card-details-trigger {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+            padding: 3px 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            letter-spacing: .06em;
+            color: var(--text-dim);
+            transition: color var(--t);
+        }
+        .card-details-trigger:hover { color: var(--text-muted); }
+        .card-details-trigger .ti { font-size: 11px; transition: transform .2s ease; }
+        .card-details-trigger.open .ti { transform: rotate(45deg); }
+
+        /* ——— QUICK-JUMP RAIL ——— */
+        .jump-rail {
+            position: fixed;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 80;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+        .jump-rail.visible { opacity: 1; pointer-events: auto; }
+        .jump-rail-btn {
+            display: block;
+            padding: 3px 6px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            letter-spacing: .04em;
+            cursor: pointer;
+            transition: color var(--t), border-color var(--t), background var(--t);
+            text-align: center;
+            min-width: 28px;
+            line-height: 1.3;
+        }
+        .jump-rail-btn:hover {
+            color: var(--gold);
+            border-color: var(--gold-dim);
+            background: var(--surface-3);
+        }
+        @media (max-width: 640px) { .jump-rail { display: none; } }
 
         /* ——— PRINT (hidden on screen) ——— */
         .print-header, #print-table { display: none; }
@@ -894,6 +972,8 @@
     <div class="thread-list active" id="thread-list"></div>
 </main>
 
+<nav class="jump-rail" id="jump-rail"></nav>
+
 <!-- ——— MODAL ——— -->
 <div class="modal-overlay" id="similar-modal" style="display:none">
     <div class="modal-box">
@@ -920,12 +1000,12 @@
 <script src="{{ url_for('static', filename='brand-toggle.js') }}"></script>
 <script>
     let threads = [];
-    let currentView = 'list';
+    let currentView = localStorage.getItem('dmc-inv-view') || 'list';
     let debounceTimer;
     let selectionMode = false;
     let selectedIds   = new Set();
     let currentZoom   = parseInt(localStorage.getItem('dmc-zoom') || '100');
-    let currentBrand  = localStorage.getItem('inventoryBrand') ?? 'DMC';
+    let currentBrand  = _pref('inventoryBrand', 'DMC');
 
     function _brandParam(params) {
         if (currentBrand) params.append('brand', currentBrand);
@@ -940,8 +1020,7 @@
         _positionIndicator(seg);
         // Update eyebrow text
         const eyebrow = document.getElementById('brand-eyebrow-text');
-        if (eyebrow) eyebrow.textContent = brand === 'DMC' ? 'DMC Collection'
-            : brand === 'Anchor' ? 'Anchor Collection' : 'All Threads';
+        if (eyebrow) eyebrow.textContent = 'Needlework Studio';
         // Reset category filter (brands have different categories)
         const catSel = document.getElementById('category-filter');
         catSel.innerHTML = '<option value="">All</option>';
@@ -1027,6 +1106,7 @@
         if (currentView === 'grid') renderGrid();
         else renderList();
         _skipAnim = false;
+        updateJumpRail();
     }
 
     function emptyMsg(col) {
@@ -1045,34 +1125,40 @@
     function renderGrid() {
         const el = document.getElementById('thread-grid');
         if (!threads.length) { el.innerHTML = emptyMsg(true); return; }
-        el.innerHTML = threads.map((t, i) => `
+        el.innerHTML = threads.map((t, i) => {
+            const hasDetails = (t.notes && t.notes.trim()) || (t.skein_qty && t.skein_qty > 0);
+            return `
             <div class="thread-card ${statusCls(t.status)}${selectedIds.has(t.id)?' selected':''}"
                  data-id="${t.id}" style="${_skipAnim ? 'animation:none' : 'animation-delay:'+Math.min(i*15,350)+'ms'}"
                  onclick="cardClick(event,this,${t.id})">
                 <div class="card-swatch" style="background:${safeHex(t.hex_color)}">
+                    <span class="card-number">${escHtml(t.number)}</span>
                     <span class="card-select-check"><i class="ti ti-check"></i></span>
                 </div>
                 <div class="card-body">
                     <div class="card-name-row">
                         <div class="card-name" title="${escHtml(t.name)}">${escHtml(t.name)}</div>
-                        <span class="card-number">${escHtml(t.number)}</span>
                     </div>
                     <div class="card-cat">${escHtml(t.category)}${!currentBrand ? '<span class="brand-badge">'+escHtml(t.brand)+'</span>' : ''}</div>
                     ${selectionMode ? '' : `
                     <div class="card-btns">${statusBtns(t.id, t.status, 'sbtn')}</div>
-                    <button class="sim-btn" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Find Similar</button>
-                    <textarea class="notes-ta" rows="2" placeholder="Notes…" maxlength="500"
-                              onchange="updateNotes(${t.id},this.value)">${escHtml(t.notes||'')}</textarea>
-                    <div class="card-skein">
-                        <span class="skein-label">Skeins</span>
-                        <input type="number" class="skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
-                               onclick="event.stopPropagation()"
-                               onchange="updateSkeinQty(${t.id},this.value)">
+                    <button class="sim-btn" onclick="findSimilar(${t.id},'${escHtml(t.number)}')" title="Find similar colors"><i class="ti ti-palette"></i></button>
+                    <div class="card-details-wrap${hasDetails ? ' expanded' : ''}" id="details-${t.id}">
+                        <textarea class="notes-ta" rows="2" placeholder="Notes…" maxlength="500"
+                                  onclick="event.stopPropagation()"
+                                  onchange="updateNotes(${t.id},this.value)">${escHtml(t.notes||'')}</textarea>
+                        <div class="card-skein">
+                            <span class="skein-label">Skeins</span>
+                            <input type="number" class="skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
+                                   onclick="event.stopPropagation()"
+                                   onchange="updateSkeinQty(${t.id},this.value)">
+                        </div>
                     </div>
+                    ${hasDetails ? '' : `<button class="card-details-trigger" onclick="event.stopPropagation();toggleCardDetails(${t.id},this)"><i class="ti ti-plus"></i> Notes / Skeins</button>`}
                     `}
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     function renderList() {
@@ -1092,7 +1178,7 @@
                     ? `<div class="list-select-check"><i class="ti ti-check"></i></div>`
                     : `<div class="list-btns">
                         ${statusBtns(t.id, t.status, 'lbtn')}
-                        <button class="lbtn-sim" onclick="findSimilar(${t.id},'${escHtml(t.number)}')">Similar</button>
+                        <button class="lbtn-sim" onclick="findSimilar(${t.id},'${escHtml(t.number)}')" title="Find similar colors"><i class="ti ti-palette"></i></button>
                        </div>`
                 }
                 <input type="number" class="list-skein-input" min="0" step="0.25" value="${t.skein_qty||0}"
@@ -1163,6 +1249,57 @@
         const thread = threads.find(t => t.id === id);
         if (thread) thread.skein_qty = qty;
         patchThread(id, { skein_qty: qty });
+    }
+
+    function toggleCardDetails(id, triggerEl) {
+        const wrap = document.getElementById('details-' + id);
+        if (!wrap) return;
+        const expanding = !wrap.classList.contains('expanded');
+        wrap.classList.toggle('expanded');
+        triggerEl.classList.toggle('open');
+        if (expanding) {
+            const ta = wrap.querySelector('.notes-ta');
+            if (ta) setTimeout(() => ta.focus(), 260);
+        }
+    }
+
+    // ——— QUICK-JUMP RAIL ———
+    const _jumpMarkers = ['1','50','100','150','200','300','400','500','600','700'];
+
+    function updateJumpRail() {
+        const rail = document.getElementById('jump-rail');
+        if (!rail) return;
+        const sort = document.getElementById('sort-filter').value;
+        const search = document.getElementById('search').value;
+        const cat = document.getElementById('category-filter').value;
+        const status = document.getElementById('status-filter').value;
+        const hasBrand = currentBrand === 'DMC' || currentBrand === 'Anchor';
+        if (sort !== 'number' || search || cat || status || !hasBrand) {
+            rail.classList.remove('visible');
+            return;
+        }
+        rail.innerHTML = _jumpMarkers.map(m =>
+            `<button class="jump-rail-btn" onclick="jumpToNumber('${m}')">${m}</button>`
+        ).join('');
+        rail.classList.add('visible');
+    }
+
+    function jumpToNumber(target) {
+        const num = parseInt(target);
+        const sel = currentView === 'grid' ? '.thread-card' : '.list-row';
+        const items = document.querySelectorAll(sel);
+        for (const item of items) {
+            const id = parseInt(item.dataset.id);
+            const thread = threads.find(t => t.id === id);
+            if (!thread) continue;
+            const tn = parseInt(thread.number);
+            if (!isNaN(tn) && tn >= num) {
+                item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                item.style.outline = '2px solid var(--gold-dim)';
+                setTimeout(() => { item.style.outline = ''; }, 1200);
+                return;
+            }
+        }
     }
 
     async function printShoppingList() {
@@ -1238,6 +1375,7 @@
 
     function switchView(view) {
         currentView = view;
+        localStorage.setItem('dmc-inv-view', view);
         document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
         document.getElementById('thread-grid').classList.toggle('active', view === 'grid');
         document.getElementById('thread-list').classList.toggle('active', view === 'list');
@@ -1250,8 +1388,14 @@
     }
 
     document.getElementById('search').addEventListener('input', debounceSearch);
-    document.getElementById('category-filter').addEventListener('change', loadThreads);
-    document.getElementById('status-filter').addEventListener('change', loadThreads);
+    document.getElementById('category-filter').addEventListener('change', () => {
+        localStorage.setItem('dmc-inv-category', document.getElementById('category-filter').value);
+        loadThreads();
+    });
+    document.getElementById('status-filter').addEventListener('change', () => {
+        localStorage.setItem('dmc-inv-status', document.getElementById('status-filter').value);
+        loadThreads();
+    });
     document.getElementById('sort-filter').addEventListener('change', () => {
         localStorage.setItem('dmc-inv-sort', document.getElementById('sort-filter').value);
         renderThreads(false);
@@ -1338,6 +1482,7 @@
     function toggleSelectionMode() {
         selectionMode = !selectionMode;
         selectedIds.clear();
+        document.body.classList.toggle('selecting', selectionMode);
         const btn = document.getElementById('select-btn');
         btn.textContent = selectionMode ? 'Done' : 'Select';
         btn.classList.toggle('active', selectionMode);
@@ -1385,9 +1530,22 @@
 
     applyZoom(currentZoom);
     Dropdown.initAll('select.ctrl-select');
-    // Restore saved sort preference
+    // Restore saved filter/sort preferences
     const savedInvSort = localStorage.getItem('dmc-inv-sort');
     if (savedInvSort) document.getElementById('sort-filter').value = savedInvSort;
+    const savedInvCategory = localStorage.getItem('dmc-inv-category');
+    if (savedInvCategory) document.getElementById('category-filter').value = savedInvCategory;
+    const savedInvStatus = localStorage.getItem('dmc-inv-status');
+    if (savedInvStatus) document.getElementById('status-filter').value = savedInvStatus;
+    // Pre-select status from URL param (e.g., from home stat card links)
+    const urlStatus = new URLSearchParams(window.location.search).get('status');
+    if (urlStatus) {
+        const statusMap = { owned: 'own', need: 'need', dont_own: 'dont_own' };
+        if (statusMap[urlStatus]) {
+            document.getElementById('status-filter').value = statusMap[urlStatus];
+        }
+    }
+    if (currentView !== 'list') switchView(currentView);
     // Restore saved brand and init UI
     setBrand(currentBrand);
     initBrandToggle(document.getElementById('brand-seg'));

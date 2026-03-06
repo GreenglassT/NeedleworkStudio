@@ -31,12 +31,15 @@
         { key: 'Ctrl+Y',     desc: 'Redo' },
         { key: 'Ctrl+S',     desc: 'Save' },
         { key: 'Ctrl+\u21e7+R', desc: 'Resize canvas' },
-        { key: '1\u20135',   desc: 'Stitch type: Half/Quarter/\u00be/Back/Knot' },
+        { key: 'Ctrl+\u21e7+I', desc: 'Insert / delete row or column' },
+        { key: 'Ctrl+\u21e7+O', desc: 'Auto-outline' },
+        { key: '[ / ]',     desc: 'Cycle brush size down / up' },
+        { key: '1\u20137',   desc: 'Stitch: Half/Quarter/\u00be/Petite/Back/Knot/Bead' },
         { key: '`',          desc: 'Toggle half-stitch direction' },
         { key: 'Del',        desc: 'Clear selection' },
-        { key: 'Ctrl+C',     desc: 'Copy selection' },
-        { key: 'Ctrl+V',     desc: 'Paste selection' },
-        { key: 'Esc',        desc: 'Cancel draw / deselect' },
+        { key: 'Ctrl+C',     desc: 'Copy selection (click to stamp)' },
+        { key: 'Ctrl+X',     desc: 'Cut selection (click to place)' },
+        { key: 'Esc',        desc: 'Cancel paste / draw / deselect' },
     ];
 
     function _buildRows(shortcuts) {
@@ -47,6 +50,23 @@
                 '</div>';
         }).join('');
     }
+
+    /* Register the ? key globally — pages just include this script.
+       Optional: call initShortcutHelp(editModeFn) to provide a callback
+       that returns true when the editor is active (defaults to false). */
+    var _editModeFn = function () { return false; };
+    window.initShortcutHelp = function (editModeFn) {
+        if (typeof editModeFn === 'function') _editModeFn = editModeFn;
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (document.querySelector('.notify-overlay')) return;
+        var tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+        e.preventDefault();
+        showShortcutHelp(_editModeFn());
+    });
 
     window.showShortcutHelp = function (isEditMode) {
         if (document.getElementById('ks-overlay')) return;

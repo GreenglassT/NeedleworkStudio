@@ -222,7 +222,7 @@ function generateThumbnail(patternData) {
     const { grid, grid_w, grid_h, legend } = patternData;
     const rgbLookup = {};
     for (const e of legend) rgbLookup[e.dmc] = hexToRgb(e.hex || '#888888');
-    const bgRgb = [255, 255, 255];
+    const bgRgb = hexToRgb(patternData.fabric_color || '#F5F0E8');
     const maxW = 120, maxH = 120;
     const sc = Math.min(maxW / grid_w, maxH / grid_h, 1);
     const outW = Math.max(1, Math.round(grid_w * sc));
@@ -262,6 +262,7 @@ function createAutosaver(key, getPatternData, onRecover) {
                     part_stitches: pd.part_stitches || [],
                     backstitches: pd.backstitches || [],
                     knots: pd.knots || [], beads: pd.beads || [],
+                    fabric_color: pd.fabric_color || '#F5F0E8',
                     timestamp: Date.now()
                 }));
             } catch (e) { /* localStorage full */ }
@@ -415,6 +416,17 @@ function renderRulers(gridW, gridH, cellPx, scale, panX, panY) {
         if (screenY < RULER_H || screenY > areaH + 10) continue;
         lCtx.fillText(row.toString(), RULER_W - 4, screenY);
     }
+}
+
+function _pref(k, fb) {
+    var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k);
+    if (v === null || v === undefined) return fb;
+    // Normalize boolean strings from localStorage
+    if (typeof fb === 'boolean') {
+        if (v === 'true' || v === true) return true;
+        if (v === 'false' || v === false) return false;
+    }
+    return v;
 }
 
 function downloadBlob(content, filename, mimeType) {

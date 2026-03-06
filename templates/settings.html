@@ -1,0 +1,584 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Needlework Studio{% endblock %}
+{% block brand_name %}Settings{% endblock %}
+
+{% block head %}
+    <style>
+        .main-wrap {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .settings-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 20px;
+            letter-spacing: .02em;
+        }
+
+        .settings-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+        .settings-row:last-child { margin-bottom: 0; }
+
+        .settings-field {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .settings-field label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .section-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .toggle-group {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .04em;
+            cursor: pointer;
+            transition: all var(--t);
+            white-space: nowrap;
+        }
+        .toggle-btn + .toggle-btn {
+            border-left: 1px solid var(--border);
+        }
+        .toggle-btn.active {
+            background: var(--gold);
+            color: var(--bg);
+            font-weight: 600;
+        }
+        .toggle-btn:hover:not(.active) {
+            background: var(--gold-dim);
+            color: var(--text);
+        }
+
+        .check-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+        }
+        .check-field input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--gold);
+        }
+        .check-field span {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .pw-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 340px;
+        }
+        .pw-form input {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            padding: 9px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            background: var(--bg);
+            color: var(--text);
+        }
+        .pw-form input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .ctrl-input {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            transition: border-color var(--t);
+        }
+        .ctrl-input:focus { outline: none; border-color: var(--gold-dim); }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .06em;
+            padding: 9px 18px;
+            border-radius: var(--r);
+            cursor: pointer;
+            transition: all var(--t);
+            white-space: nowrap;
+            border: 1px solid var(--gold-dim);
+            background: transparent;
+            color: var(--gold);
+        }
+        .btn:hover {
+            background: var(--gold-dim);
+            color: var(--text);
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .btn-primary {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: var(--bg);
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: var(--gold-hover);
+            border-color: var(--gold-hover);
+        }
+
+        .btn-danger {
+            border-color: var(--status-dont);
+            color: var(--status-dont);
+        }
+        .btn-danger:hover {
+            background: var(--status-dont);
+            color: var(--bg);
+        }
+
+        .feedback {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            padding: 8px 14px;
+            border-radius: var(--r);
+            margin-top: 8px;
+            display: none;
+        }
+        .feedback.ok {
+            display: block;
+            background: rgba(76, 175, 80, .12);
+            color: #4caf50;
+        }
+        .feedback.err {
+            display: block;
+            background: rgba(244, 67, 54, .12);
+            color: #f44336;
+        }
+
+        .save-indicator {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            opacity: 0;
+            transition: opacity .3s;
+            margin-left: 8px;
+        }
+        .save-indicator.show { opacity: 1; }
+
+        .section-desc {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 15px;
+            margin: -12px 0 16px;
+        }
+
+        /* ——— RESPONSIVE ——— */
+        @media (max-width: 600px) {
+            .main-wrap { padding: 16px; }
+            .settings-field { min-width: 100%; }
+            .pw-form { max-width: 100%; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="main-wrap">
+
+        <!-- Stitching Defaults -->
+        <section class="settings-section">
+            <h2 class="section-title">Stitching Defaults <span class="save-indicator" id="ind-stitch">Saved</span></h2>
+            <p class="section-desc">Default values for the Project Materials Calculator</p>
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label>Default Fabric Count</label>
+                    <select class="ctrl-select" id="pref-fabric-count" onchange="savePref('dmc-calc-fabric-count', parseInt(this.value))">
+                        <option value="6">6 Count</option>
+                        <option value="8">8 Count</option>
+                        <option value="11">11 Count</option>
+                        <option value="14">14 Count</option>
+                        <option value="16">16 Count</option>
+                        <option value="18">18 Count</option>
+                        <option value="20">20 Count</option>
+                        <option value="22">22 Count</option>
+                        <option value="25">25 Count</option>
+                        <option value="28">28 Count</option>
+                        <option value="32">32 Count</option>
+                    </select>
+                </div>
+                <div class="settings-field">
+                    <label>Default Strands</label>
+                    <select class="ctrl-select" id="pref-strands" onchange="savePref('dmc-calc-strands', parseInt(this.value))">
+                        <option value="1">1 strand</option>
+                        <option value="2">2 strands</option>
+                        <option value="3">3 strands</option>
+                        <option value="4">4 strands</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label>Stitching Efficiency</label>
+                    <div class="toggle-group" id="pref-efficiency">
+                        <button class="toggle-btn" data-val="inefficient" onclick="savePref('dmc-calc-efficiency','inefficient',this)">Inefficient</button>
+                        <button class="toggle-btn" data-val="average" onclick="savePref('dmc-calc-efficiency','average',this)">Average</button>
+                        <button class="toggle-btn" data-val="efficient" onclick="savePref('dmc-calc-efficiency','efficient',this)">Efficient</button>
+                    </div>
+                </div>
+                <div class="settings-field" style="max-width: 180px;">
+                    <label>Skein Length (yd)</label>
+                    <input type="number" class="ctrl-input" id="pref-skein-len" min="0.1" max="100" step="0.1"
+                           onchange="savePref('dmc-calc-skein-len', parseFloat(this.value))">
+                </div>
+            </div>
+        </section>
+
+        <!-- Display -->
+        <section class="settings-section">
+            <h2 class="section-title">Display <span class="save-indicator" id="ind-display">Saved</span></h2>
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label>Theme</label>
+                    <div class="toggle-group" id="pref-theme">
+                        <button class="toggle-btn" data-val="light" onclick="saveTheme('light',this)">Light</button>
+                        <button class="toggle-btn" data-val="dark" onclick="saveTheme('dark',this)">Dark</button>
+                        <button class="toggle-btn" data-val="system" onclick="saveTheme('system',this)">System</button>
+                    </div>
+                </div>
+                <div class="settings-field">
+                    <label>Default View Mode</label>
+                    <div class="toggle-group" id="pref-viewmode">
+                        <button class="toggle-btn" data-val="chart" onclick="savePref('dmc-viewMode','chart',this)">Chart</button>
+                        <button class="toggle-btn" data-val="thread" onclick="savePref('dmc-viewMode','thread',this)">Thread</button>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label>Legend Sort</label>
+                    <div class="toggle-group" id="pref-legend-sort">
+                        <button class="toggle-btn" data-val="number" onclick="savePref('dmc-legend-sort','number',this)">By Number</button>
+                        <button class="toggle-btn" data-val="stitches" onclick="savePref('dmc-legend-sort','stitches',this)">By Stitches</button>
+                    </div>
+                </div>
+                <div class="settings-field" style="display:flex;gap:24px">
+                    <div class="check-field">
+                        <input type="checkbox" id="pref-gridlines" onchange="savePref('dmc-gridlines', this.checked)">
+                        <span>Gridlines</span>
+                    </div>
+                    <div class="check-field">
+                        <input type="checkbox" id="pref-symbols" onchange="savePref('dmc-symbols', this.checked)">
+                        <span>Symbols</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Editor -->
+        <section class="settings-section">
+            <h2 class="section-title">Editor <span class="save-indicator" id="ind-editor">Saved</span></h2>
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label>Mirror Mode</label>
+                    <div class="toggle-group" id="pref-mirror">
+                        <button class="toggle-btn" data-val="off" onclick="savePref('dmc-ed-mirror','off',this)">Off</button>
+                        <button class="toggle-btn" data-val="horizontal" onclick="savePref('dmc-ed-mirror','horizontal',this)">Horiz</button>
+                        <button class="toggle-btn" data-val="vertical" onclick="savePref('dmc-ed-mirror','vertical',this)">Vert</button>
+                        <button class="toggle-btn" data-val="both" onclick="savePref('dmc-ed-mirror','both',this)">Both</button>
+                    </div>
+                </div>
+                <div class="settings-field">
+                    <label>Brush Size</label>
+                    <div class="toggle-group" id="pref-brush">
+                        <button class="toggle-btn" data-val="1" onclick="savePref('dmc-ed-brush',1,this)">1</button>
+                        <button class="toggle-btn" data-val="2" onclick="savePref('dmc-ed-brush',2,this)">2</button>
+                        <button class="toggle-btn" data-val="3" onclick="savePref('dmc-ed-brush',3,this)">3</button>
+                        <button class="toggle-btn" data-val="5" onclick="savePref('dmc-ed-brush',5,this)">5</button>
+                        <button class="toggle-btn" data-val="9" onclick="savePref('dmc-ed-brush',9,this)">9</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory -->
+        <section class="settings-section">
+            <h2 class="section-title">Inventory <span class="save-indicator" id="ind-inventory">Saved</span></h2>
+            <div class="settings-row">
+                <div class="settings-field">
+                    <label>Default Thread Brand</label>
+                    <div class="toggle-group" id="pref-brand">
+                        <button class="toggle-btn" data-val="DMC" onclick="savePref('inventoryBrand','DMC',this)">DMC</button>
+                        <button class="toggle-btn" data-val="Anchor" onclick="savePref('inventoryBrand','Anchor',this)">Anchor</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Account -->
+        <section class="settings-section">
+            <h2 class="section-title">Account</h2>
+
+            <label class="section-label">Change Password</label>
+            <div class="pw-form" id="pw-form">
+                <input type="password" id="pw-current" placeholder="Current password" autocomplete="current-password">
+                <input type="password" id="pw-new" placeholder="New password (min 8 characters)" autocomplete="new-password">
+                <input type="password" id="pw-confirm" placeholder="Confirm new password" autocomplete="new-password">
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+                </div>
+                <div class="feedback" id="pw-feedback"></div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:24px 0">
+
+            <label class="section-label">Data</label>
+            <div class="btn-row" style="margin-bottom:24px">
+                <button class="btn" onclick="exportAll()"><i class="ti ti-download"></i> Export All Patterns</button>
+            </div>
+
+            <label class="section-label">Danger Zone</label>
+            <div class="btn-row">
+                <button class="btn btn-danger" onclick="resetPrefs()"><i class="ti ti-refresh"></i> Reset All Preferences</button>
+            </div>
+        </section>
+
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+    (function() {
+        const P = window.__PREFS__ || {};
+
+        // --- Init controls from prefs ---
+        function initSelect(id, key) {
+            const el = document.getElementById(id);
+            if (el) el.value = P[key];
+        }
+        function initToggle(id, key) {
+            const group = document.getElementById(id);
+            if (!group) return;
+            const val = String(P[key]);
+            group.querySelectorAll('.toggle-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.val === val);
+            });
+        }
+        function initCheck(id, key) {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!P[key];
+        }
+
+        initSelect('pref-fabric-count', 'dmc-calc-fabric-count');
+        initSelect('pref-strands', 'dmc-calc-strands');
+        initToggle('pref-efficiency', 'dmc-calc-efficiency');
+        document.getElementById('pref-skein-len').value = P['dmc-calc-skein-len'];
+
+        initToggle('pref-theme', 'dmc-theme');
+        initToggle('pref-viewmode', 'dmc-viewMode');
+        initToggle('pref-legend-sort', 'dmc-legend-sort');
+        initCheck('pref-gridlines', 'dmc-gridlines');
+        initCheck('pref-symbols', 'dmc-symbols');
+
+        initToggle('pref-mirror', 'dmc-ed-mirror');
+        initToggle('pref-brush', 'dmc-ed-brush');
+
+        initToggle('pref-brand', 'inventoryBrand');
+
+        // Upgrade native selects to themed dropdowns
+        Dropdown.initAll('select.ctrl-select');
+
+        // --- Save preference ---
+        const sectionMap = {
+            'dmc-calc-fabric-count': 'ind-stitch',
+            'dmc-calc-strands':     'ind-stitch',
+            'dmc-calc-efficiency':  'ind-stitch',
+            'dmc-calc-skein-len':   'ind-stitch',
+            'dmc-theme':            'ind-display',
+            'dmc-viewMode':         'ind-display',
+            'dmc-legend-sort':      'ind-display',
+            'dmc-gridlines':        'ind-display',
+            'dmc-symbols':          'ind-display',
+            'dmc-ed-mirror':        'ind-editor',
+            'dmc-ed-brush':         'ind-editor',
+            'inventoryBrand':       'ind-inventory',
+        };
+
+        window.savePref = async function(key, value, clickedBtn) {
+            // Update toggle UI — scope to the clicked button's group
+            if (clickedBtn) {
+                const group = clickedBtn.closest('.toggle-group');
+                if (group) {
+                    group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                    clickedBtn.classList.add('active');
+                }
+            }
+
+            // Write to localStorage for backward compat
+            localStorage.setItem(key, typeof value === 'boolean' ? value : String(value));
+            P[key] = value;
+
+            // Save to server
+            try {
+                const resp = await fetch('/api/preferences', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [key]: value })
+                });
+                if (resp.ok) {
+                    const indId = sectionMap[key];
+                    if (indId) {
+                        const ind = document.getElementById(indId);
+                        ind.classList.add('show');
+                        clearTimeout(ind._timer);
+                        ind._timer = setTimeout(() => ind.classList.remove('show'), 1500);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to save preference:', e);
+            }
+        };
+
+        // --- Theme (special: also apply live) ---
+        window.saveTheme = function(value, btn) {
+            savePref('dmc-theme', value, btn);
+            // Apply immediately
+            let effective = value;
+            if (value === 'system') {
+                effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+            document.documentElement.dataset.theme = effective;
+            if (typeof updateThemeBtn === 'function') updateThemeBtn(effective);
+        };
+
+        // --- Change password ---
+        window.changePassword = async function() {
+            const fb = document.getElementById('pw-feedback');
+            fb.className = 'feedback';
+            fb.textContent = '';
+
+            const cur = document.getElementById('pw-current').value;
+            const nw = document.getElementById('pw-new').value;
+            const conf = document.getElementById('pw-confirm').value;
+
+            if (!cur || !nw) {
+                fb.className = 'feedback err';
+                fb.textContent = 'Please fill in all fields.';
+                return;
+            }
+            if (nw !== conf) {
+                fb.className = 'feedback err';
+                fb.textContent = 'New passwords do not match.';
+                return;
+            }
+            if (nw.length < 8) {
+                fb.className = 'feedback err';
+                fb.textContent = 'New password must be at least 8 characters.';
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/account/password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ current_password: cur, new_password: nw })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    fb.className = 'feedback ok';
+                    fb.textContent = 'Password updated successfully.';
+                    document.getElementById('pw-current').value = '';
+                    document.getElementById('pw-new').value = '';
+                    document.getElementById('pw-confirm').value = '';
+                } else {
+                    fb.className = 'feedback err';
+                    fb.textContent = data.error || 'Failed to update password.';
+                }
+            } catch (e) {
+                fb.className = 'feedback err';
+                fb.textContent = 'Network error.';
+            }
+        };
+
+        // --- Export all ---
+        window.exportAll = async function() {
+            try {
+                const resp = await fetch('/api/saved-patterns/export-all');
+                if (!resp.ok) throw new Error('Export failed');
+                const blob = await resp.blob();
+                downloadBlob(blob, 'needlework-studio-backup.zip');
+            } catch (e) {
+                alert('Export failed: ' + e.message);
+            }
+        };
+
+        // --- Reset prefs ---
+        window.resetPrefs = async function() {
+            if (!confirm('Reset all preferences to defaults? This cannot be undone.')) return;
+            try {
+                await fetch('/api/preferences/reset', { method: 'POST' });
+                // Clear localStorage prefs too
+                Object.keys(P).forEach(k => localStorage.removeItem(k));
+                location.reload();
+            } catch (e) {
+                alert('Reset failed: ' + e.message);
+            }
+        };
+    })();
+    </script>
+{% endblock %}

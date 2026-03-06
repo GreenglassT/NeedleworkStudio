@@ -427,11 +427,11 @@
                     <i class="ti ti-arrow-left"></i> Back
                 </a>
                 <label>
-                    <input type="checkbox" id="gridlines-check" checked onchange="renderCanvas()">
+                    <input type="checkbox" id="gridlines-check" checked onchange="localStorage.setItem('dmc-gridlines',this.checked);renderCanvas()">
                     Gridlines
                 </label>
                 <label style="display:none">
-                    <input type="checkbox" id="symbols-check" checked onchange="renderCanvas()">
+                    <input type="checkbox" id="symbols-check" checked onchange="localStorage.setItem('dmc-symbols',this.checked);renderCanvas()">
                     Symbols
                 </label>
                 <button class="view-mode-btn" id="view-mode-btn" onclick="toggleViewMode()">
@@ -524,14 +524,15 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='stitch-renderer.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='editor.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='shortcut-help.js') }}?v={{ v }}"></script>
 <script>
     /* ═══════════════════════════════════════════
        State
        ═══════════════════════════════════════════ */
     let canvasCellPx = 19;
     const MAX_CELL_PX = 80;
-    const SYMBOL_SET = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※";
-    const FABRIC_COLOR = '#F5F0E8';
+    const SYMBOL_SET = {{ pattern_symbols | tojson }};
+    /* fabric color is now dynamic: patternData.fabric_color */
     const FALLBACK_HEX = '#888888';
     const CHART_BG = '#ffffff';
     const MIN_ZOOM_CELLS = 8;
@@ -546,12 +547,19 @@
     let cvScale = 1.0, cvPanX = 0, cvPanY = 0;
     let _cvDragging = false, _cvDragSX = 0, _cvDragSY = 0, _cvPanSX = 0, _cvPanSY = 0;
     let _snapTimer = null;
-    let legendSort = 'number';
-    let viewMode = localStorage.getItem('cp-viewMode') || 'thread';
-    let patternBrand = 'DMC';
+    let legendSort = _pref('dmc-legend-sort', 'number');
+    let viewMode = localStorage.getItem('cp-viewMode') || _pref('dmc-viewMode', 'thread');
+    let patternBrand = _pref('inventoryBrand', 'DMC');
 
     /* Cached DOM elements (set in createBlankPattern) */
     let _canvasEl, _overlayEl, _gridlinesCheck, _canvasInfoEl;
+
+    // Restore brand toggle in setup modal
+    if (patternBrand !== 'DMC') {
+        document.querySelectorAll('#brand-toggle .seg-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent === patternBrand);
+        });
+    }
 
     function _zoomByFactor(factor) {
         const area = document.getElementById('canvas-area');
@@ -576,6 +584,7 @@
     /* ——— BRAND TOGGLE ——— */
     function setSetupBrand(b) {
         patternBrand = b;
+        localStorage.setItem('inventoryBrand', b);
         document.querySelectorAll('#brand-toggle .seg-btn').forEach(btn => {
             btn.classList.toggle('active', btn.textContent === b);
         });
@@ -621,6 +630,12 @@
         _canvasEl = document.getElementById('pattern-canvas');
         _overlayEl = document.getElementById('overlay-canvas');
         _gridlinesCheck = document.getElementById('gridlines-check');
+        if (_pref('dmc-gridlines', true) === false) _gridlinesCheck.checked = false;
+        if (_pref('dmc-symbols', true) === false) document.getElementById('symbols-check').checked = false;
+        if (legendSort !== 'number') {
+            document.getElementById('sort-btn-number')?.classList.remove('active');
+            document.getElementById('sort-btn-stitches')?.classList.add('active');
+        }
         _canvasInfoEl = document.getElementById('canvas-info');
 
         patternData = {
@@ -632,6 +647,7 @@
             backstitches:  [],
             knots:         [],
             beads:         [],
+            fabric_color:  '#F5F0E8',
         };
         lookup = {};
 
@@ -678,15 +694,15 @@
 
         if (viewMode === 'thread') {
             /* Thread-mode rendering: fabric background + cross-stitch X */
-            ctx.fillStyle = FABRIC_COLOR;
+            ctx.fillStyle = patternData.fabric_color || '#F5F0E8';
             ctx.fillRect(0, 0, W, H);
-            drawStitchFabric(ctx, W, H, cellPx, grid_w, grid_h, FABRIC_COLOR);
+            drawStitchFabric(ctx, W, H, cellPx, grid_w, grid_h, patternData.fabric_color || '#F5F0E8');
             for (let row = 0; row < grid_h; row++) {
                 for (let col = 0; col < grid_w; col++) {
                     const dmc = grid[row * grid_w + col];
                     if (dmc === 'BG') continue;
                     const info = lookup[dmc] || { hex: FALLBACK_HEX };
-                    drawStitch(ctx, col * cellPx, row * cellPx, cellPx, info.hex, FABRIC_COLOR);
+                    drawStitch(ctx, col * cellPx, row * cellPx, cellPx, info.hex, patternData.fabric_color || '#F5F0E8');
                 }
             }
         } else {
@@ -804,11 +820,11 @@
         const dmc = patternData.grid[row * patternData.grid_w + col];
 
         if (viewMode === 'thread') {
-            ctx.fillStyle = FABRIC_COLOR;
+            ctx.fillStyle = patternData.fabric_color || '#F5F0E8';
             ctx.fillRect(x, y, cp, cp);
             if (dmc !== 'BG') {
                 const info = lookup[dmc];
-                if (info) drawStitch(ctx, x, y, cp, info.hex, FABRIC_COLOR);
+                if (info) drawStitch(ctx, x, y, cp, info.hex, patternData.fabric_color || '#F5F0E8');
             }
         } else {
             ctx.fillStyle = CHART_BG;
@@ -963,6 +979,7 @@
        ═══════════════════════════════════════════ */
     function setLegendSort(mode) {
         legendSort = mode;
+        localStorage.setItem('dmc-legend-sort', mode);
         document.getElementById('sort-btn-number').classList.toggle('active', mode === 'number');
         document.getElementById('sort-btn-stitches').classList.toggle('active', mode === 'stitches');
         renderEditLegend();
@@ -1106,6 +1123,7 @@
                     beads:         patternData.beads          || [],
                     thumbnail,
                     brand:         patternBrand,
+                    fabric_color:  patternData.fabric_color || '#F5F0E8',
                 }),
             });
             const data = await resp.json();
@@ -1204,6 +1222,9 @@
 
         area.addEventListener('mouseleave', function() {
             if (editorInstance && editorInstance.isActive()) editorInstance.handleMouseLeave();
+        });
+        area.addEventListener('contextmenu', function(e) {
+            if (editorInstance && editorInstance.isActive() && editorInstance.handleContextMenu(e)) return;
         });
 
         // Touch pan / pinch zoom / editor draw
@@ -1321,6 +1342,9 @@
     });
 
     /* ——— KEYBOARD ——— */
+    if (typeof initShortcutHelp === 'function')
+        initShortcutHelp(() => true);
+
     document.addEventListener('keydown', function(e) {
         if (editorInstance && editorInstance.isActive()) {
             if (editorInstance.handleKeyDown(e)) return;

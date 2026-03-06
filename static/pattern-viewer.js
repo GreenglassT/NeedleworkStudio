@@ -1,4 +1,7 @@
-const FABRIC_COLOR = '#F5F0E8';
+// fabric color is read from patternData.fabric_color
+
+if (typeof initShortcutHelp === 'function')
+    initShortcutHelp(() => editMode && editor && editor.isActive());
 
 /* ——— DROPDOWN HELPERS ——— */
 function _closeDropdown(menuId, btnId) {
@@ -112,11 +115,11 @@ let _timerSessionStart = null; // Date.now() when current session started, null 
 let _timerInterval     = null; // setInterval handle for UI tick (1s)
 let _timerFlushInterval = null; // setInterval handle for DB flush (30s)
 let _timerDirty        = false; // true if unsaved seconds exist
-let legendSort = 'number';        // 'number' | 'stitches'
+let legendSort = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let legendFilter = '';            // search query for legend filtering
 const MAX_CELL_PX = 80;           // cap re-render resolution when zooming in
 let _snapTimer = null;
-let viewMode = localStorage.getItem('pv-viewMode') || 'chart';  // 'chart' | 'thread'
+let viewMode = localStorage.getItem('pv-viewMode') || _pref('dmc-viewMode', 'chart');  // 'chart' | 'thread'
 
 /* ——— EDITOR (shared module) ——— */
 let editMode = false;
@@ -188,7 +191,7 @@ function renderMain() {
 
     // Cells: thread-mode or chart-mode
     if (viewMode === 'thread') {
-        const fabColor = FABRIC_COLOR;
+        const fabColor = patternData.fabric_color || '#F5F0E8';
         ctx.fillStyle = fabColor;
         ctx.fillRect(gutX, gutY, grid_w * cellPx, grid_h * cellPx);
         drawStitchFabric(ctx, canvas.width, canvas.height, cellPx, grid_w, grid_h, fabColor, gutX, gutY);
@@ -479,6 +482,8 @@ function _updateCellProgressBar() {
     if (bar) bar.style.width = pct + '%';
     if (label) label.textContent =
         `${pct}% \u00b7 ${done.toLocaleString()} / ${total.toLocaleString()} stitches`;
+    _updateETA();
+    _updateLegendTotals();
 }
 
 function _syncColorsFromCells() {
@@ -602,6 +607,7 @@ function _timerPause() {
 function _timerTick() {
     _timerDirty = true;
     _renderTimerDisplay();
+    _updateETA();
 }
 
 function _fmtTime(s) {
@@ -622,6 +628,31 @@ function _renderTimerDisplay() {
     } else {
         el.style.display = 'none';
     }
+}
+
+/* ——— PATTERN STATS (estimated remaining time) ——— */
+function _updateETA() {
+    const statsEl = document.getElementById('stats-display');
+    if (!statsEl) return;
+    const total = _totalStitchableCount;
+    const done = stitchedCells.size;
+    const secs = _timerCurrentSeconds();
+    const pct = total > 0 ? done / total : 0;
+    if (pct >= 0.01 && secs > 0) {
+        const remaining = Math.max(0, Math.round((secs / pct) - secs));
+        statsEl.innerHTML = '<i class="ti ti-hourglass" aria-hidden="true"></i> ~' + escHtml(_fmtTime(remaining)) + ' remaining';
+        statsEl.style.display = '';
+    } else {
+        statsEl.style.display = 'none';
+    }
+}
+
+function _updateLegendTotals() {
+    const totalsEl = document.getElementById('legend-totals');
+    if (!totalsEl || !patternData || !patternData.legend) return;
+    const legend = patternData.legend;
+    const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
+    totalsEl.textContent = `${legend.length} color${legend.length === 1 ? '' : 's'} \u00b7 ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
 }
 
 function _timerFlush() {
@@ -694,6 +725,7 @@ function toggleLegendPanel() {
 
 function setLegendSort(mode) {
     legendSort = mode;
+    localStorage.setItem('dmc-legend-sort', mode);
     document.getElementById('sort-btn-number').classList.toggle('active', mode === 'number');
     document.getElementById('sort-btn-stitches').classList.toggle('active', mode === 'stitches');
     renderLegend();
@@ -706,10 +738,6 @@ function filterLegend() {
 
 function renderLegend() {
     const { legend, grid } = patternData;
-    const totalSt = legend.reduce((s, e) => s + (e.stitches || 0), 0);
-    document.getElementById('legend-totals').textContent =
-        `${legend.length} color${legend.length === 1 ? '' : 's'} · ${fmtStitches(totalSt)} stitch${totalSt === 1 ? '' : 'es'}`;
-
     // Per-color stitched cell counts for fractional display
     const colorStitched = {};
     if (stitchedCells.size > 0) {
@@ -782,6 +810,9 @@ function renderLegend() {
     } else if (q && filtered.length !== 1 && highlightDmc !== null) {
         clearHighlight();
     }
+
+    _updateETA();
+    _updateLegendTotals();
 }
 
 /* ——— TRANSFORM ——— */
@@ -867,7 +898,7 @@ function _initEditor() {
             const y = gutYv + row * cellPx;
             const dmc = patternData.grid[row * patternData.grid_w + col];
             if (viewMode === 'thread') {
-                const fabColor = FABRIC_COLOR;
+                const fabColor = patternData.fabric_color || '#F5F0E8';
                 ctx.fillStyle = fabColor;
                 ctx.fillRect(x, y, cellPx, cellPx);
                 if (dmc !== 'BG') {
@@ -1024,6 +1055,7 @@ async function confirmFork() {
                 backstitches:  patternData.backstitches  || [],
                 knots:         patternData.knots         || [],
                 beads:         patternData.beads         || [],
+                fabric_color:  patternData.fabric_color || '#F5F0E8',
             })
         });
         const data = await resp.json();
@@ -1054,6 +1086,7 @@ async function savePattern() {
                 backstitches:  patternData.backstitches  || [],
                 knots:         patternData.knots         || [],
                 beads:         patternData.beads         || [],
+                fabric_color:  patternData.fabric_color || '#F5F0E8',
                 thumbnail:     thumbnail,
             })
         });
@@ -1142,6 +1175,9 @@ document.addEventListener('mouseup', function() {
 // Hover cell highlight — clear on leave
 document.getElementById('canvas-area').addEventListener('mouseleave', function() {
     if (editor && editor.isActive()) editor.handleMouseLeave();
+});
+document.getElementById('canvas-area').addEventListener('contextmenu', function(e) {
+    if (editor && editor.isActive() && editor.handleContextMenu(e)) return;
 });
 
 /* ——— TOUCH PAN / PINCH ZOOM / EDITOR DRAW ——— */
@@ -1372,14 +1408,6 @@ document.addEventListener('keydown', function(e) {
     const tag = (e.target.tagName || '').toLowerCase();
     const inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
 
-    // ? key — show shortcut cheat sheet
-    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (!inInput) {
-            e.preventDefault();
-            showShortcutHelp(editMode && editor && editor.isActive());
-            return;
-        }
-    }
     // F key — toggle zen/fullscreen
     if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (!inInput) {
@@ -1530,6 +1558,7 @@ async function init() {
             knots:         data.knots         || [],
             beads:         data.beads         || [],
             brand:         patternBrand,
+            fabric_color:  data.fabric_color || '#F5F0E8',
         };
         _totalStitchableCount = 0;
         for (const dmc of patternData.grid) { if (dmc !== 'BG') _totalStitchableCount++; }
@@ -1539,6 +1568,11 @@ async function init() {
         if (sortNumBtn) sortNumBtn.textContent = patternBrand + ' #';
         const searchInput = document.getElementById('legend-search');
         if (searchInput) searchInput.placeholder = 'Search ' + patternBrand + ' # or name\u2026';
+        // Restore saved legend sort
+        if (legendSort !== 'number') {
+            document.getElementById('sort-btn-number')?.classList.remove('active');
+            document.getElementById('sort-btn-stitches')?.classList.add('active');
+        }
 
         // Build lookup
         lookup = {};

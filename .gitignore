@@ -30,6 +30,10 @@ playwright.config.js
 .mcp.json
 .DS_Store
 
+# Design docs / plans (local only)
+docs/plans/
+inventory-snapshot.md
+
 # Test / dev artifacts
 cookies.txt
 *.backup-*
