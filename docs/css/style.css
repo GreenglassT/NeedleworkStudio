@@ -160,32 +160,79 @@ html { scroll-padding-top: 80px; }
 
 /* ——— HERO ——— */
 .hero {
-    text-align: center;
     padding: 56px 24px 48px;
     border-bottom: 1px solid var(--border);
-    background: radial-gradient(ellipse at 50% 0%, rgba(200,145,58,.06) 0%, transparent 70%);
+    background:
+        radial-gradient(ellipse at 30% 40%, rgba(200,145,58,.12) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(200,145,58,.025) 23px, rgba(200,145,58,.025) 24px),
+        repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(200,145,58,.025) 23px, rgba(200,145,58,.025) 24px);
 }
 
-.hero-logo { height: 120px; width: auto; margin-bottom: 16px; display: block; margin-left: auto; margin-right: auto; }
+[data-theme="light"] .hero {
+    background:
+        radial-gradient(ellipse at 30% 40%, rgba(138,94,24,.08) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(138,94,24,.055) 23px, rgba(138,94,24,.055) 24px),
+        repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(138,94,24,.055) 23px, rgba(138,94,24,.055) 24px);
+}
+
+.hero-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 48px;
+    align-items: center;
+}
+
+.hero-text {
+    text-align: left;
+}
+
+.hero-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 52px;
+    font-weight: 600;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+}
+
+.hero-title-accent {
+    color: var(--gold);
+}
 
 .hero-tagline {
-    font-size: 20px;
+    font-size: 19px;
     color: var(--text-muted);
-    max-width: 540px;
-    margin: 0 auto 28px;
+    max-width: 420px;
+    margin: 0 0 24px;
     font-weight: 400;
+    line-height: 1.6;
 }
 
 .hero-actions {
     display: flex;
     gap: 12px;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
 }
 
+.hero-pill {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--gold);
+    background: var(--surface);
+    border: 1px solid var(--gold-dim);
+    border-radius: 999px;
+    padding: 5px 16px;
+    margin-top: 20px;
+}
+
 .hero-screenshot-wrap {
-    max-width: 960px;
-    margin: 36px auto 0;
+    max-width: 100%;
 }
 
 .hero-screenshot {
@@ -194,6 +241,10 @@ html { scroll-padding-top: 80px; }
     border-radius: var(--r-lg);
     display: block;
     box-shadow: 0 8px 40px rgba(0,0,0,.35);
+}
+
+[data-theme="light"] .hero-screenshot {
+    box-shadow: 0 8px 32px rgba(100,70,20,.18), 0 2px 8px rgba(100,70,20,.1);
 }
 
 /* ——— BUTTONS ——— */
@@ -217,7 +268,7 @@ html { scroll-padding-top: 80px; }
 .btn-primary:hover { background: var(--gold-hover); color: var(--bg); }
 
 .btn-ghost {
-    background: transparent;
+    background: var(--surface);
     color: var(--text-muted);
     border: 1px solid var(--border-2);
 }
@@ -470,6 +521,7 @@ svg.download-icon {
     width: 240px;
     flex-shrink: 0;
     padding: 32px 24px 32px 32px;
+    background: var(--surface);
     border-right: 1px solid var(--border);
     position: sticky;
     top: 64px;
@@ -536,6 +588,29 @@ svg.download-icon {
     padding: 40px 40px 80px;
 }
 
+.wiki-breadcrumb {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    letter-spacing: .03em;
+}
+
+.wiki-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--t);
+}
+
+.wiki-breadcrumb a:hover {
+    color: var(--gold);
+}
+
+.wiki-breadcrumb .breadcrumb-sep {
+    margin: 0 6px;
+    color: var(--text-dim);
+}
+
 .wiki-content h1 {
     font-size: 32px;
     font-weight: 600;
@@ -549,6 +624,10 @@ svg.download-icon {
     margin-bottom: 12px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
+}
+
+.wiki-content h2:first-of-type {
+    margin-top: 24px;
 }
 
 .wiki-content h3 {
@@ -591,8 +670,13 @@ svg.download-icon {
     font-size: 11px;
     color: var(--text-dim);
     text-align: center;
-    margin-top: -12px;
+    margin-top: -8px;
     margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--r) var(--r);
+    padding: 8px 16px;
 }
 
 .wiki-content .callout-warning {
@@ -750,17 +834,24 @@ svg.download-icon {
 /* ——— MOBILE WIKI ——— */
 .wiki-mobile-toggle {
     display: none;
-    background: var(--surface-2);
-    border: 1px solid var(--border-2);
+    background: var(--surface);
+    border: 1px solid var(--gold-dim);
     border-radius: var(--r);
-    padding: 8px 16px;
+    padding: 10px 16px;
     cursor: pointer;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
-    color: var(--text-muted);
+    color: var(--gold);
     width: 100%;
     text-align: left;
     margin-bottom: 20px;
+    letter-spacing: .04em;
+    transition: border-color var(--t), background var(--t);
+}
+
+.wiki-mobile-toggle:hover {
+    border-color: var(--gold);
+    background: var(--surface-2);
 }
 
 @media (max-width: 768px) {
@@ -781,10 +872,21 @@ svg.download-icon {
 }
 
 /* ——— RESPONSIVE ——— */
+@media (max-width: 900px) {
+    .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    .hero-text { text-align: center; }
+    .hero-title { font-size: 40px; }
+    .hero-tagline { margin: 0 auto 24px; }
+    .hero-actions { justify-content: center; }
+}
+
 @media (max-width: 600px) {
-    .hero { padding: 48px 20px 40px; }
-    .hero-logo { height: 56px; }
-    .hero-tagline { font-size: 18px; }
+    .hero { padding: 40px 20px 32px; }
+    .hero-title { font-size: 34px; }
+    .hero-tagline { font-size: 17px; }
     .download-grid { grid-template-columns: 1fr; }
     .footer-inner { flex-direction: column; text-align: center; }
 }

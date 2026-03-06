@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=2">
     <script src="js/main.js?v=3"></script>
 </head>
 <body>
@@ -47,31 +47,23 @@
 
 <!-- Hero -->
 <section class="hero">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 180" class="hero-logo">
-        <g transform="translate(118, 0) scale(2)">
-            <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
-            <rect x="6" y="4" width="20" height="4" rx="1.5" fill="#dfaa52"/>
-            <rect x="6" y="24" width="20" height="4" rx="1.5" fill="#dfaa52"/>
-            <line x1="10" y1="10" x2="22" y2="10" stroke="#6b4c1a" stroke-width="1.5"/>
-            <line x1="10" y1="13" x2="22" y2="13" stroke="#6b4c1a" stroke-width="1.5"/>
-            <line x1="10" y1="16" x2="22" y2="16" stroke="#6b4c1a" stroke-width="1.5"/>
-            <line x1="10" y1="19" x2="22" y2="19" stroke="#6b4c1a" stroke-width="1.5"/>
-            <line x1="10" y1="22" x2="22" y2="22" stroke="#6b4c1a" stroke-width="1.5"/>
-        </g>
-        <text x="150" y="110" font-family="'Cormorant Garamond', serif" font-size="42" font-weight="600" fill="var(--text)" letter-spacing="1" text-anchor="middle">Needlework</text>
-        <text x="150" y="155" font-family="'Cormorant Garamond', serif" font-size="42" font-weight="600" fill="var(--gold)" letter-spacing="1" text-anchor="middle">Studio</text>
-    </svg>
-    <p class="hero-tagline">A self-hosted cross-stitch pattern management and design tool. Track your thread inventory, design patterns, and manage stitching projects.</p>
-    <div class="hero-actions">
-        <a href="https://github.com/GreenglassT/NeedleworkStudio/releases/latest" class="btn btn-primary hero-download">Download Latest Release</a>
-        <a href="#downloads" class="btn btn-ghost">All Downloads</a>
-    </div>
-    <div class="hero-screenshot-wrap">
-        <img src="img/pattern-viewer-dark.jpg"
-             data-dark="img/pattern-viewer-dark.jpg"
-             data-light="img/pattern-viewer-light.jpg"
-             alt="Needlework Studio pattern viewer showing a cross-stitch chart"
-             class="screenshot hero-screenshot">
+    <div class="hero-inner">
+        <div class="hero-text">
+            <h1 class="hero-title">Needlework<br><span class="hero-title-accent">Studio</span></h1>
+            <p class="hero-tagline">Design, stitch, and track your cross-stitch projects — no cloud account needed.</p>
+            <div class="hero-actions">
+                <a href="https://github.com/GreenglassT/NeedleworkStudio/releases/latest" class="btn btn-primary hero-download">Download Latest Release</a>
+                <a href="#downloads" class="btn btn-ghost">All Downloads</a>
+            </div>
+            <span class="hero-pill">Free &amp; Open Source</span>
+        </div>
+        <div class="hero-screenshot-wrap">
+            <img src="img/pattern-viewer-dark.jpg"
+                 data-dark="img/pattern-viewer-dark.jpg"
+                 data-light="img/pattern-viewer-light.jpg"
+                 alt="Needlework Studio pattern viewer showing a cross-stitch chart"
+                 class="screenshot hero-screenshot">
+        </div>
     </div>
 </section>
 
