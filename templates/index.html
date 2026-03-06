@@ -927,7 +927,7 @@
     let selectionMode = false;
     let selectedIds   = new Set();
     let currentZoom   = parseInt(localStorage.getItem('dmc-zoom') || '100');
-    let currentBrand  = (window.__PREFS__ && window.__PREFS__['inventoryBrand']) || localStorage.getItem('inventoryBrand') || 'DMC';
+    let currentBrand  = _pref('inventoryBrand', 'DMC');
 
     function _brandParam(params) {
         if (currentBrand) params.append('brand', currentBrand);

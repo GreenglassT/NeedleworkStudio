@@ -60,7 +60,6 @@ function createPatternEditor(config) {
     let _fillPreviewRegion = null;   // Set<number> of grid indices, or null
     let _fillPreviewCell   = null;   // { col, row } that generated the cached region
     function _clearFillPreview() { _fillPreviewRegion = null; _fillPreviewCell = null; }
-    function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
     let _mirrorMode    = _pref('dmc-ed-mirror', 'off');  // 'off' | 'horizontal' | 'vertical' | 'both'
 
     /* Brush size state */

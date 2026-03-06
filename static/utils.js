@@ -417,6 +417,17 @@ function renderRulers(gridW, gridH, cellPx, scale, panX, panY) {
     }
 }
 
+function _pref(k, fb) {
+    var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k);
+    if (v === null || v === undefined) return fb;
+    // Normalize boolean strings from localStorage
+    if (typeof fb === 'boolean') {
+        if (v === 'true' || v === true) return true;
+        if (v === 'false' || v === false) return false;
+    }
+    return v;
+}
+
 function downloadBlob(content, filename, mimeType) {
     const blob = new Blob([content], { type: mimeType });
     const url  = URL.createObjectURL(blob);

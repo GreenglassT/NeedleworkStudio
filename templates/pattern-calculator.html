@@ -850,7 +850,6 @@
         let patternGridW = 0;
         let patternGridH = 0;
         let patternBrand = 'DMC';   // 'DMC' | 'Anchor'
-        function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
         let currentEfficiency = _pref('dmc-calc-efficiency', 'average');
         let currentView = 'all';
         let sortKey = 'toBuy';

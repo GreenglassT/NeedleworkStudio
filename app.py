@@ -1194,9 +1194,8 @@ _PREF_VALIDATORS = {
 
 def _get_user_prefs(user_id):
     """Fetch user preferences merged with defaults."""
-    conn = _get_db_direct()
+    conn = get_db()
     row = conn.execute("SELECT preferences FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
     stored = {}
     if row and row['preferences']:
         try:
@@ -1801,6 +1800,18 @@ def api_update_preferences():
     return jsonify(prefs)
 
 
+@app.route('/api/preferences/reset', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def api_reset_preferences():
+    """Reset all preferences to defaults."""
+    conn = get_db()
+    conn.execute("UPDATE users SET preferences = '{}' WHERE id = ?",
+                 (current_user.id,))
+    conn.commit()
+    return jsonify(_DEFAULT_PREFS)
+
+
 @app.route('/api/account/password', methods=['POST'])
 @login_required
 @limiter.limit("5 per minute")
@@ -1814,6 +1825,8 @@ def api_change_password():
         return jsonify({'error': 'Both current and new password are required'}), 400
     if len(new_pw) < 8:
         return jsonify({'error': 'New password must be at least 8 characters'}), 400
+    if len(new_pw) > 1024:
+        return jsonify({'error': 'Password too long'}), 400
 
     conn = get_db()
     row = conn.execute("SELECT password_hash FROM users WHERE id = ?",

@@ -547,7 +547,6 @@
     let cvScale = 1.0, cvPanX = 0, cvPanY = 0;
     let _cvDragging = false, _cvDragSX = 0, _cvDragSY = 0, _cvPanSX = 0, _cvPanSY = 0;
     let _snapTimer = null;
-    function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
     let legendSort = _pref('dmc-legend-sort', 'number');
     let viewMode = localStorage.getItem('cp-viewMode') || _pref('dmc-viewMode', 'thread');
     let patternBrand = _pref('inventoryBrand', 'DMC');
@@ -631,8 +630,8 @@
         _canvasEl = document.getElementById('pattern-canvas');
         _overlayEl = document.getElementById('overlay-canvas');
         _gridlinesCheck = document.getElementById('gridlines-check');
-        if (_pref('dmc-gridlines', true) === false || _pref('dmc-gridlines', 'true') === 'false') _gridlinesCheck.checked = false;
-        if (_pref('dmc-symbols', true) === false || _pref('dmc-symbols', 'true') === 'false') document.getElementById('symbols-check').checked = false;
+        if (_pref('dmc-gridlines', true) === false) _gridlinesCheck.checked = false;
+        if (_pref('dmc-symbols', true) === false) document.getElementById('symbols-check').checked = false;
         if (legendSort !== 'number') {
             document.getElementById('sort-btn-number')?.classList.remove('active');
             document.getElementById('sort-btn-stitches')?.classList.add('active');

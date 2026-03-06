@@ -115,7 +115,6 @@ let _timerSessionStart = null; // Date.now() when current session started, null 
 let _timerInterval     = null; // setInterval handle for UI tick (1s)
 let _timerFlushInterval = null; // setInterval handle for DB flush (30s)
 let _timerDirty        = false; // true if unsaved seconds exist
-function _pref(k, fb) { var v = (window.__PREFS__ && window.__PREFS__[k] !== undefined) ? window.__PREFS__[k] : localStorage.getItem(k); return (v !== null && v !== undefined) ? v : fb; }
 let legendSort = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let legendFilter = '';            // search query for legend filtering
 const MAX_CELL_PX = 80;           // cap re-render resolution when zooming in

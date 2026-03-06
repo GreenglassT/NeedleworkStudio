@@ -51,6 +51,16 @@
             margin-bottom: 6px;
         }
 
+        .section-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 10px;
+        }
+
         .toggle-group {
             display: flex;
             border: 1px solid var(--border);
@@ -253,9 +263,9 @@
                 <div class="settings-field">
                     <label>Stitching Efficiency</label>
                     <div class="toggle-group" id="pref-efficiency">
-                        <button class="toggle-btn" data-val="inefficient" onclick="savePref('dmc-calc-efficiency','inefficient')">Inefficient</button>
-                        <button class="toggle-btn" data-val="average" onclick="savePref('dmc-calc-efficiency','average')">Average</button>
-                        <button class="toggle-btn" data-val="efficient" onclick="savePref('dmc-calc-efficiency','efficient')">Efficient</button>
+                        <button class="toggle-btn" data-val="inefficient" onclick="savePref('dmc-calc-efficiency','inefficient',this)">Inefficient</button>
+                        <button class="toggle-btn" data-val="average" onclick="savePref('dmc-calc-efficiency','average',this)">Average</button>
+                        <button class="toggle-btn" data-val="efficient" onclick="savePref('dmc-calc-efficiency','efficient',this)">Efficient</button>
                     </div>
                 </div>
                 <div class="settings-field" style="max-width: 180px;">
@@ -273,16 +283,16 @@
                 <div class="settings-field">
                     <label>Theme</label>
                     <div class="toggle-group" id="pref-theme">
-                        <button class="toggle-btn" data-val="light" onclick="saveTheme('light')">Light</button>
-                        <button class="toggle-btn" data-val="dark" onclick="saveTheme('dark')">Dark</button>
-                        <button class="toggle-btn" data-val="system" onclick="saveTheme('system')">System</button>
+                        <button class="toggle-btn" data-val="light" onclick="saveTheme('light',this)">Light</button>
+                        <button class="toggle-btn" data-val="dark" onclick="saveTheme('dark',this)">Dark</button>
+                        <button class="toggle-btn" data-val="system" onclick="saveTheme('system',this)">System</button>
                     </div>
                 </div>
                 <div class="settings-field">
                     <label>Default View Mode</label>
                     <div class="toggle-group" id="pref-viewmode">
-                        <button class="toggle-btn" data-val="chart" onclick="savePref('dmc-viewMode','chart')">Chart</button>
-                        <button class="toggle-btn" data-val="thread" onclick="savePref('dmc-viewMode','thread')">Thread</button>
+                        <button class="toggle-btn" data-val="chart" onclick="savePref('dmc-viewMode','chart',this)">Chart</button>
+                        <button class="toggle-btn" data-val="thread" onclick="savePref('dmc-viewMode','thread',this)">Thread</button>
                     </div>
                 </div>
             </div>
@@ -290,8 +300,8 @@
                 <div class="settings-field">
                     <label>Legend Sort</label>
                     <div class="toggle-group" id="pref-legend-sort">
-                        <button class="toggle-btn" data-val="number" onclick="savePref('dmc-legend-sort','number')">By Number</button>
-                        <button class="toggle-btn" data-val="stitches" onclick="savePref('dmc-legend-sort','stitches')">By Stitches</button>
+                        <button class="toggle-btn" data-val="number" onclick="savePref('dmc-legend-sort','number',this)">By Number</button>
+                        <button class="toggle-btn" data-val="stitches" onclick="savePref('dmc-legend-sort','stitches',this)">By Stitches</button>
                     </div>
                 </div>
                 <div class="settings-field" style="display:flex;gap:24px">
@@ -314,20 +324,20 @@
                 <div class="settings-field">
                     <label>Mirror Mode</label>
                     <div class="toggle-group" id="pref-mirror">
-                        <button class="toggle-btn" data-val="off" onclick="savePref('dmc-ed-mirror','off')">Off</button>
-                        <button class="toggle-btn" data-val="horizontal" onclick="savePref('dmc-ed-mirror','horizontal')">Horiz</button>
-                        <button class="toggle-btn" data-val="vertical" onclick="savePref('dmc-ed-mirror','vertical')">Vert</button>
-                        <button class="toggle-btn" data-val="both" onclick="savePref('dmc-ed-mirror','both')">Both</button>
+                        <button class="toggle-btn" data-val="off" onclick="savePref('dmc-ed-mirror','off',this)">Off</button>
+                        <button class="toggle-btn" data-val="horizontal" onclick="savePref('dmc-ed-mirror','horizontal',this)">Horiz</button>
+                        <button class="toggle-btn" data-val="vertical" onclick="savePref('dmc-ed-mirror','vertical',this)">Vert</button>
+                        <button class="toggle-btn" data-val="both" onclick="savePref('dmc-ed-mirror','both',this)">Both</button>
                     </div>
                 </div>
                 <div class="settings-field">
                     <label>Brush Size</label>
                     <div class="toggle-group" id="pref-brush">
-                        <button class="toggle-btn" data-val="1" onclick="savePref('dmc-ed-brush',1)">1</button>
-                        <button class="toggle-btn" data-val="2" onclick="savePref('dmc-ed-brush',2)">2</button>
-                        <button class="toggle-btn" data-val="3" onclick="savePref('dmc-ed-brush',3)">3</button>
-                        <button class="toggle-btn" data-val="5" onclick="savePref('dmc-ed-brush',5)">5</button>
-                        <button class="toggle-btn" data-val="9" onclick="savePref('dmc-ed-brush',9)">9</button>
+                        <button class="toggle-btn" data-val="1" onclick="savePref('dmc-ed-brush',1,this)">1</button>
+                        <button class="toggle-btn" data-val="2" onclick="savePref('dmc-ed-brush',2,this)">2</button>
+                        <button class="toggle-btn" data-val="3" onclick="savePref('dmc-ed-brush',3,this)">3</button>
+                        <button class="toggle-btn" data-val="5" onclick="savePref('dmc-ed-brush',5,this)">5</button>
+                        <button class="toggle-btn" data-val="9" onclick="savePref('dmc-ed-brush',9,this)">9</button>
                     </div>
                 </div>
             </div>
@@ -340,8 +350,8 @@
                 <div class="settings-field">
                     <label>Default Thread Brand</label>
                     <div class="toggle-group" id="pref-brand">
-                        <button class="toggle-btn" data-val="DMC" onclick="savePref('inventoryBrand','DMC')">DMC</button>
-                        <button class="toggle-btn" data-val="Anchor" onclick="savePref('inventoryBrand','Anchor')">Anchor</button>
+                        <button class="toggle-btn" data-val="DMC" onclick="savePref('inventoryBrand','DMC',this)">DMC</button>
+                        <button class="toggle-btn" data-val="Anchor" onclick="savePref('inventoryBrand','Anchor',this)">Anchor</button>
                     </div>
                 </div>
             </div>
@@ -351,7 +361,7 @@
         <section class="settings-section">
             <h2 class="section-title">Account</h2>
 
-            <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);display:block;margin-bottom:10px">Change Password</label>
+            <label class="section-label">Change Password</label>
             <div class="pw-form" id="pw-form">
                 <input type="password" id="pw-current" placeholder="Current password" autocomplete="current-password">
                 <input type="password" id="pw-new" placeholder="New password (min 8 characters)" autocomplete="new-password">
@@ -364,12 +374,12 @@
 
             <hr style="border:none;border-top:1px solid var(--border);margin:24px 0">
 
-            <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);display:block;margin-bottom:10px">Data</label>
+            <label class="section-label">Data</label>
             <div class="btn-row" style="margin-bottom:24px">
                 <button class="btn" onclick="exportAll()"><i class="ti ti-download"></i> Export All Patterns</button>
             </div>
 
-            <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);display:block;margin-bottom:10px">Danger Zone</label>
+            <label class="section-label">Danger Zone</label>
             <div class="btn-row">
                 <button class="btn btn-danger" onclick="resetPrefs()"><i class="ti ti-refresh"></i> Reset All Preferences</button>
             </div>
@@ -379,7 +389,6 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{{ url_for('static', filename='utils.js') }}"></script>
     <script>
     (function() {
         const P = window.__PREFS__ || {};
@@ -434,21 +443,15 @@
             'inventoryBrand':       'ind-inventory',
         };
 
-        window.savePref = async function(key, value) {
-            // Update toggle UI
-            const parentGroup = document.querySelector('#pref-' + key.replace(/^dmc-(calc-)?/, '').replace(/^inventory/, '').toLowerCase());
-            // Generic toggle update: find the toggle group that contains this key
-            document.querySelectorAll('.toggle-group').forEach(g => {
-                const btns = g.querySelectorAll('.toggle-btn');
-                btns.forEach(b => {
-                    if (b.dataset.val === String(value) && b.closest('.toggle-group').id) {
-                        // Check if any button in this group triggered this save
-                        const gid = b.closest('.toggle-group').id;
-                        if (gid) g.querySelectorAll('.toggle-btn').forEach(bb => bb.classList.remove('active'));
-                        b.classList.add('active');
-                    }
-                });
-            });
+        window.savePref = async function(key, value, clickedBtn) {
+            // Update toggle UI — scope to the clicked button's group
+            if (clickedBtn) {
+                const group = clickedBtn.closest('.toggle-group');
+                if (group) {
+                    group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                    clickedBtn.classList.add('active');
+                }
+            }
 
             // Write to localStorage for backward compat
             localStorage.setItem(key, typeof value === 'boolean' ? value : String(value));
@@ -476,8 +479,8 @@
         };
 
         // --- Theme (special: also apply live) ---
-        window.saveTheme = function(value) {
-            savePref('dmc-theme', value);
+        window.saveTheme = function(value, btn) {
+            savePref('dmc-theme', value, btn);
             // Apply immediately
             let effective = value;
             if (value === 'system') {
@@ -552,24 +555,7 @@
         window.resetPrefs = async function() {
             if (!confirm('Reset all preferences to defaults? This cannot be undone.')) return;
             try {
-                await fetch('/api/preferences', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        'dmc-theme': 'system',
-                        'dmc-gridlines': true,
-                        'dmc-symbols': true,
-                        'dmc-legend-sort': 'number',
-                        'dmc-viewMode': 'chart',
-                        'dmc-ed-mirror': 'off',
-                        'dmc-ed-brush': 1,
-                        'dmc-calc-strands': 2,
-                        'dmc-calc-skein-len': 8.7,
-                        'dmc-calc-efficiency': 'average',
-                        'dmc-calc-fabric-count': 14,
-                        'inventoryBrand': 'DMC'
-                    })
-                });
+                await fetch('/api/preferences/reset', { method: 'POST' });
                 // Clear localStorage prefs too
                 Object.keys(P).forEach(k => localStorage.removeItem(k));
                 location.reload();
