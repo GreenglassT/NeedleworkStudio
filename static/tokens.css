@@ -163,6 +163,7 @@ body {
 .nav-link:hover { color: var(--text); background: var(--surface-2); }
 .nav-link.active { color: var(--gold); }
 .nav-link.nav-primary { font-size: 13px; font-weight: 500; letter-spacing: .02em; padding: 6px 12px; }
+.nav-link .ti { font-size: 18px; vertical-align: -2px; }
 .nav-link.danger { color: var(--skip); }
 .nav-link.danger:hover { background: var(--skip-bg); color: #d07070; }
 .nav-sep:first-of-type { margin-left: auto; }
