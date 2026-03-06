@@ -695,6 +695,59 @@ def _validate_grid_dims(grid_w, grid_h):
     return True, None
 
 
+def _lookup_threads_by_number(conn, user_id, brand, numbers, extra_fields=()):
+    """Look up threads by brand + number list with per-user status.
+
+    Always returns: number, hex_color, name, category, status.
+    Pass extra_fields=('id', 'skein_qty') for additional columns.
+    Returns dict keyed by thread number.
+    """
+    if not numbers:
+        return {}
+    base_cols = ['t.number', 't.hex_color', 't.name', 't.category',
+                 "COALESCE(u.status, 'dont_own') AS status"]
+    if 'id' in extra_fields:
+        base_cols.insert(0, 't.id')
+    if 'skein_qty' in extra_fields:
+        base_cols.append("COALESCE(u.skein_qty, 0) AS skein_qty")
+    ph = ','.join('?' * len(numbers))
+    rows = conn.execute(
+        f"""SELECT {', '.join(base_cols)}
+            FROM threads t
+            LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
+            WHERE t.brand = ? AND t.number IN ({ph})""",
+        [user_id, brand] + list(numbers)
+    ).fetchall()
+    return {r['number']: r for r in rows}
+
+
+def _insert_pattern_with_slug(cursor, **kwargs):
+    """Insert a saved pattern with auto-generated slug, retrying on collision.
+
+    Returns the slug on success, or None after 5 failed attempts.
+    """
+    for _attempt in range(5):
+        slug = _generate_slug()
+        try:
+            cursor.execute(
+                """INSERT INTO saved_patterns
+                       (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
+                        thumbnail, source_image_path, generation_settings,
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (slug, kwargs['user_id'], kwargs['name'], kwargs['grid_w'], kwargs['grid_h'],
+                 kwargs['color_count'], kwargs['grid_json'], kwargs['legend_json'],
+                 kwargs.get('thumbnail'), kwargs.get('source_image_path'),
+                 kwargs.get('gen_settings_json'),
+                 kwargs['ps_json'], kwargs['bs_json'], kwargs['kn_json'], kwargs['bd_json'],
+                 kwargs.get('brand', 'DMC'))
+            )
+            return slug
+        except sqlite3.IntegrityError:
+            continue
+    return None
+
+
 def _serialize_stitch_layers(data):
     """Serialize part_stitches/backstitches/knots/beads from request data.
     Handles lists (serialize), strings (pass through), or None (default '[]').
@@ -758,16 +811,7 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     _thread_info = {}
     for brand in {e['brand'] for e in legend_entries}:
         brand_numbers = [e['dmc'] for e in legend_entries if e['brand'] == brand]
-        _ph = ','.join('?' * len(brand_numbers))
-        _rows = db.execute(
-            f"""SELECT t.number, t.hex_color, t.category,
-                       COALESCE(u.status, 'dont_own') AS status
-                FROM threads t
-                LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-                WHERE t.brand = ? AND t.number IN ({_ph})""",
-            [uid, brand] + brand_numbers
-        ).fetchall()
-        _thread_info.update({r['number']: r for r in _rows})
+        _thread_info.update(_lookup_threads_by_number(db, uid, brand, brand_numbers))
     dmc_hex = {}
     for e in legend_entries:
         row = _thread_info.get(e['dmc'])
@@ -1302,18 +1346,8 @@ def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither
 
     # Cross-reference inventory (with per-user status)
     conn = get_db()
-    cursor = conn.cursor()
     uid = current_user.id
-    placeholders = ','.join('?' * len(sorted_threads))
-    cursor.execute(
-        f"""SELECT t.number, COALESCE(u.status, 'dont_own') AS status,
-                   t.hex_color, t.name, t.category
-            FROM threads t
-            LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-            WHERE t.brand = ? AND t.number IN ({placeholders})""",
-        [uid, palette_brand] + sorted_threads
-    )
-    thread_lookup = {r['number']: r for r in cursor.fetchall()}
+    thread_lookup = _lookup_threads_by_number(conn, uid, palette_brand, sorted_threads)
     legend = []
     for num in sorted_threads:
         row = thread_lookup.get(num)
@@ -2079,20 +2113,10 @@ def parse_pattern():
 
             # Cross-reference inventory (per-user status)
             conn = get_db()
-            cursor = conn.cursor()
             uid = current_user.id
             dmc_nums = [c['dmc'] for c in colors]
-            _ph = ','.join('?' * len(dmc_nums))
-            cursor.execute(
-                f"""SELECT t.id, t.number, t.hex_color, t.name,
-                           COALESCE(u.status, 'dont_own') AS status,
-                           COALESCE(u.skein_qty, 0) AS skein_qty
-                    FROM threads t
-                    LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-                    WHERE t.brand = 'DMC' AND t.number IN ({_ph})""",
-                [uid] + dmc_nums
-            )
-            _tlookup = {r['number']: r for r in cursor.fetchall()}
+            _tlookup = _lookup_threads_by_number(conn, uid, 'DMC', dmc_nums,
+                                                  extra_fields=('id', 'skein_qty'))
             for color in colors:
                 row = _tlookup.get(color['dmc'])
                 if row:
@@ -2441,25 +2465,13 @@ def api_save_pattern():
 
     conn = get_db()
     cursor = conn.cursor()
-    slug = _generate_slug()
-    inserted = False
-    for _attempt in range(5):
-        try:
-            cursor.execute(
-                """INSERT INTO saved_patterns
-                       (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
-                        thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (slug, current_user.id, name, grid_w, grid_h, color_count,
-                 grid_json, legend_json, thumbnail, source_image_path, gen_settings_json,
-                 ps_json, bs_json, kn_json, bd_json, brand)
-            )
-            inserted = True
-            break
-        except sqlite3.IntegrityError:
-            slug = _generate_slug()
-    if not inserted:
+    slug = _insert_pattern_with_slug(
+        cursor, user_id=current_user.id, name=name, grid_w=grid_w, grid_h=grid_h,
+        color_count=color_count, grid_json=grid_json, legend_json=legend_json,
+        thumbnail=thumbnail, source_image_path=source_image_path,
+        gen_settings_json=gen_settings_json,
+        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand)
+    if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
 
@@ -2527,25 +2539,12 @@ def api_import_pattern():
 
     conn = get_db()
     cursor = conn.cursor()
-    slug = _generate_slug()
-    inserted = False
-    for _attempt in range(5):
-        try:
-            cursor.execute(
-                """INSERT INTO saved_patterns
-                       (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
-                        thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (slug, current_user.id, name, grid_w, grid_h, color_count,
-                 grid_json, legend_json, thumbnail, None, None,
-                 ps_json, bs_json, kn_json, bd_json, brand)
-            )
-            inserted = True
-            break
-        except sqlite3.IntegrityError:
-            slug = _generate_slug()
-    if not inserted:
+    slug = _insert_pattern_with_slug(
+        cursor, user_id=current_user.id, name=name, grid_w=grid_w, grid_h=grid_h,
+        color_count=color_count, grid_json=grid_json, legend_json=legend_json,
+        thumbnail=thumbnail,
+        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand)
+    if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
 
@@ -2725,20 +2724,11 @@ def api_get_saved_pattern(pattern_slug):
     uid = current_user.id
     dmc_numbers = [e['dmc'] for e in result['legend_data'] if e.get('dmc')]
     if dmc_numbers:
-        placeholders = ','.join('?' * len(dmc_numbers))
-        cursor.execute(
-            f"""SELECT t.id, t.number,
-                       COALESCE(u.status, 'dont_own') AS status,
-                       COALESCE(u.skein_qty, 0) AS skein_qty
-                FROM threads t
-                LEFT JOIN user_thread_status u ON u.thread_id = t.id AND u.user_id = ?
-                WHERE t.brand = ? AND t.number IN ({placeholders})""",
-            [uid, pattern_brand] + dmc_numbers
-        )
-        rows = cursor.fetchall()
-        live_status = {r['number']: r['status'] for r in rows}
-        live_qty = {r['number']: r['skein_qty'] or 0 for r in rows}
-        live_id = {r['number']: r['id'] for r in rows}
+        _live = _lookup_threads_by_number(conn, uid, pattern_brand, dmc_numbers,
+                                           extra_fields=('id', 'skein_qty'))
+        live_status = {n: r['status'] for n, r in _live.items()}
+        live_qty = {n: r['skein_qty'] or 0 for n, r in _live.items()}
+        live_id = {n: r['id'] for n, r in _live.items()}
         for entry in result['legend_data']:
             dmc = entry.get('dmc')
             if dmc in live_status:
