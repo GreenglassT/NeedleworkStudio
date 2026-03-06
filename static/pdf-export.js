@@ -64,7 +64,7 @@ async function generatePatternPDF(patternName, patternData, opts) {
     prevCanvas.width  = grid_w * prevCellPx;
     prevCanvas.height = grid_h * prevCellPx;
     const prevCtx = prevCanvas.getContext('2d');
-    const fabColor = '#F5F0E8';
+    const fabColor = patternData.fabric_color || '#F5F0E8';
     prevCtx.fillStyle = fabColor;
     prevCtx.fillRect(0, 0, prevCanvas.width, prevCanvas.height);
     // Fabric texture: weave + aida dots (before stitches so it's behind them)

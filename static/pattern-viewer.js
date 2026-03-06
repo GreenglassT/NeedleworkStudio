@@ -1,4 +1,4 @@
-const FABRIC_COLOR = '#F5F0E8';
+// fabric color is read from patternData.fabric_color
 
 if (typeof initShortcutHelp === 'function')
     initShortcutHelp(() => editMode && editor && editor.isActive());
@@ -191,7 +191,7 @@ function renderMain() {
 
     // Cells: thread-mode or chart-mode
     if (viewMode === 'thread') {
-        const fabColor = FABRIC_COLOR;
+        const fabColor = patternData.fabric_color || '#F5F0E8';
         ctx.fillStyle = fabColor;
         ctx.fillRect(gutX, gutY, grid_w * cellPx, grid_h * cellPx);
         drawStitchFabric(ctx, canvas.width, canvas.height, cellPx, grid_w, grid_h, fabColor, gutX, gutY);
@@ -898,7 +898,7 @@ function _initEditor() {
             const y = gutYv + row * cellPx;
             const dmc = patternData.grid[row * patternData.grid_w + col];
             if (viewMode === 'thread') {
-                const fabColor = FABRIC_COLOR;
+                const fabColor = patternData.fabric_color || '#F5F0E8';
                 ctx.fillStyle = fabColor;
                 ctx.fillRect(x, y, cellPx, cellPx);
                 if (dmc !== 'BG') {
@@ -1055,6 +1055,7 @@ async function confirmFork() {
                 backstitches:  patternData.backstitches  || [],
                 knots:         patternData.knots         || [],
                 beads:         patternData.beads         || [],
+                fabric_color:  patternData.fabric_color || '#F5F0E8',
             })
         });
         const data = await resp.json();
@@ -1085,6 +1086,7 @@ async function savePattern() {
                 backstitches:  patternData.backstitches  || [],
                 knots:         patternData.knots         || [],
                 beads:         patternData.beads         || [],
+                fabric_color:  patternData.fabric_color || '#F5F0E8',
                 thumbnail:     thumbnail,
             })
         });
@@ -1556,6 +1558,7 @@ async function init() {
             knots:         data.knots         || [],
             beads:         data.beads         || [],
             brand:         patternBrand,
+            fabric_color:  data.fabric_color || '#F5F0E8',
         };
         _totalStitchableCount = 0;
         for (const dmc of patternData.grid) { if (dmc !== 'BG') _totalStitchableCount++; }

@@ -1308,6 +1308,7 @@
                     backstitches: p.backstitches || [],
                     knots: p.knots || [],
                     beads: p.beads || [],
+                    fabric_color: p.fabric_color || '#F5F0E8',
                 };
                 downloadBlob(JSON.stringify(payload, null, 2),
                     patternSlug(p.name) + '_' + p.grid_w + 'x' + p.grid_h + '.json',
@@ -1661,6 +1662,7 @@
                             backstitches: p.backstitches || [],
                             knots: p.knots || [],
                             beads: p.beads || [],
+                            fabric_color: p.fabric_color || '#F5F0E8',
                         })),
                     };
                     downloadBlob(JSON.stringify(payload, null, 2), 'patterns-batch-' + ids.length + '.json', 'application/json');

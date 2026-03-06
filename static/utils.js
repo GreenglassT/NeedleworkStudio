@@ -222,7 +222,7 @@ function generateThumbnail(patternData) {
     const { grid, grid_w, grid_h, legend } = patternData;
     const rgbLookup = {};
     for (const e of legend) rgbLookup[e.dmc] = hexToRgb(e.hex || '#888888');
-    const bgRgb = [255, 255, 255];
+    const bgRgb = hexToRgb(patternData.fabric_color || '#F5F0E8');
     const maxW = 120, maxH = 120;
     const sc = Math.min(maxW / grid_w, maxH / grid_h, 1);
     const outW = Math.max(1, Math.round(grid_w * sc));
@@ -262,6 +262,7 @@ function createAutosaver(key, getPatternData, onRecover) {
                     part_stitches: pd.part_stitches || [],
                     backstitches: pd.backstitches || [],
                     knots: pd.knots || [], beads: pd.beads || [],
+                    fabric_color: pd.fabric_color || '#F5F0E8',
                     timestamp: Date.now()
                 }));
             } catch (e) { /* localStorage full */ }

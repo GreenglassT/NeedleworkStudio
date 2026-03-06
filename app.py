@@ -465,6 +465,8 @@ def _ensure_saved_patterns_table():
                 except sqlite3.IntegrityError:
                     continue  # slug collision, retry
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sp_slug ON saved_patterns(slug)")
+    if 'fabric_color' not in existing:
+        conn.execute("ALTER TABLE saved_patterns ADD COLUMN fabric_color TEXT DEFAULT '#F5F0E8'")
     # --- Pattern tags ---
     conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tags (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -733,14 +735,14 @@ def _insert_pattern_with_slug(cursor, **kwargs):
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, kwargs['user_id'], kwargs['name'], kwargs['grid_w'], kwargs['grid_h'],
                  kwargs['color_count'], kwargs['grid_json'], kwargs['legend_json'],
                  kwargs.get('thumbnail'), kwargs.get('source_image_path'),
                  kwargs.get('gen_settings_json'),
                  kwargs['ps_json'], kwargs['bs_json'], kwargs['kn_json'], kwargs['bd_json'],
-                 kwargs.get('brand', 'DMC'))
+                 kwargs.get('brand', 'DMC'), kwargs.get('fabric_color', '#F5F0E8'))
             )
             return slug
         except sqlite3.IntegrityError:
@@ -2460,6 +2462,11 @@ def api_save_pattern():
     if brand not in ('DMC', 'Anchor'):
         brand = 'DMC'
 
+    # Fabric color
+    fabric_color = data.get('fabric_color', '#F5F0E8')
+    if not isinstance(fabric_color, str) or not re.match(r'^#[0-9a-fA-F]{6}$', fabric_color):
+        fabric_color = '#F5F0E8'
+
     # New stitch layers (optional — default to empty arrays)
     ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(data)
 
@@ -2470,7 +2477,8 @@ def api_save_pattern():
         color_count=color_count, grid_json=grid_json, legend_json=legend_json,
         thumbnail=thumbnail, source_image_path=source_image_path,
         gen_settings_json=gen_settings_json,
-        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand)
+        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand,
+        fabric_color=fabric_color)
     if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
@@ -2534,6 +2542,11 @@ def api_import_pattern():
     if brand not in ('DMC', 'Anchor'):
         brand = 'DMC'
 
+    # Fabric color
+    fabric_color = data.get('fabric_color', '#F5F0E8')
+    if not isinstance(fabric_color, str) or not re.match(r'^#[0-9a-fA-F]{6}$', fabric_color):
+        fabric_color = '#F5F0E8'
+
     # v2 stitch layers
     ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(data)
 
@@ -2543,7 +2556,8 @@ def api_import_pattern():
         cursor, user_id=current_user.id, name=name, grid_w=grid_w, grid_h=grid_h,
         color_count=color_count, grid_json=grid_json, legend_json=legend_json,
         thumbnail=thumbnail,
-        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand)
+        ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand,
+        fabric_color=fabric_color)
     if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
@@ -2605,7 +2619,7 @@ def api_export_all_patterns():
     cursor = conn.cursor()
     cursor.execute(
         """SELECT slug, name, grid_w, grid_h, grid_data, legend_data, thumbnail,
-                  part_stitches_data, backstitches_data, knots_data, beads_data, brand
+                  part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color
              FROM saved_patterns
             WHERE user_id = ?
             ORDER BY updated_at DESC""",
@@ -2662,6 +2676,7 @@ def api_export_all_patterns():
                 'exported_at': datetime.utcnow().isoformat() + 'Z',
                 'name': r['name'],
                 'brand': r.get('brand') or 'DMC',
+                'fabric_color': r.get('fabric_color') or '#F5F0E8',
                 'grid_w': r['grid_w'],
                 'grid_h': r['grid_h'],
                 'grid_data': grid_data,
@@ -2698,7 +2713,7 @@ def api_get_saved_pattern(pattern_slug):
     cursor.execute(
         """SELECT id, slug, name, grid_w, grid_h, color_count, grid_data, legend_data, thumbnail,
                   created_at, updated_at, source_image_path, generation_settings, progress_data,
-                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand
+                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color
              FROM saved_patterns
             WHERE slug = ? AND user_id = ?""",
         (pattern_slug, current_user.id)
@@ -2856,6 +2871,11 @@ def api_update_saved_pattern(pattern_slug):
         if bd_json is not None:
             fields.append('beads_data=?')
             params.append(bd_json)
+        fabric_color = data.get('fabric_color')
+        if fabric_color is not None:
+            if isinstance(fabric_color, str) and re.match(r'^#[0-9a-fA-F]{6}$', fabric_color):
+                fields.append('fabric_color=?')
+                params.append(fabric_color)
         params.extend([pattern_id, current_user.id])
         cursor.execute(
             f'UPDATE saved_patterns SET {",".join(fields)} WHERE id=? AND user_id=?',

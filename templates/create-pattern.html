@@ -532,7 +532,7 @@
     let canvasCellPx = 19;
     const MAX_CELL_PX = 80;
     const SYMBOL_SET = {{ pattern_symbols | tojson }};
-    const FABRIC_COLOR = '#F5F0E8';
+    /* fabric color is now dynamic: patternData.fabric_color */
     const FALLBACK_HEX = '#888888';
     const CHART_BG = '#ffffff';
     const MIN_ZOOM_CELLS = 8;
@@ -647,6 +647,7 @@
             backstitches:  [],
             knots:         [],
             beads:         [],
+            fabric_color:  '#F5F0E8',
         };
         lookup = {};
 
@@ -693,15 +694,15 @@
 
         if (viewMode === 'thread') {
             /* Thread-mode rendering: fabric background + cross-stitch X */
-            ctx.fillStyle = FABRIC_COLOR;
+            ctx.fillStyle = patternData.fabric_color || '#F5F0E8';
             ctx.fillRect(0, 0, W, H);
-            drawStitchFabric(ctx, W, H, cellPx, grid_w, grid_h, FABRIC_COLOR);
+            drawStitchFabric(ctx, W, H, cellPx, grid_w, grid_h, patternData.fabric_color || '#F5F0E8');
             for (let row = 0; row < grid_h; row++) {
                 for (let col = 0; col < grid_w; col++) {
                     const dmc = grid[row * grid_w + col];
                     if (dmc === 'BG') continue;
                     const info = lookup[dmc] || { hex: FALLBACK_HEX };
-                    drawStitch(ctx, col * cellPx, row * cellPx, cellPx, info.hex, FABRIC_COLOR);
+                    drawStitch(ctx, col * cellPx, row * cellPx, cellPx, info.hex, patternData.fabric_color || '#F5F0E8');
                 }
             }
         } else {
@@ -819,11 +820,11 @@
         const dmc = patternData.grid[row * patternData.grid_w + col];
 
         if (viewMode === 'thread') {
-            ctx.fillStyle = FABRIC_COLOR;
+            ctx.fillStyle = patternData.fabric_color || '#F5F0E8';
             ctx.fillRect(x, y, cp, cp);
             if (dmc !== 'BG') {
                 const info = lookup[dmc];
-                if (info) drawStitch(ctx, x, y, cp, info.hex, FABRIC_COLOR);
+                if (info) drawStitch(ctx, x, y, cp, info.hex, patternData.fabric_color || '#F5F0E8');
             }
         } else {
             ctx.fillStyle = CHART_BG;
@@ -1122,6 +1123,7 @@
                     beads:         patternData.beads          || [],
                     thumbnail,
                     brand:         patternBrand,
+                    fabric_color:  patternData.fabric_color || '#F5F0E8',
                 }),
             });
             const data = await resp.json();

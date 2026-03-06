@@ -102,6 +102,7 @@ function createPatternEditor(config) {
     let _dirToggle = null;
     let _brushBtns = null;
     let _styleEl = null;
+    let _fabricSwatch = null, _fabricDropdown = null, _fabricCustom = null;
 
     /* ——— CSS (injected once) ——— */
     const EDITOR_CSS = `
@@ -159,6 +160,17 @@ function createPatternEditor(config) {
 .replace-target-row .rtr-badge{font-size:8px;color:var(--gold);white-space:nowrap}
 .ed-replace-apply-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border-2);background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
 .ed-replace-apply-btn:hover{background:var(--surface-2);color:var(--text)}
+.fabric-color-wrapper{position:relative;display:inline-flex;align-items:center}
+.fabric-swatch-btn{width:24px;height:24px;border-radius:4px;border:2px solid var(--border-2);cursor:pointer;transition:border-color var(--t);flex-shrink:0}
+.fabric-swatch-btn:hover{border-color:var(--text-muted)}
+.fabric-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:20;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);min-width:160px}
+.fabric-dropdown.open{display:block}
+.fabric-preset{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:4px;cursor:pointer;transition:background var(--t)}
+.fabric-preset:hover{background:var(--surface-2)}
+.fabric-preset-sw{width:18px;height:18px;border-radius:3px;border:1px solid var(--border-2);flex-shrink:0}
+.fabric-preset.active .fabric-preset-sw{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.fabric-custom{display:flex;align-items:center;gap:8px;padding:4px 6px;margin-top:4px;border-top:1px solid var(--border-2)}
+.fabric-custom input[type=color]{width:24px;height:20px;border:1px solid var(--border-2);border-radius:3px;padding:0;cursor:pointer;background:transparent}
 @media(max-width:600px){.editor-toolbar{max-width:95vw}.toolbar-row{gap:1px}.tool-lbl{font-size:7px}}
 .ed-resize-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:200}
 .ed-resize-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r-lg);padding:20px;z-index:201;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:240px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)}
@@ -1926,6 +1938,19 @@ function createPatternEditor(config) {
         if (_dirToggle) _dirToggle.querySelector('span:first-child').textContent = _halfDir === 'fwd' ? '/' : '\\';
     }
 
+    function _setFabricColor(hex) {
+        const pd = getPatternData();
+        pd.fabric_color = hex;
+        if (!_fabricSwatch) return;
+        _fabricSwatch.style.background = hex;
+        _fabricCustom.value = hex;
+        _fabricDropdown.querySelectorAll('.fabric-preset').forEach(el => {
+            el.classList.toggle('active', el.dataset.color === hex);
+        });
+        renderAll();
+        if (onDirty) onDirty();
+    }
+
     function _setActiveColor(dmc) {
         const lu   = getLookup();
         const info = lu[dmc];
@@ -2851,6 +2876,14 @@ function createPatternEditor(config) {
     function activate() {
         _active = true;
         container.classList.add('edit-mode');
+        if (_fabricSwatch) {
+            const initFab = getPatternData().fabric_color || '#F5F0E8';
+            _fabricSwatch.style.background = initFab;
+            _fabricCustom.value = initFab;
+            _fabricDropdown.querySelectorAll('.fabric-preset').forEach(el => {
+                el.classList.toggle('active', el.dataset.color === initFab);
+            });
+        }
         if (_toolbar) _toolbar.style.display = '';
         const pd = getPatternData();
         if (!activeDmc && pd.legend.length > 0) _setActiveColor(pd.legend[0].dmc);
@@ -3133,6 +3166,16 @@ function createPatternEditor(config) {
                 </div>
             </div>
             <div class="toolbar-row">
+                <div class="fabric-color-wrapper">
+                    <button class="fabric-swatch-btn ed-fabric-swatch" title="Fabric Color (Aida)" style="background:#F5F0E8"></button>
+                    <div class="fabric-dropdown">
+                        <div class="fabric-preset" data-color="#FFFFFF"><div class="fabric-preset-sw" style="background:#FFFFFF"></div>White</div>
+                        <div class="fabric-preset active" data-color="#F5F0E8"><div class="fabric-preset-sw" style="background:#F5F0E8"></div>Antique White</div>
+                        <div class="fabric-preset" data-color="#000000"><div class="fabric-preset-sw" style="background:#000000"></div>Black</div>
+                        <div class="fabric-custom"><input type="color" class="ed-fabric-custom" value="#F5F0E8"><span>Custom</span></div>
+                    </div>
+                </div>
+                <div class="tool-sep"></div>
                 <div class="active-color-ind">
                     <div class="active-sw ed-active-swatch"></div>
                     <span class="active-lbl ed-active-label">No color</span>
@@ -3207,6 +3250,26 @@ function createPatternEditor(config) {
         _addColorSearch    = _addColorWrapper.querySelector('.replace-target-search');
         _addColorList      = _addColorWrapper.querySelector('.replace-target-list');
 
+        const _fabricWrapper = _toolbar.querySelector('.fabric-color-wrapper');
+        _fabricSwatch  = _toolbar.querySelector('.ed-fabric-swatch');
+        _fabricDropdown = _toolbar.querySelector('.fabric-dropdown');
+        _fabricCustom  = _toolbar.querySelector('.ed-fabric-custom');
+
+        _fabricSwatch.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _fabricDropdown.classList.toggle('open');
+        });
+        _fabricDropdown.querySelectorAll('.fabric-preset').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _setFabricColor(el.dataset.color);
+                _fabricDropdown.classList.remove('open');
+            });
+        });
+        _fabricCustom.addEventListener('input', (e) => {
+            _setFabricColor(e.target.value);
+        });
+
         // Event listeners — toolbar
         _toolbar.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', () => _setTool(btn.dataset.tool));
@@ -3256,7 +3319,10 @@ function createPatternEditor(config) {
         _addColorDropdown.addEventListener('wheel', (e) => e.stopPropagation());
 
         // Close dropdowns on outside click
-        _outsideClickHandler = () => { _closeReplaceDropdown(); _closeAddColorDropdown(); };
+        _outsideClickHandler = (e) => {
+            _closeReplaceDropdown(); _closeAddColorDropdown();
+            if (_fabricDropdown && !_fabricWrapper.contains(e.target)) _fabricDropdown.classList.remove('open');
+        };
         document.addEventListener('click', _outsideClickHandler);
     }
 
@@ -3326,9 +3392,10 @@ function createPatternEditor(config) {
         getBrushSize:      () => _brushSize,
         setBrushSize:      _setBrushSize,
         startReplace,
+        setFabricColor: _setFabricColor,
         setBrand(b) { _brand = b; allDmcThreads = null; },
         injectUI,
         removeUI,
-        isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls'),
+        isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls,.fabric-dropdown'),
     };
 }
