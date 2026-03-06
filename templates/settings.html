@@ -131,6 +131,19 @@
             border-color: var(--gold);
         }
 
+        .ctrl-input {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            transition: border-color var(--t);
+        }
+        .ctrl-input:focus { outline: none; border-color: var(--gold-dim); }
+
         .btn-row {
             display: flex;
             gap: 12px;
