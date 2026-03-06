@@ -427,6 +427,9 @@
 
         initToggle('pref-brand', 'inventoryBrand');
 
+        // Upgrade native selects to themed dropdowns
+        Dropdown.initAll('select.ctrl-select');
+
         // --- Save preference ---
         const sectionMap = {
             'dmc-calc-fabric-count': 'ind-stitch',
