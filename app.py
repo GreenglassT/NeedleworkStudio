@@ -1832,7 +1832,7 @@ def api_change_password():
     row = conn.execute("SELECT password_hash FROM users WHERE id = ?",
                        (current_user.id,)).fetchone()
     if not row or not User.verify_password(row['password_hash'], current_pw):
-        return jsonify({'error': 'Current password is incorrect'}), 401
+        return jsonify({'error': 'Current password is incorrect'}), 403
 
     new_hash = ph.hash(new_pw)
     conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
