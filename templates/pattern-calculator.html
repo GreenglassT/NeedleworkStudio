@@ -200,9 +200,15 @@
         .summary-bar { display: none; }
         .summary-bar.visible {
             display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .summary-top {
+            display: flex;
             align-items: center;
+            gap: 16px;
             flex-wrap: wrap;
-            gap: 20px;
         }
 
         .summary-name {
@@ -210,8 +216,10 @@
             font-size: 20px;
             font-weight: 600;
             color: var(--text);
-            flex: 1;
-            min-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
         }
 
         .view-pattern-link {
@@ -220,7 +228,8 @@
             color: var(--gold);
             text-decoration: none;
             letter-spacing: .04em;
-            margin-left: 12px;
+            margin-left: 4px;
+            white-space: nowrap;
             transition: color var(--t);
         }
         .view-pattern-link:hover { color: var(--gold-hover); }
@@ -233,6 +242,7 @@
 
         .stat-item {
             text-align: center;
+            white-space: nowrap;
         }
 
         .stat-value {
@@ -607,7 +617,8 @@
             .input-field { width: 100%; }
             .results-table th,
             .results-table td { padding: 9px 10px; font-size: 11px; }
-            .summary-bar.visible { flex-direction: column; align-items: flex-start; }
+            .summary-top { flex-direction: column; align-items: flex-start; }
+            .summary-name { white-space: normal; }
             .view-actions { margin-left: 0; }
             .qty-input { width: 46px; }
             .upload-zone { padding: 32px 20px; }
@@ -619,7 +630,7 @@
             .site-header, .calc-card, .settings-bar, .view-bar,
             .action-btn, .qty-input, .mode-toggle, .info-card { display: none !important; }
             .summary-bar.visible { border: none; padding: 0 0 12px; }
-            .summary-name { font-size: 18px; }
+            .summary-name { font-size: 18px; white-space: normal; }
             .results-card.visible { border: none; padding: 0; }
             .main-wrap { padding: 0; max-width: 100%; }
             .results-table th, .results-table td { font-size: 10px; padding: 4px 8px; }
@@ -703,34 +714,36 @@
 
         <!-- 3. Summary bar -->
         <div class="summary-bar" id="summary-bar" data-mode="pattern">
-            <div class="summary-name">
-                <span id="pattern-name"></span>
-                <a class="view-pattern-link" id="view-pattern-link" style="display:none">View Pattern <i class="ti ti-arrow-right"></i></a>
-            </div>
-            <div class="summary-stats">
-                <div class="stat-item">
-                    <span class="stat-value" id="stat-colors">—</span>
-                    <span class="stat-label">Colors</span>
+            <div class="summary-top">
+                <div class="summary-name">
+                    <span id="pattern-name"></span>
+                    <a class="view-pattern-link" id="view-pattern-link" style="display:none">View Pattern <i class="ti ti-arrow-right"></i></a>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="stat-stitches">—</span>
-                    <span class="stat-label">Stitches</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="stat-have">—</span>
-                    <span class="stat-label">Have Enough</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="stat-buy">—</span>
-                    <span class="stat-label">Need to Buy</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="stat-skeins">—</span>
-                    <span class="stat-label">Skeins to Buy</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="stat-fabric">—</span>
-                    <span class="stat-label">Fabric Size</span>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-colors">—</span>
+                        <span class="stat-label">Colors</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-stitches">—</span>
+                        <span class="stat-label">Stitches</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-have">—</span>
+                        <span class="stat-label">Have Enough</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-buy">—</span>
+                        <span class="stat-label">Need to Buy</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-skeins">—</span>
+                        <span class="stat-label">Skeins to Buy</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-fabric">—</span>
+                        <span class="stat-label">Fabric Size</span>
+                    </div>
                 </div>
             </div>
             <button class="action-btn" id="mark-need-btn" onclick="markAllNeed()">
