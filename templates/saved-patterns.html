@@ -796,6 +796,7 @@
             <button class="select-btn" id="select-btn" onclick="toggleSelectionMode()">Select</button>
             <button class="select-btn" onclick="openTagMgmt()"><i class="ti ti-tag"></i> Tags</button>
             <button class="select-btn" id="backup-all-btn" onclick="backupAll()" title="Download all patterns as ZIP"><i class="ti ti-download"></i> Backup All</button>
+            <button class="select-btn" onclick="openCrossShoppingList()" title="Threads needed across all patterns"><i class="ti ti-shopping-cart"></i> Shopping List</button>
         </div>
 
         <div class="tag-filter-row" id="tag-filter-row" style="display:none"></div>
@@ -1103,7 +1104,7 @@
                                    onkeydown="nameInputKey(event, this, '${p.slug}')">
                         </div>
                         <div class="card-meta">${p.grid_w} × ${p.grid_h} &middot; ${p.color_count} colors</div>
-                        <div class="card-meta">${dateStr}</div>${_renderCardTags(p)}${progressHtml}
+                        <div class="card-meta">${dateStr}${p.notes ? ' <i class="ti ti-notes" title="' + escHtml(p.notes.slice(0,100)) + '" style="color:var(--gold);font-size:13px;vertical-align:middle"></i>' : ''}</div>${_renderCardTags(p)}${progressHtml}
                     </div>
                     <div class="card-actions">
                         <select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
@@ -1419,6 +1420,72 @@
         document.getElementById('shopping-modal').addEventListener('click', e => {
             if (e.target === e.currentTarget) closeShoppingModal();
         });
+
+        /* ——— CROSS-PATTERN SHOPPING LIST ——— */
+        async function openCrossShoppingList() {
+            const modal = document.getElementById('shopping-modal');
+            document.getElementById('shopping-modal-title').textContent = 'Shopping List — All Patterns';
+            document.getElementById('shopping-modal-body').innerHTML = '<div class="state-msg"><div class="spinner"></div></div>';
+            document.getElementById('shopping-modal-footer').innerHTML = '';
+            modal.style.display = 'flex';
+            try {
+                const res = await fetch('/api/shopping-list');
+                if (!res.ok) throw new Error('Could not load shopping list');
+                const threads = await res.json();
+                const need = threads.filter(t => t.status === 'dont_own');
+                const onList = threads.filter(t => t.status === 'need');
+                const owned = threads.filter(t => t.status === 'own');
+                _shopUnowned = need; _shopNeed = onList;
+                _shopBrand = need[0]?.brand || onList[0]?.brand || 'DMC';
+                _shopPatternSlug = null; _shopPatternName = 'All Patterns';
+                if (!need.length && !onList.length) {
+                    document.getElementById('shopping-modal-body').innerHTML =
+                        '<div class="modal-all-owned">You own all threads across your active patterns.</div>';
+                    return;
+                }
+                const itemHtml = (t, badge) => {
+                    const label = badge === 'skip' ? "Don't Own" : badge === 'need' ? 'On List' : 'Owned';
+                    const patList = t.patterns.map(p => `${escHtml(p.name)} (${p.stitches})`).join(', ');
+                    return `<div class="shop-item">
+                        <div class="shop-swatch" style="background:${escHtml(t.hex||'#888')}"></div>
+                        <div class="shop-info">
+                            <div class="shop-dmc">${escHtml(t.brand)} ${escHtml(t.dmc)}</div>
+                            <div class="shop-name" title="${escHtml(t.name||'')}">${escHtml(t.name||'—')}</div>
+                            <div class="shop-patterns" style="font-size:10px;color:var(--text-muted);margin-top:1px" title="${escHtml(patList)}">${t.total_stitches} stitches · ${t.patterns.length} pattern${t.patterns.length > 1 ? 's' : ''}</div>
+                        </div>
+                        <span class="shop-badge ${badge}">${label}</span>
+                    </div>`;
+                };
+                let html = '';
+                if (need.length)  html += `<div class="shop-section-hd">Need to Buy (${need.length})</div>` + need.map(t => itemHtml(t, 'skip')).join('');
+                if (onList.length) html += `<div class="shop-section-hd">On Your List (${onList.length})</div>` + onList.map(t => itemHtml(t, 'need')).join('');
+                if (owned.length)  html += `<div class="shop-section-hd">Already Own (${owned.length})</div>` + owned.map(t => itemHtml(t, 'owned')).join('');
+                document.getElementById('shopping-modal-body').innerHTML = html;
+                const csvThreads = [...need, ...onList];
+                if (csvThreads.length) {
+                    document.getElementById('shopping-modal-footer').innerHTML =
+                        `<button class="modal-btn" onclick="downloadCrossShoppingCSV()">Download CSV (${csvThreads.length})</button>`;
+                }
+            } catch(err) {
+                document.getElementById('shopping-modal-body').innerHTML =
+                    `<div class="state-msg"><div style="color:var(--skip)">${escHtml(err.message)}</div></div>`;
+            }
+        }
+        function downloadCrossShoppingCSV() {
+            const toExport = [..._shopUnowned, ..._shopNeed];
+            if (!toExport.length) return;
+            const rows = [['Brand','Number','Name','Status','Total Stitches','Patterns']];
+            for (const t of toExport) rows.push([
+                `"${String(t.brand).replace(/"/g,'""')}"`,
+                `"${String(t.dmc).replace(/"/g,'""')}"`,
+                `"${String(t.name||'').replace(/"/g,'""')}"`,
+                `"${t.status === 'need' ? 'On List' : "Don't Own"}"`,
+                t.total_stitches,
+                `"${(t.patterns||[]).map(p=>p.name).join('; ').replace(/"/g,'""')}"`
+            ]);
+            const csv = rows.map(r => r.join(',')).join('\r\n');
+            downloadBlob(csv, 'cross-pattern-shopping-list.csv', 'text/csv;charset=utf-8;');
+        }
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {

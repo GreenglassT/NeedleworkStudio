@@ -83,6 +83,8 @@ let panX = 0, panY = 0;   // CSS transform translate (px)
 let highlightDmc = null;  // currently highlighted DMC number, or null
 let completedDmcs  = new Set();   // DMC numbers (as strings) marked complete
 let _progressTimer = null;        // debounce handle for auto-save
+let _patternNotes = '';           // current notes text
+let _notesSaveTimer = null;       // debounce for notes save
 
 /* ——— CELL-LEVEL PROGRESS ——— */
 let stitchedCells    = new Set();   // Set<number> of flat cell indices (row*grid_w+col)
@@ -460,12 +462,32 @@ function _buildProgressPayload() {
     }});
 }
 
+function _saveProgressToLocal() {
+    try {
+        localStorage.setItem('ns-progress-' + PATTERN_SLUG, JSON.stringify({
+            completed_dmcs: [...completedDmcs],
+            stitched_cells: [...stitchedCells].sort((a, b) => a - b),
+            place_markers: [...markedCells]
+        }));
+    } catch (_) {}
+}
+
 function _scheduleProgressSave() {
     clearTimeout(_progressTimer);
     _progressTimer = setTimeout(() => {
+        const payload = _buildProgressPayload();
+        _saveProgressToLocal();
         fetch('/api/saved-patterns/' + PATTERN_SLUG, {
             method: 'PATCH', headers: {'Content-Type':'application/json'},
-            body: _buildProgressPayload()
+            body: payload
+        }).catch(() => {
+            // Retry once after 3s on failure (e.g. server restart)
+            setTimeout(() => {
+                fetch('/api/saved-patterns/' + PATTERN_SLUG, {
+                    method: 'PATCH', headers: {'Content-Type':'application/json'},
+                    body: _buildProgressPayload()
+                }).catch(() => {});
+            }, 3000);
         });
     }, 800);
 }
@@ -488,7 +510,6 @@ function toggleCellMarkMode() {
     if (btn) btn.classList.toggle('active', _cellMarkMode);
     const area = document.getElementById('canvas-area');
     area.classList.toggle('cell-mark-mode', _cellMarkMode);
-    if (_cellMarkMode && highlightDmc !== null) clearHighlight();
 }
 
 function toggleMarkerMode() {
@@ -566,6 +587,7 @@ function _drawCellMarkPreview() {
     if (!overlay || !_cellDragStart || !_cellDragEnd) return;
     const ctx = overlay.getContext('2d');
     ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (highlightDmc !== null) _drawHighlight(highlightDmc);
     const minR = Math.min(_cellDragStart.row, _cellDragEnd.row);
     const maxR = Math.max(_cellDragStart.row, _cellDragEnd.row);
     const minC = Math.min(_cellDragStart.col, _cellDragEnd.col);
@@ -695,11 +717,21 @@ function _updateLegendTotals() {
 function _timerFlush() {
     if (!_timerDirty || !PATTERN_SLUG) return;
     _timerDirty = false;
+    _saveProgressToLocal();
     fetch('/api/saved-patterns/' + PATTERN_SLUG, {
         method: 'PATCH', headers: {'Content-Type':'application/json'},
         keepalive: true,
         body: _buildProgressPayload()
-    }).catch(() => { _timerDirty = true; });
+    }).catch(() => {
+        _timerDirty = true;
+        // Retry once after 3s
+        setTimeout(() => {
+            fetch('/api/saved-patterns/' + PATTERN_SLUG, {
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
+                body: _buildProgressPayload()
+            }).catch(() => { _timerDirty = true; });
+        }, 3000);
+    });
 }
 
 function _timerInit(accSeconds) {
@@ -1432,6 +1464,76 @@ document.addEventListener('mousemove', function() {
     }, 2000);
 });
 
+/* ——— PATTERN NOTES ——— */
+function toggleNotesPanel() {
+    const bar = document.getElementById('notes-bar');
+    const open = bar.style.display === 'none';
+    bar.style.display = open ? '' : 'none';
+    if (open) document.getElementById('notes-input').focus();
+}
+function onNotesInput() {
+    const ta = document.getElementById('notes-input');
+    document.getElementById('notes-charcount').textContent = ta.value.length + ' / 2000';
+    clearTimeout(_notesSaveTimer);
+    _notesSaveTimer = setTimeout(saveNotes, 1200);
+}
+function saveNotes() {
+    clearTimeout(_notesSaveTimer);
+    const ta = document.getElementById('notes-input');
+    if (!ta) return;
+    const val = ta.value.trim();
+    if (val === _patternNotes) return;
+    _patternNotes = val;
+    const toggle = document.getElementById('notes-toggle');
+    if (toggle) toggle.classList.toggle('has-notes', val.length > 0);
+    fetch(`/api/saved-patterns/${PATTERN_SLUG}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+        body: JSON.stringify({ notes: val })
+    });
+}
+
+/* ——— GOTO ROW/COL ——— */
+function openGotoPanel() {
+    const panel = document.getElementById('goto-panel');
+    panel.style.display = 'flex';
+    const rowInput = document.getElementById('goto-row');
+    const colInput = document.getElementById('goto-col');
+    if (patternData) {
+        rowInput.max = patternData.grid_h;
+        colInput.max = patternData.grid_w;
+    }
+    rowInput.value = '';
+    colInput.value = '';
+    rowInput.focus();
+}
+function closeGotoPanel() {
+    document.getElementById('goto-panel').style.display = 'none';
+}
+function goToPosition() {
+    if (!patternData) return;
+    const row = parseInt(document.getElementById('goto-row').value) || 1;
+    const col = parseInt(document.getElementById('goto-col').value) || 1;
+    const r = Math.max(1, Math.min(patternData.grid_h, row)) - 1;
+    const c = Math.max(1, Math.min(patternData.grid_w, col)) - 1;
+    const area = document.getElementById('canvas-area');
+    panX = area.clientWidth / 2 - (gX() + c * cellPx + cellPx / 2) * scale;
+    panY = area.clientHeight / 2 - (gY() + r * cellPx + cellPx / 2) * scale;
+    applyTransform();
+    closeGotoPanel();
+}
+// Enter key in goto inputs triggers go
+document.getElementById('goto-row').addEventListener('keydown', function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') goToPosition();
+    if (e.key === 'Escape') closeGotoPanel();
+});
+document.getElementById('goto-col').addEventListener('keydown', function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') goToPosition();
+    if (e.key === 'Escape') closeGotoPanel();
+});
+
 /* ——— KEYBOARD ——— */
 document.addEventListener('keydown', function(e) {
     // Suppress editor shortcuts when dialogs are open
@@ -1442,6 +1544,8 @@ document.addEventListener('keydown', function(e) {
         if (editor.handleKeyDown(e)) return;
     }
     if (e.key === 'Escape') {
+        const gotoPanel = document.getElementById('goto-panel');
+        if (gotoPanel && gotoPanel.style.display !== 'none') { closeGotoPanel(); return; }
         if (zenMode) { exitZenMode(); return; }
         const searchEl = document.getElementById('legend-search');
         if (searchEl && searchEl.value) {
@@ -1479,6 +1583,28 @@ document.addEventListener('keydown', function(e) {
             toggleMarkerMode();
             return;
         }
+    }
+    // G key — open goto row/col panel (viewer only)
+    if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            openGotoPanel();
+            return;
+        }
+    }
+    // , / . — cycle legend highlight (viewer only)
+    if ((e.key === ',' || e.key === '.') && !inInput && !editMode) {
+        if (!patternData || !patternData.legend) return;
+        const colors = patternData.legend.filter(c => c.dmc !== 'BG');
+        if (!colors.length) return;
+        const idx = colors.findIndex(c => String(c.dmc) === String(highlightDmc));
+        const dir = e.key === '.' ? 1 : -1;
+        const nextIdx = idx < 0 ? 0 : (idx + dir + colors.length) % colors.length;
+        applyHighlight(colors[nextIdx].dmc);
+        // Scroll the legend row into view
+        const row = document.querySelector(`.legend-row[data-dmc="${colors[nextIdx].dmc}"]`);
+        if (row) row.scrollIntoView({ block: 'nearest' });
+        return;
     }
 });
 document.addEventListener('keyup', function(e) {
@@ -1644,12 +1770,26 @@ async function init() {
         // Recount stitches to include part stitches, backstitches, and knots
         _recountLegend();
 
-        // Load saved progress
-        for (const dmc of (data.completed_dmcs || [])) completedDmcs.add(String(dmc));
-        for (const idx of (data.stitched_cells || [])) {
+        // Load saved progress — merge server data with localStorage backup
+        let serverDmcs = data.completed_dmcs || [];
+        let serverCells = data.stitched_cells || [];
+        let serverMarkers = data.place_markers || [];
+        try {
+            const local = JSON.parse(localStorage.getItem('ns-progress-' + PATTERN_SLUG) || 'null');
+            if (local) {
+                const localCells = local.stitched_cells || [];
+                const localDmcs = local.completed_dmcs || [];
+                const localMarkers = local.place_markers || [];
+                if (localCells.length > serverCells.length) serverCells = localCells;
+                if (localDmcs.length > serverDmcs.length) serverDmcs = localDmcs;
+                if (localMarkers.length > serverMarkers.length) serverMarkers = localMarkers;
+            }
+        } catch (_) {}
+        for (const dmc of serverDmcs) completedDmcs.add(String(dmc));
+        for (const idx of serverCells) {
             if (typeof idx === 'number' && patternData.grid[idx] !== 'BG') stitchedCells.add(idx);
         }
-        for (const key of (data.place_markers || [])) {
+        for (const key of serverMarkers) {
             if (typeof key === 'string' && /^\d+,\d+$/.test(key)) markedCells.add(key);
         }
 
@@ -1658,6 +1798,19 @@ async function init() {
         document.getElementById('pattern-meta').textContent =
             `${data.grid_w} × ${data.grid_h} · ${data.color_count} color${data.color_count === 1 ? '' : 's'}`;
         document.title = data.name + ' — Pattern Viewer — Needlework Studio';
+
+        // Populate notes
+        _patternNotes = data.notes || '';
+        const notesToggle = document.getElementById('notes-toggle');
+        const notesInput = document.getElementById('notes-input');
+        if (notesToggle) {
+            notesToggle.style.display = '';
+            if (_patternNotes) notesToggle.classList.add('has-notes');
+        }
+        if (notesInput) {
+            notesInput.value = _patternNotes;
+            document.getElementById('notes-charcount').textContent = _patternNotes.length + ' / 2000';
+        }
 
         // Set up view mode button
         updateViewModeBtn();

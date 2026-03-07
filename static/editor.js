@@ -115,9 +115,9 @@ function createPatternEditor(config) {
 .tool-btn.active{background:var(--gold);color:#1a1208;border-color:var(--gold)}
 .tool-btn:disabled{opacity:.3;cursor:default}
 .tool-sep{width:1px;align-self:stretch;background:var(--border-2);margin:0 3px;flex-shrink:0}
-.active-color-ind{display:flex;align-items:center;gap:6px}
+.active-color-ind{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 3px 3px}
 .active-sw{width:24px;height:24px;border-radius:3px;border:1px solid var(--border-2);flex-shrink:0}
-.active-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap}
+.active-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.02em;line-height:1;color:var(--text-muted);white-space:nowrap}
 .edit-mode{cursor:crosshair}
 .edit-mode.tool-eraser{cursor:cell}
 .edit-mode.tool-eyedropper{cursor:copy}
@@ -160,7 +160,7 @@ function createPatternEditor(config) {
 .replace-target-row .rtr-badge{font-size:8px;color:var(--gold);white-space:nowrap}
 .ed-replace-apply-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border-2);background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
 .ed-replace-apply-btn:hover{background:var(--surface-2);color:var(--text)}
-.fabric-color-wrapper{position:relative;display:inline-flex;align-items:center}
+.fabric-color-wrapper{position:relative;display:inline-flex;flex-direction:column;align-items:center;padding:5px 3px 3px;gap:2px}
 .fabric-swatch-btn{width:24px;height:24px;border-radius:4px;border:2px solid var(--border-2);cursor:pointer;transition:border-color var(--t);flex-shrink:0}
 .fabric-swatch-btn:hover{border-color:var(--text-muted)}
 .fabric-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:20;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);min-width:160px}
@@ -3070,6 +3070,18 @@ function createPatternEditor(config) {
         const _skIdx = parseInt(e.key) - 1;
         if (_skIdx >= 0 && _skIdx < _stitchKeys.length) { _setTool(_stitchKeys[_skIdx]); return true; }
         if (e.key === '`') { _toggleHalfDir(); return true; }
+        // Color cycling: , = prev, . = next
+        if (e.key === ',' || e.key === '.') {
+            const pd = getPatternData();
+            if (!pd || !pd.legend) return false;
+            const colors = pd.legend.filter(c => c.dmc !== 'BG');
+            if (!colors.length) return false;
+            const idx = colors.findIndex(c => String(c.dmc) === String(activeDmc));
+            const dir = e.key === '.' ? 1 : -1;
+            const next = colors[(idx + dir + colors.length) % colors.length];
+            if (next) _setActiveColor(next.dmc);
+            return true;
+        }
         return false;
     }
 
@@ -3147,6 +3159,7 @@ function createPatternEditor(config) {
                     <button class="tool-btn" data-tool="stitch-back" title="Backstitch (5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="3" y1="18" x2="21" y2="6"/><circle cx="3" cy="18" r="2" fill="currentColor"/><circle cx="21" cy="6" r="2" fill="currentColor"/></svg><span class="tool-lbl">Back</span></button>
                     <button class="tool-btn" data-tool="stitch-knot" title="French Knot (6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8 C14 6, 16 8, 14 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg><span class="tool-lbl">Knot</span></button>
                     <button class="tool-btn" data-tool="stitch-bead" title="Bead (7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/></svg><span class="tool-lbl">Bead</span></button>
+                    <button class="tool-btn" data-tool="auto-outline" title="Auto Outline (Ctrl+Shift+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="5" y="5" width="14" height="14" rx="1" stroke-dasharray="3 2"/></svg><span class="tool-lbl">Outline</span></button>
                     <button class="tool-btn stitch-dir-toggle" title="Toggle direction (\`)" style="display:none"><span style="font-size:16px">/</span><span class="tool-lbl">Dir</span></button>
                 </div>
                 <div class="tool-sep"></div>
@@ -3159,35 +3172,11 @@ function createPatternEditor(config) {
                 <div class="tool-sep"></div>
                 <div class="tool-group">
                     <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="ti ti-eraser"></i><span class="tool-lbl">Erase</span></button>
-                    <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><i class="ti ti-color-picker"></i><span class="tool-lbl">Pick</span></button>
                     <button class="tool-btn" data-tool="text" title="Text (X)"><i class="ti ti-typography"></i><span class="tool-lbl">Text</span></button>
-                    <button class="tool-btn" data-tool="replace" title="Color Replace (R)"><i class="ti ti-replace"></i><span class="tool-lbl">Swap</span></button>
                     <button class="tool-btn" data-tool="select" title="Selection (S)"><i class="ti ti-marquee-2"></i><span class="tool-lbl">Select</span></button>
                 </div>
             </div>
             <div class="toolbar-row">
-                <div class="fabric-color-wrapper">
-                    <button class="fabric-swatch-btn ed-fabric-swatch" title="Fabric Color (Aida)" style="background:#F5F0E8"></button>
-                    <div class="fabric-dropdown">
-                        <div class="fabric-preset" data-color="#FFFFFF"><div class="fabric-preset-sw" style="background:#FFFFFF"></div>White</div>
-                        <div class="fabric-preset active" data-color="#F5F0E8"><div class="fabric-preset-sw" style="background:#F5F0E8"></div>Antique White</div>
-                        <div class="fabric-preset" data-color="#000000"><div class="fabric-preset-sw" style="background:#000000"></div>Black</div>
-                        <div class="fabric-custom"><input type="color" class="ed-fabric-custom" value="#F5F0E8"><span>Custom</span></div>
-                    </div>
-                </div>
-                <div class="tool-sep"></div>
-                <div class="active-color-ind">
-                    <div class="active-sw ed-active-swatch"></div>
-                    <span class="active-lbl ed-active-label">No color</span>
-                </div>
-                <div class="add-color-wrapper">
-                    <button class="tool-btn ed-add-color-btn" title="Add ${_brand} Color (+)"><i class="ti ti-plus"></i><span class="tool-lbl">Add</span></button>
-                    <div class="add-color-dropdown">
-                        <input type="text" class="replace-target-search" placeholder="Search ${_brand} #/name…">
-                        <div class="replace-target-list"></div>
-                    </div>
-                </div>
-                <div class="tool-sep"></div>
                 <div class="brush-size-group">
                     <span class="brush-lbl">Brush</span>
                     <button class="brush-pill active" data-brush="1" title="Brush 1×1 ([ / ])">1</button>
@@ -3203,7 +3192,30 @@ function createPatternEditor(config) {
                 <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
                 <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
                 <button class="tool-btn ed-rowcol-btn" title="Insert/Delete Row/Column (Ctrl+Shift+I)"><i class="ti ti-row-insert-bottom"></i><span class="tool-lbl">Row/Col</span></button>
-                <button class="tool-btn" data-tool="auto-outline" title="Auto Outline (Ctrl+Shift+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="5" y="5" width="14" height="14" rx="1" stroke-dasharray="3 2"/></svg><span class="tool-lbl">Outline</span></button>
+                <div class="tool-sep"></div>
+                <div class="fabric-color-wrapper">
+                    <button class="fabric-swatch-btn ed-fabric-swatch" title="Fabric Color (Aida)" style="background:#F5F0E8"></button>
+                    <span class="tool-lbl">Fabric</span>
+                    <div class="fabric-dropdown">
+                        <div class="fabric-preset" data-color="#FFFFFF"><div class="fabric-preset-sw" style="background:#FFFFFF"></div>White</div>
+                        <div class="fabric-preset active" data-color="#F5F0E8"><div class="fabric-preset-sw" style="background:#F5F0E8"></div>Antique White</div>
+                        <div class="fabric-preset" data-color="#000000"><div class="fabric-preset-sw" style="background:#000000"></div>Black</div>
+                        <div class="fabric-custom"><input type="color" class="ed-fabric-custom" value="#F5F0E8"><span>Custom</span></div>
+                    </div>
+                </div>
+                <div class="active-color-ind">
+                    <div class="active-sw ed-active-swatch"></div>
+                    <span class="active-lbl ed-active-label">No color</span>
+                </div>
+                <div class="add-color-wrapper">
+                    <button class="tool-btn ed-add-color-btn" title="Add ${_brand} Color (+)"><i class="ti ti-plus"></i><span class="tool-lbl">Add</span></button>
+                    <div class="add-color-dropdown">
+                        <input type="text" class="replace-target-search" placeholder="Search ${_brand} #/name…">
+                        <div class="replace-target-list"></div>
+                    </div>
+                </div>
+                <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><i class="ti ti-color-picker"></i><span class="tool-lbl">Pick</span></button>
+                <button class="tool-btn" data-tool="replace" title="Color Replace (R)"><i class="ti ti-replace"></i><span class="tool-lbl">Swap</span></button>
             </div>
         `;
         container.appendChild(_toolbar);
