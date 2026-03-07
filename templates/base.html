@@ -86,7 +86,7 @@
                 <a href="/settings" class="nav-link {{ 'active' if request.path == '/settings' }}" title="Settings" aria-label="Settings"><i class="ti ti-settings"></i></a>
                 <button class="nav-link theme-toggle-btn" id="theme-toggle"
                         onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
-                {% if not desktop_mode %}<a href="/logout" class="nav-link danger">Logout</a>{% endif %}
+                {% if not desktop_mode %}<form action="/logout" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link danger" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit">Logout</button></form>{% endif %}
             </nav>
         </div>
     </header>
