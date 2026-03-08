@@ -498,35 +498,57 @@
             position: fixed;
             top: 10px;
             left: 10px;
-            right: 10px;
             z-index: 300;
-            justify-content: space-between;
-            align-items: flex-start;
             pointer-events: none;
         }
-        body.zen-mode .zen-toolbar { display: flex; }
+        body.zen-mode .zen-toolbar { display: block; }
 
-        .zen-toolbar-btn {
-            pointer-events: auto;
+        .zen-bar {
+            display: flex;
+            align-items: center;
+            gap: 0;
             background: var(--surface);
-            color: var(--text-muted);
             border: 1px solid var(--border-2);
-            border-radius: var(--r);
-            padding: 6px 12px;
+            border-radius: var(--r-lg);
+            box-shadow: 0 2px 12px rgba(0,0,0,.3);
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity .3s;
+            overflow: visible;
+        }
+        .zen-bar.visible { opacity: 1; }
+
+        .zen-bar-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
             font-family: 'IBM Plex Mono', monospace;
             font-size: 10px;
             letter-spacing: .04em;
             cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,.3);
-            transition: opacity .3s, color var(--t), background var(--t), border-color var(--t);
-            opacity: 0;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            white-space: nowrap;
+            transition: color var(--t), background var(--t);
         }
-        .zen-toolbar-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
-        .zen-toolbar-btn.visible { opacity: 1; }
-        .zen-toolbar-btn.open { color: var(--text); background: var(--surface-2); opacity: 1; }
+        .zen-bar-btn:hover { color: var(--text); background: var(--surface-2); }
+        .zen-bar-btn:first-child { border-radius: var(--r-lg) 0 0 var(--r-lg); }
+        .zen-bar-btn.active { color: var(--gold); background: rgba(200,145,58,0.1); }
+        .zen-bar-btn .ti { font-size: 14px; }
+
+        .zen-bar-sep {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        .zen-bar-more {
+            position: relative;
+        }
+        .zen-bar-more > .zen-bar-btn { border-radius: 0 var(--r-lg) var(--r-lg) 0; }
 
         #zen-menu {
             min-width: 200px;
@@ -780,44 +802,47 @@
 </div>
 <button class="legend-toggle-btn" id="legend-toggle-btn" onclick="toggleLegendPanel()">Legend <i class="ti ti-chevron-up"></i></button>
 <div class="zen-toolbar" id="zen-toolbar">
-    <div style="position:relative">
-        <button class="zen-toolbar-btn" id="zen-menu-btn"
-                onclick="toggleZenMenu(event)" aria-label="Zen menu">
-            <i class="ti ti-menu-2"></i>
+    <div class="zen-bar" id="zen-bar">
+        <button class="zen-bar-btn" id="zen-view-btn" onclick="zenMenuAction('view-mode')" title="Toggle view mode">
+            <i class="ti ti-needle" id="zen-view-icon"></i> <span id="zen-view-label">Thread</span>
         </button>
-        <div class="calc-dropdown-menu" id="zen-menu">
-            <button class="zen-menu-item" onclick="zenMenuAction('view-mode')">
-                <i class="ti ti-needle" id="zen-view-icon"></i> <span id="zen-view-label">Thread View</span>
+        <div class="zen-bar-sep"></div>
+        <button class="zen-bar-btn" id="zen-mark-btn" onclick="zenMenuAction('mark-complete')" title="Mark stitches complete (M)">
+            <i class="ti ti-pencil-check"></i> <span id="zen-mark-label">Mark</span>
+        </button>
+        <div class="zen-bar-sep"></div>
+        <button class="zen-bar-btn" id="zen-marker-btn" onclick="zenMenuAction('place-marker')" title="Place marker (B)">
+            <i class="ti ti-map-pin-2"></i> <span id="zen-marker-label">Marker</span>
+        </button>
+        <div class="zen-bar-sep"></div>
+        <div class="zen-bar-more">
+            <button class="zen-bar-btn" id="zen-menu-btn" onclick="toggleZenMenu(event)" title="More actions" aria-label="More actions">
+                <i class="ti ti-dots"></i>
             </button>
-            <button class="zen-menu-item" onclick="zenMenuAction('mark-complete')">
-                <i class="ti ti-pencil-check"></i> <span id="zen-mark-label">Mark Complete</span>
-            </button>
-            <button class="zen-menu-item" onclick="zenMenuAction('place-marker')">
-                <i class="ti ti-map-pin-2"></i> <span id="zen-marker-label">Place Marker</span>
-            </button>
-            <button class="zen-menu-item" onclick="zenMenuAction('goto')">
-                <i class="ti ti-map-pin"></i> Go to Row/Col
-            </button>
-            <div class="menu-divider"></div>
-            <a href="/pattern-calculator?pattern={{ pattern_slug }}">
-                <i class="ti ti-calculator"></i> Thread Needs
-            </a>
-            <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric">
-                <i class="ti ti-ruler"></i> Fabric Size
-            </a>
-            <div class="menu-divider"></div>
-            <button class="zen-menu-item" onclick="zenMenuAction('edit')">
-                <i class="ti ti-edit"></i> Edit Pattern
-            </button>
-            <button class="zen-menu-item" onclick="zenMenuAction('theme')">
-                <i class="ti ti-sun-moon"></i> Toggle Theme
-            </button>
-            <button class="zen-menu-item" onclick="zenMenuAction('shortcuts')">
-                <i class="ti ti-keyboard"></i> Keyboard Shortcuts
-            </button>
+            <div class="calc-dropdown-menu" id="zen-menu">
+                <button class="zen-menu-item" onclick="zenMenuAction('goto')">
+                    <i class="ti ti-map-pin"></i> Go to Row/Col
+                </button>
+                <div class="menu-divider"></div>
+                <a href="/pattern-calculator?pattern={{ pattern_slug }}">
+                    <i class="ti ti-calculator"></i> Thread Needs
+                </a>
+                <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric">
+                    <i class="ti ti-ruler"></i> Fabric Size
+                </a>
+                <div class="menu-divider"></div>
+                <button class="zen-menu-item" onclick="zenMenuAction('edit')">
+                    <i class="ti ti-edit"></i> Edit Pattern
+                </button>
+                <button class="zen-menu-item" onclick="zenMenuAction('theme')">
+                    <i class="ti ti-sun-moon"></i> Toggle Theme
+                </button>
+                <button class="zen-menu-item" onclick="zenMenuAction('shortcuts')">
+                    <i class="ti ti-keyboard"></i> Shortcuts
+                </button>
+            </div>
         </div>
     </div>
-
 </div>
 
 <!-- Fork confirmation dialog -->

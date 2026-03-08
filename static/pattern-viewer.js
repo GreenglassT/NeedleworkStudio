@@ -68,14 +68,18 @@ function zenMenuAction(action) {
 
 function _syncZenMenuLabels() {
     const markLabel = document.getElementById('zen-mark-label');
-    if (markLabel) markLabel.textContent = _cellMarkMode ? 'Stop Marking' : 'Mark Complete';
+    const markBtn   = document.getElementById('zen-mark-btn');
+    if (markLabel) markLabel.textContent = _cellMarkMode ? 'Marking' : 'Mark';
+    if (markBtn) markBtn.classList.toggle('active', _cellMarkMode);
 
     const markerLabel = document.getElementById('zen-marker-label');
-    if (markerLabel) markerLabel.textContent = _markerMode ? 'Stop Placing' : 'Place Marker';
+    const markerBtn   = document.getElementById('zen-marker-btn');
+    if (markerLabel) markerLabel.textContent = _markerMode ? 'Placing' : 'Marker';
+    if (markerBtn) markerBtn.classList.toggle('active', _markerMode);
 
     const viewLabel = document.getElementById('zen-view-label');
     const viewIcon  = document.getElementById('zen-view-icon');
-    if (viewLabel) viewLabel.textContent = viewMode === 'chart' ? 'Thread View' : 'Chart View';
+    if (viewLabel) viewLabel.textContent = viewMode === 'chart' ? 'Thread' : 'Chart';
     if (viewIcon)  viewIcon.className = viewMode === 'chart' ? 'ti ti-needle' : 'ti ti-grid-dots';
 }
 
@@ -1481,9 +1485,9 @@ function _updateZenUI() {
         btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : '<i class="ti ti-maximize"></i> Zen Mode';
         btn.title = zenMode ? 'Exit Zen (F)' : 'Zen Mode (F)';
     }
-    // Drive zen menu button visibility
-    const menuBtn = document.getElementById('zen-menu-btn');
-    if (menuBtn) menuBtn.classList.toggle('visible', zenMode);
+    // Drive zen bar visibility
+    const bar = document.getElementById('zen-bar');
+    if (bar) bar.classList.toggle('visible', zenMode);
     if (!zenMode) _closeDropdown('zen-menu', 'zen-menu-btn');
 }
 
@@ -1493,7 +1497,11 @@ function _onFullscreenChange() {
         // Just entered fullscreen — reflow now that dimensions are final
         fitToScreen(); updateMinimapViewport();
     } else if (!document.fullscreenElement && !document.webkitFullscreenElement && zenMode) {
-        // Exited fullscreen (e.g. browser Escape) — also exit zen mode
+        // Exited fullscreen (e.g. browser Escape) — stay in zen if a modal is open
+        if (document.querySelector('.notify-overlay')) {
+            setTimeout(function() { fitToScreen(); updateMinimapViewport(); }, 50);
+            return;
+        }
         zenMode = false;
         document.body.classList.remove('zen-mode');
         _updateZenUI();
@@ -1506,15 +1514,14 @@ document.addEventListener('webkitfullscreenchange', _onFullscreenChange);
 // Show zen toolbar on mouse movement, auto-hide after 2s idle
 document.addEventListener('mousemove', function() {
     if (!zenMode) return;
-    const menuBtn = document.getElementById('zen-menu-btn');
-    if (menuBtn) menuBtn.classList.add('visible');
+    const bar = document.getElementById('zen-bar');
+    if (bar) bar.classList.add('visible');
     clearTimeout(_zenMoveTimer);
     _zenMoveTimer = setTimeout(function() {
         if (!zenMode) return;
         // Don't hide while menu is open
         if (document.getElementById('zen-menu').classList.contains('open')) return;
-        const btn = document.getElementById('zen-menu-btn');
-        if (btn) btn.classList.remove('visible');
+        if (bar) bar.classList.remove('visible');
     }, 2000);
 });
 
