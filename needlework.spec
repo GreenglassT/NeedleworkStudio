@@ -32,6 +32,8 @@ a = Analysis(
         'pypdfium2',
         'pypdfium2._helpers',
         'pdfplumber',
+        'charset_normalizer',
+        'charset_normalizer.md__mypyc',
         # Auth
         'argon2',
         'argon2.low_level',

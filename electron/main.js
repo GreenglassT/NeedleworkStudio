@@ -68,8 +68,17 @@ function startFlask(port) {
   let cmd, args, cwd;
 
   if (IS_DEV) {
-    // Dev mode: use the system Python to run app.py directly.
-    cmd = process.platform === 'win32' ? 'python' : 'python3';
+    // Dev mode: prefer the project venv, fall back to system Python.
+    const venvPython = path.join(APP_ROOT, 'venv', 'bin', 'python');
+    const venvPythonWin = path.join(APP_ROOT, 'venv', 'Scripts', 'python.exe');
+    const fs = require('fs');
+    if (process.platform === 'win32' && fs.existsSync(venvPythonWin)) {
+      cmd = venvPythonWin;
+    } else if (process.platform !== 'win32' && fs.existsSync(venvPython)) {
+      cmd = venvPython;
+    } else {
+      cmd = process.platform === 'win32' ? 'python' : 'python3';
+    }
     args = [path.join(APP_ROOT, 'app.py')];
     cwd = APP_ROOT;
   } else if (app.isPackaged) {
