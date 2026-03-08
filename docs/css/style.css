@@ -408,6 +408,16 @@ html { scroll-padding-top: 80px; }
 }
 .btn-ghost:hover { background: var(--surface-2); color: var(--text); }
 
+.btn-secondary {
+    background: transparent;
+    color: var(--gold);
+    border: 1.5px solid var(--gold);
+}
+.btn-secondary:hover {
+    background: var(--gold);
+    color: var(--bg);
+}
+
 /* ——— FEATURES ——— */
 .features {
     max-width: 1100px;
