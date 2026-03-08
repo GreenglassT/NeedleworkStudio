@@ -355,8 +355,8 @@ async function generatePatternPDF(patternName, patternData, opts) {
         doc.setLineWidth(0.15);
         doc.rect(_LEG_COL.SYM - 6, yL - 4.5, 5, 5, 'S');
 
-        /* Symbol as selectable text (DejaVu Sans) */
-        doc.setTextColor(info.tr, info.tg, info.tb);
+        /* Symbol as selectable text (DejaVu Sans) — always dark on white paper */
+        doc.setTextColor(40, 30, 20);
         doc.setFont(PDF_FONT_NAME);
         doc.setFontSize(9);
         doc.text(info.symbol, _LEG_COL.SYM + 2, yL, { align: 'center' });
