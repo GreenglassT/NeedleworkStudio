@@ -4,7 +4,44 @@ import json
 import string
 import secrets
 import sqlite3
+import base64
+import io
 import os
+
+from PIL import Image
+
+
+_MAX_THUMB = 120
+
+
+def _hex_to_rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+
+def _generate_thumbnail(grid_data, legend_data, grid_w, grid_h):
+    """Render grid colors to a small PNG thumbnail as a data URI."""
+    color_map = {}
+    for entry in legend_data:
+        color_map[entry["dmc"]] = _hex_to_rgb(entry["hex"])
+    bg = (255, 255, 255)
+
+    sc = min(_MAX_THUMB / grid_w, _MAX_THUMB / grid_h, 1)
+    out_w = max(1, round(grid_w * sc))
+    out_h = max(1, round(grid_h * sc))
+
+    img = Image.new("RGB", (out_w, out_h), bg)
+    pixels = img.load()
+    for py in range(out_h):
+        for px in range(out_w):
+            gx = min(grid_w - 1, int(px / sc))
+            gy = min(grid_h - 1, int(py / sc))
+            val = grid_data[gy * grid_w + gx]
+            pixels[px, py] = color_map.get(val, bg) if val != "BG" else bg
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def _generate_slug(length=8):
@@ -13,20 +50,21 @@ def _generate_slug(length=8):
 
 
 def _insert_pattern(db, user_id, name, grid_w, grid_h, grid_data, legend_data):
-    """Insert a pattern with auto-generated slug."""
+    """Insert a pattern with auto-generated slug and thumbnail."""
     grid_json = json.dumps(grid_data)
     legend_json = json.dumps(legend_data)
     color_count = len(legend_data)
+    thumbnail = _generate_thumbnail(grid_data, legend_data, grid_w, grid_h)
     for _ in range(5):
         slug = _generate_slug()
         try:
             db.execute(
                 """INSERT INTO saved_patterns
                    (slug, user_id, name, grid_w, grid_h, color_count,
-                    grid_data, legend_data)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    grid_data, legend_data, thumbnail)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, user_id, name, grid_w, grid_h, color_count,
-                 grid_json, legend_json)
+                 grid_json, legend_json, thumbnail)
             )
             return slug
         except sqlite3.IntegrityError:
@@ -37,19 +75,6 @@ def _insert_pattern(db, user_id, name, grid_w, grid_h, grid_data, legend_data):
 def _make_heart_pattern():
     """A 15x15 red heart on white background."""
     W, H = 15, 15
-    heart_cells = {
-        (1, 2), (2, 1), (3, 0), (4, 1), (5, 2),
-        (6, 1), (7, 0), (8, 1), (9, 2), (10, 1), (11, 2), (12, 3), (13, 2),
-        (1, 3), (2, 2), (3, 1), (4, 2), (5, 3),
-        (6, 2), (7, 1), (8, 2), (9, 3), (10, 2), (11, 3), (12, 4), (13, 3),
-        (0, 4), (1, 4), (2, 3), (3, 2), (4, 3), (5, 4), (6, 3), (7, 2),
-        (8, 3), (9, 4), (10, 3), (11, 4), (12, 5), (13, 4), (14, 4),
-        (0, 5), (1, 5), (2, 4), (3, 3), (4, 4), (5, 5), (6, 4), (7, 3),
-        (8, 4), (9, 5), (10, 4), (11, 5), (12, 6), (13, 5), (14, 5),
-        (0, 6), (1, 6), (2, 5), (3, 4), (4, 5), (5, 6), (6, 5), (7, 4),
-        (8, 5), (9, 6), (10, 5), (11, 6), (12, 7), (13, 6), (14, 6),
-    }
-    # Build a proper heart shape
     grid = []
     heart = [
         "...XXX...XXX...",
