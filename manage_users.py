@@ -68,7 +68,7 @@ def list_users():
     """List all users."""
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, email, is_active, created_at, last_login FROM users")
+    cursor.execute("SELECT id, username, email, is_active, is_admin, created_at, last_login FROM users")
     users = cursor.fetchall()
     conn.close()
 
@@ -76,12 +76,13 @@ def list_users():
         print("No users found.")
         return
 
-    print(f"\n{'ID':<4} {'Username':<20} {'Email':<30} {'Active':<8} {'Last Login'}")
-    print("-" * 90)
+    print(f"\n{'ID':<4} {'Username':<20} {'Email':<30} {'Active':<8} {'Admin':<8} {'Last Login'}")
+    print("-" * 98)
     for user in users:
         active = "Yes" if user['is_active'] else "No"
+        admin = "Yes" if user['is_admin'] else "No"
         last_login = user['last_login'] or "Never"
-        print(f"{user['id']:<4} {user['username']:<20} {user['email']:<30} {active:<8} {last_login}")
+        print(f"{user['id']:<4} {user['username']:<20} {user['email']:<30} {active:<8} {admin:<8} {last_login}")
     print()
 
 
@@ -141,6 +142,30 @@ def toggle_user():
 
     status_text = "enabled" if new_status else "disabled"
     print(f"User '{username}' has been {status_text}.")
+    return True
+
+
+def promote_admin():
+    """Promote or demote a user's admin status."""
+    username = input("Username: ").strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, is_admin FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+
+    if not user:
+        print(f"Error: User '{username}' not found.")
+        conn.close()
+        return False
+
+    new_status = 0 if user['is_admin'] else 1
+    cursor.execute("UPDATE users SET is_admin = ? WHERE id = ?", (new_status, user['id']))
+    conn.commit()
+    conn.close()
+
+    action = "promoted to admin" if new_status else "demoted from admin"
+    print(f"User '{username}' has been {action}.")
     return True
 
 
@@ -232,6 +257,7 @@ Commands:
     password    Change a user's password
     toggle      Enable/disable a user
     delete      Delete a user
+    admin       Toggle admin status for a user
     tokens      List API tokens (sync)
     revoke      Revoke an API token
     help        Show this help message
@@ -255,6 +281,7 @@ if __name__ == "__main__":
         'password': change_password,
         'toggle': toggle_user,
         'delete': delete_user,
+        'admin': promote_admin,
         'tokens': list_tokens,
         'revoke': revoke_token,
         'help': print_help,

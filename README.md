@@ -28,7 +28,16 @@ Download the installer for your platform from the [Releases page](https://github
 ```bash
 docker run -d -p 6969:6969 -v needlework-data:/data --name needlework \
   ghcr.io/greenglasst/needleworkstudio:latest
-docker exec needlework python manage_users.py create
+docker exec -it needlework python manage_users.py create
+docker exec -it needlework python manage_users.py admin
+```
+
+Or set the `ADMIN_USERNAME` environment variable to promote a user on startup:
+
+```bash
+docker run -d -p 6969:6969 -v needlework-data:/data \
+  -e ADMIN_USERNAME=your_username \
+  ghcr.io/greenglasst/needleworkstudio:latest
 ```
 
 Open **http://localhost:6969** and log in.
@@ -42,8 +51,11 @@ python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 python3 init_db.py
 python3 manage_users.py create
+python3 manage_users.py admin   # promote the user to admin
 python3 app.py
 ```
+
+Or set `ADMIN_USERNAME=your_username` as an environment variable before starting the server.
 
 Open **http://localhost:6969** and log in. For production, use `gunicorn -w 1 --threads 4 -b 0.0.0.0:6969 app:app`.
 
