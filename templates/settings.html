@@ -380,6 +380,14 @@
             <div class="btn-row">
                 <button class="btn btn-danger" onclick="resetPrefs()"><i class="ti ti-refresh"></i> Reset All Preferences</button>
             </div>
+
+            {% if current_user_is_admin and not desktop_mode %}
+            <hr style="border:none;border-top:1px solid var(--border);margin:24px 0">
+            <label class="section-label">Administration</label>
+            <div class="btn-row">
+                <a href="/admin" class="btn"><i class="ti ti-users"></i> Manage Users</a>
+            </div>
+            {% endif %}
         </section>
 
         <section class="settings-section">

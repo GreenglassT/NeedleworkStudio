@@ -68,6 +68,9 @@ app = Flask(__name__,
 # Desktop mode — set DESKTOP_MODE=1 to auto-login without credentials
 DESKTOP_MODE = os.environ.get('DESKTOP_MODE', '').lower() in ('1', 'true')
 
+# Admin bootstrap — set ADMIN_USERNAME to grant admin on startup
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', '').strip()
+
 # Data directory — configurable for desktop packaging (Electron userData)
 # Defaults to app directory for web/server deployment
 DATA_DIR = os.environ.get('NEEDLEWORK_DATA_DIR', _BUNDLE_DIR)
@@ -258,26 +261,32 @@ _dummy_hash = ph.hash('timing-attack-dummy')  # constant-time login for non-exis
 class User(UserMixin):
     """User model for Flask-Login."""
 
-    def __init__(self, id, username, email, is_active=True):
+    def __init__(self, id, username, email, is_active=True, is_admin=False):
         self.id = id
         self.username = username
         self.email = email
         self._is_active = is_active
+        self._is_admin = is_admin
 
     @property
     def is_active(self):
         return self._is_active
+
+    @property
+    def is_admin(self):
+        return self._is_admin
 
     @staticmethod
     def get_by_id(user_id):
         """Retrieve user by ID."""
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, email, is_active FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, email, is_active, is_admin FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
 
         if row:
-            return User(row['id'], row['username'], row['email'], bool(row['is_active']))
+            return User(row['id'], row['username'], row['email'],
+                        bool(row['is_active']), bool(row['is_admin']))
         return None
 
     @staticmethod
@@ -364,6 +373,13 @@ def _inject_user_prefs():
     return dict(user_prefs={})
 
 
+@app.context_processor
+def _inject_admin_status():
+    if current_user.is_authenticated:
+        return dict(current_user_is_admin=current_user.is_admin)
+    return dict(current_user_is_admin=False)
+
+
 # --- API token authentication for sync ---
 from functools import wraps
 
@@ -393,6 +409,25 @@ def api_token_required(f):
         user = User(row['user_id'], row['username'], row['email'])
         login_user(user, remember=False)
         g.api_token_id = row['id']
+        return f(*args, **kwargs)
+    return decorated
+
+
+def admin_required(f):
+    """Decorator: requires login and is_admin=1."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated:
+            if request.is_json or request.headers.get('X-Requested-With') == 'fetch':
+                return jsonify({'error': 'Authentication required'}), 401
+            return redirect(url_for('login', next=request.path))
+        conn = get_db()
+        row = conn.execute("SELECT is_admin FROM users WHERE id = ?",
+                           (current_user.id,)).fetchone()
+        if not row or not row['is_admin']:
+            if request.is_json or request.headers.get('X-Requested-With') == 'fetch':
+                return jsonify({'error': 'Admin access required'}), 403
+            return redirect(url_for('home'))
         return f(*args, **kwargs)
     return decorated
 
@@ -572,6 +607,34 @@ def _migrate_user_preferences():
         conn.execute("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT '{}'")
         conn.commit()
         app.logger.info("Added preferences column to users table")
+    conn.close()
+
+
+def _migrate_admin_column():
+    """Add is_admin column to users table; mark all existing users as admin."""
+    conn = _get_db_direct()
+    cols = {r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if 'is_admin' not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+        conn.execute("UPDATE users SET is_admin = 1")
+        conn.commit()
+        app.logger.info("Added is_admin column; marked all existing users as admin")
+    conn.close()
+
+
+def _bootstrap_admin_from_env():
+    """If ADMIN_USERNAME env var is set, ensure that user has is_admin=1."""
+    if not ADMIN_USERNAME:
+        return
+    conn = _get_db_direct()
+    row = conn.execute("SELECT id FROM users WHERE username = ?",
+                       (ADMIN_USERNAME,)).fetchone()
+    if row:
+        conn.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (row['id'],))
+        conn.commit()
+        app.logger.info("Admin bootstrap: granted admin to '%s'", ADMIN_USERNAME)
+    else:
+        app.logger.warning("Admin bootstrap: user '%s' not found", ADMIN_USERNAME)
     conn.close()
 
 
@@ -1895,6 +1958,160 @@ def api_change_password():
                  (new_hash, current_user.id))
     conn.commit()
     return jsonify({'ok': True})
+
+
+# --- Admin user management (server-only) ---
+
+@app.route('/admin')
+@admin_required
+def admin_page():
+    """Admin user management page."""
+    if DESKTOP_MODE:
+        return redirect(url_for('home'))
+    conn = get_db()
+    users = conn.execute(
+        "SELECT id, username, email, is_active, is_admin, created_at, last_login "
+        "FROM users ORDER BY created_at ASC"
+    ).fetchall()
+    return render_template('admin.html', users=users,
+                           admin_self_id=current_user.id)
+
+
+@app.route('/api/admin/users', methods=['POST'])
+@limiter.limit("10 per minute")
+@admin_required
+def api_admin_create_user():
+    """Create a new user account."""
+    data = request.get_json(force=True)
+    username = (data.get('username') or '').strip()
+    email = (data.get('email') or '').strip()
+    password = data.get('password', '')
+
+    if not username or not email or not password:
+        return jsonify({'error': 'Username, email, and password are required'}), 400
+    if len(username) < 3 or len(username) > 50:
+        return jsonify({'error': 'Username must be 3-50 characters'}), 400
+    if not re.match(r'^[a-zA-Z0-9_\- ]+$', username):
+        return jsonify({'error': 'Username may only contain letters, numbers, spaces, hyphens, and underscores'}), 400
+    if '@' not in email or '.' not in email:
+        return jsonify({'error': 'Invalid email address'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    if len(password) > 1024:
+        return jsonify({'error': 'Password too long'}), 400
+
+    conn = get_db()
+    existing = conn.execute(
+        "SELECT id FROM users WHERE username = ? OR email = ?",
+        (username, email)).fetchone()
+    if existing:
+        return jsonify({'error': 'Username or email already exists'}), 409
+
+    password_hash = ph.hash(password)
+    cur = conn.execute(
+        "INSERT INTO users (username, email, password_hash, is_active, is_admin) "
+        "VALUES (?, ?, ?, 1, 0)",
+        (username, email, password_hash))
+    conn.commit()
+    user_id = cur.lastrowid
+    return jsonify({'id': user_id, 'username': username, 'email': email}), 201
+
+
+@app.route('/api/admin/users/<int:user_id>/password', methods=['POST'])
+@limiter.limit("10 per minute")
+@admin_required
+def api_admin_reset_password(user_id):
+    """Reset a user's password (admin action, no current password needed)."""
+    data = request.get_json(force=True)
+    new_pw = data.get('new_password', '')
+
+    if len(new_pw) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    if len(new_pw) > 1024:
+        return jsonify({'error': 'Password too long'}), 400
+
+    conn = get_db()
+    row = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not row:
+        return jsonify({'error': 'User not found'}), 404
+
+    new_hash = ph.hash(new_pw)
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                 (new_hash, user_id))
+    conn.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['PATCH'])
+@limiter.limit("20 per minute")
+@admin_required
+def api_admin_update_user(user_id):
+    """Toggle is_active or is_admin for a user."""
+    if user_id == current_user.id:
+        return jsonify({'error': 'Cannot modify your own account'}), 400
+
+    data = request.get_json(force=True)
+    conn = get_db()
+
+    row = conn.execute("SELECT id, is_admin FROM users WHERE id = ?",
+                       (user_id,)).fetchone()
+    if not row:
+        return jsonify({'error': 'User not found'}), 404
+
+    updates = []
+    params = []
+
+    if 'is_active' in data:
+        val = 1 if data['is_active'] else 0
+        updates.append("is_active = ?")
+        params.append(val)
+
+    if 'is_admin' in data:
+        val = 1 if data['is_admin'] else 0
+        # Prevent removing the last admin
+        if val == 0 and row['is_admin']:
+            admin_count = conn.execute(
+                "SELECT COUNT(*) FROM users WHERE is_admin = 1 AND id != ?",
+                (user_id,)).fetchone()[0]
+            if admin_count == 0:
+                return jsonify({'error': 'Cannot remove the last admin'}), 400
+        updates.append("is_admin = ?")
+        params.append(val)
+
+    if not updates:
+        return jsonify({'error': 'No valid fields to update'}), 400
+
+    params.append(user_id)
+    conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", params)
+    conn.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+@limiter.limit("10 per minute")
+@admin_required
+def api_admin_delete_user(user_id):
+    """Delete a user account."""
+    if user_id == current_user.id:
+        return jsonify({'error': 'Cannot delete your own account'}), 400
+
+    conn = get_db()
+    row = conn.execute("SELECT id, is_admin FROM users WHERE id = ?",
+                       (user_id,)).fetchone()
+    if not row:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Prevent deleting the last admin
+    if row['is_admin']:
+        admin_count = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE is_admin = 1 AND id != ?",
+            (user_id,)).fetchone()[0]
+        if admin_count == 0:
+            return jsonify({'error': 'Cannot delete the last admin'}), 400
+
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    return '', 204
 
 
 def _parse_floss_table(tables, text):
@@ -3978,6 +4195,8 @@ if os.path.exists(DB_PATH):
         _migrate_sync_tables()
         _migrate_pattern_symbols()
         _migrate_user_preferences()
+        _migrate_admin_column()
+        _bootstrap_admin_from_env()
         _build_palette_lab()
 
     # Desktop mode: ensure a local user exists for auto-login

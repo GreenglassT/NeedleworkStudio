@@ -3041,8 +3041,8 @@ function createPatternEditor(config) {
             return true;
         }
         if (e.ctrlKey || e.metaKey) {
-            if (e.key === 'z') { e.preventDefault(); undo(); return true; }
-            if (e.key === 'y') { e.preventDefault(); redo(); return true; }
+            if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return true; }
+            if (e.key === 'y' || (e.shiftKey && e.key === 'Z')) { e.preventDefault(); redo(); return true; }
             if (e.key === 's' && onSave) { e.preventDefault(); onSave(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault(); _showResizeModal(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'I') { e.preventDefault(); _showRowColModal(); return true; }
@@ -3187,7 +3187,7 @@ function createPatternEditor(config) {
                 </div>
                 <div class="tool-sep"></div>
                 <button class="tool-btn ed-undo-btn" title="Undo (Ctrl+Z)" disabled><i class="ti ti-arrow-back-up"></i><span class="tool-lbl">Undo</span></button>
-                <button class="tool-btn ed-redo-btn" title="Redo (Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i><span class="tool-lbl">Redo</span></button>
+                <button class="tool-btn ed-redo-btn" title="Redo (Ctrl+Shift+Z / Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i><span class="tool-lbl">Redo</span></button>
                 <div class="tool-sep"></div>
                 <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
                 <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>

@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Needlework Studio{% endblock %}
+{% block brand_name %}Admin{% endblock %}
+
+{% block head %}
+    <style>
+        .main-wrap {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .admin-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            margin-bottom: 20px;
+        }
+
+        .section-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .ctrl-input {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--r);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            transition: border-color var(--t);
+            box-sizing: border-box;
+        }
+        .ctrl-input:focus { outline: none; border-color: var(--gold-dim); }
+
+        .create-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+        }
+        .create-form label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-size: 11px;
+            padding: 9px 18px;
+            border: 1px solid var(--gold-dim);
+            background: transparent;
+            color: var(--gold);
+        }
+        .btn:hover {
+            background: var(--gold-dim);
+            color: var(--text);
+        }
+        .btn-primary {
+            border-color: var(--gold);
+        }
+        .btn-primary:hover {
+            background: var(--gold-hover);
+            border-color: var(--gold-hover);
+            color: var(--bg);
+        }
+        .btn-danger {
+            border-color: var(--skip);
+            color: var(--skip);
+        }
+        .btn-danger:hover {
+            background: var(--skip);
+            color: var(--bg);
+        }
+        .btn-sm {
+            font-size: 10px;
+            padding: 5px 10px;
+        }
+
+        .feedback {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            padding: 8px 14px;
+            border-radius: var(--r);
+            margin-top: 8px;
+            display: none;
+        }
+        .feedback.ok {
+            display: block;
+            background: var(--owned-bg);
+            color: var(--owned);
+        }
+        .feedback.err {
+            display: block;
+            background: var(--skip-bg);
+            color: var(--skip-hover);
+        }
+
+        /* User table */
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+        }
+        .user-table th {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .user-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-2);
+            vertical-align: middle;
+        }
+        .user-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-weight: 600;
+        }
+        .badge-active {
+            background: var(--owned-bg);
+            color: var(--owned);
+        }
+        .badge-disabled {
+            background: var(--skip-bg);
+            color: var(--skip);
+        }
+        .badge-admin {
+            background: var(--gold-dim);
+            color: var(--gold);
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .reset-pw-inline {
+            display: none;
+            gap: 6px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .reset-pw-inline.show {
+            display: flex;
+        }
+        .reset-pw-inline input {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            background: var(--bg);
+            color: var(--text);
+            width: 200px;
+        }
+        .reset-pw-inline input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .empty-msg {
+            color: var(--text-dim);
+            font-style: italic;
+            padding: 16px 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-wrap { padding: 16px; }
+            .admin-section { padding: 16px; }
+            .user-table { font-size: 11px; }
+            .user-table th, .user-table td { padding: 8px 6px; }
+            .col-email, .col-dates { display: none; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="main-wrap">
+
+        <!-- User List -->
+        <section class="admin-section">
+            <h2 class="section-title">Users</h2>
+            <div id="user-list">
+            {% if users %}
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th class="col-email">Email</th>
+                            <th>Status</th>
+                            <th class="col-dates">Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-tbody">
+                    {% for u in users %}
+                        <tr id="user-row-{{ u.id }}">
+                            <td>
+                                {{ u.username }}
+                                {% if u.is_admin %}<span class="badge badge-admin">Admin</span>{% endif %}
+                            </td>
+                            <td class="col-email">{{ u.email }}</td>
+                            <td>
+                                {% if u.is_active %}
+                                <span class="badge badge-active">Active</span>
+                                {% else %}
+                                <span class="badge badge-disabled">Disabled</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-dates">{{ u.last_login[:10] if u.last_login else 'Never' }}</td>
+                            <td>
+                                <div class="user-actions">
+                                    <button class="btn btn-sm" onclick="toggleResetPw({{ u.id }})">Reset PW</button>
+                                    {% if u.id != admin_self_id %}
+                                    <button class="btn btn-sm" id="toggle-active-{{ u.id }}"
+                                            onclick="toggleActive({{ u.id }}, {{ 'false' if u.is_active else 'true' }})">
+                                        {{ 'Disable' if u.is_active else 'Enable' }}
+                                    </button>
+                                    <button class="btn btn-sm" id="toggle-admin-{{ u.id }}"
+                                            onclick="toggleAdmin({{ u.id }}, {{ 'false' if u.is_admin else 'true' }})">
+                                        {{ 'Remove Admin' if u.is_admin else 'Make Admin' }}
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" data-uid="{{ u.id }}" data-username="{{ u.username }}" onclick="deleteUser(this.dataset.uid, this.dataset.username)">Delete</button>
+                                    {% endif %}
+                                </div>
+                                <div class="reset-pw-inline" id="reset-pw-{{ u.id }}">
+                                    <input type="password" placeholder="New password (min 8)" id="reset-pw-input-{{ u.id }}">
+                                    <button class="btn btn-sm btn-primary" onclick="resetPassword({{ u.id }})">Set</button>
+                                    <button class="btn btn-sm" onclick="toggleResetPw({{ u.id }})">Cancel</button>
+                                </div>
+                                <div class="feedback" id="feedback-{{ u.id }}"></div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-msg">No users found.</p>
+            {% endif %}
+            </div>
+        </section>
+
+        <!-- Create User -->
+        <section class="admin-section">
+            <h2 class="section-title">Create User</h2>
+            <div class="create-form">
+                <div>
+                    <label>Username</label>
+                    <input type="text" class="ctrl-input" id="new-username" placeholder="Username (3-50 chars)" autocomplete="off">
+                </div>
+                <div>
+                    <label>Email</label>
+                    <input type="email" class="ctrl-input" id="new-email" placeholder="email@example.com" autocomplete="off">
+                </div>
+                <div>
+                    <label>Password</label>
+                    <input type="password" class="ctrl-input" id="new-password" placeholder="Min 8 characters" autocomplete="new-password">
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="createUser()"><i class="ti ti-user-plus"></i> Create User</button>
+                </div>
+                <div class="feedback" id="create-feedback"></div>
+            </div>
+        </section>
+
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+    (function() {
+        const SELF_ID = {{ admin_self_id }};
+
+        function showFeedback(id, msg, ok) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = 'feedback ' + (ok ? 'ok' : 'err');
+            el.textContent = msg;
+            if (ok) setTimeout(() => { el.className = 'feedback'; }, 3000);
+        }
+
+        window.toggleResetPw = function(userId) {
+            const el = document.getElementById('reset-pw-' + userId);
+            el.classList.toggle('show');
+            if (el.classList.contains('show')) {
+                el.querySelector('input').focus();
+            }
+        };
+
+        window.resetPassword = function(userId) {
+            const input = document.getElementById('reset-pw-input-' + userId);
+            const pw = input.value;
+            if (pw.length < 8) {
+                showFeedback('feedback-' + userId, 'Password must be at least 8 characters', false);
+                return;
+            }
+            fetch('/api/admin/users/' + userId + '/password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_password: pw })
+            }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+              .then(({ ok, data }) => {
+                  if (ok) {
+                      showFeedback('feedback-' + userId, 'Password reset successfully', true);
+                      input.value = '';
+                      document.getElementById('reset-pw-' + userId).classList.remove('show');
+                  } else {
+                      showFeedback('feedback-' + userId, data.error || 'Failed', false);
+                  }
+              });
+        };
+
+        window.toggleActive = function(userId, newState) {
+            fetch('/api/admin/users/' + userId, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: newState })
+            }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+              .then(({ ok, data }) => {
+                  if (ok) {
+                      location.reload();
+                  } else {
+                      showFeedback('feedback-' + userId, data.error || 'Failed', false);
+                  }
+              });
+        };
+
+        window.toggleAdmin = function(userId, newState) {
+            const action = newState ? 'grant admin to' : 'remove admin from';
+            if (!confirm('Are you sure you want to ' + action + ' this user?')) return;
+            fetch('/api/admin/users/' + userId, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_admin: newState })
+            }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+              .then(({ ok, data }) => {
+                  if (ok) {
+                      location.reload();
+                  } else {
+                      showFeedback('feedback-' + userId, data.error || 'Failed', false);
+                  }
+              });
+        };
+
+        window.deleteUser = function(userId, username) {
+            if (!confirm('Delete user "' + username + '"? This will permanently delete all their patterns and data.')) return;
+            fetch('/api/admin/users/' + userId, {
+                method: 'DELETE'
+            }).then(r => {
+                if (r.ok || r.status === 204) {
+                    const row = document.getElementById('user-row-' + userId);
+                    if (row) row.remove();
+                } else {
+                    return r.json().then(d => {
+                        showFeedback('feedback-' + userId, d.error || 'Failed', false);
+                    });
+                }
+            });
+        };
+
+        window.createUser = function() {
+            const username = document.getElementById('new-username').value.trim();
+            const email = document.getElementById('new-email').value.trim();
+            const password = document.getElementById('new-password').value;
+
+            if (!username || !email || !password) {
+                showFeedback('create-feedback', 'All fields are required', false);
+                return;
+            }
+            if (password.length < 8) {
+                showFeedback('create-feedback', 'Password must be at least 8 characters', false);
+                return;
+            }
+
+            fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, email: email, password: password })
+            }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+              .then(({ ok, data }) => {
+                  if (ok) {
+                      showFeedback('create-feedback', 'User "' + data.username + '" created successfully', true);
+                      document.getElementById('new-username').value = '';
+                      document.getElementById('new-email').value = '';
+                      document.getElementById('new-password').value = '';
+                      // Reload to show updated table
+                      setTimeout(() => location.reload(), 500);
+                  } else {
+                      showFeedback('create-feedback', data.error || 'Failed to create user', false);
+                  }
+              });
+        };
+    })();
+    </script>
+{% endblock %}
