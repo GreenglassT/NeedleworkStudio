@@ -634,7 +634,10 @@ def _bootstrap_admin_from_env():
         conn.commit()
         app.logger.info("Admin bootstrap: granted admin to '%s'", ADMIN_USERNAME)
     else:
-        app.logger.warning("Admin bootstrap: user '%s' not found", ADMIN_USERNAME)
+        app.logger.error(
+            "ADMIN_USERNAME='%s' is set but no user with that name exists. "
+            "Create the user first: python manage_users.py create",
+            ADMIN_USERNAME)
     conn.close()
 
 
@@ -1457,6 +1460,12 @@ def login():
 
     error = None
 
+    # Check if any users exist — show setup hint if not
+    no_users = False
+    if not DESKTOP_MODE:
+        conn = get_db()
+        no_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+
     if request.method == 'POST':
         wants_json = request.is_json or request.headers.get('X-Requested-With') == 'fetch'
 
@@ -1517,7 +1526,7 @@ def login():
                 if wants_json:
                     return jsonify({'error': error}), 401
 
-    return render_template('login.html', error=error)
+    return render_template('login.html', error=error, no_users=no_users)
 
 
 @app.route('/logout', methods=['POST'])

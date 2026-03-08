@@ -175,6 +175,26 @@
             letter-spacing: .03em;
         }
 
+        .setup-hint {
+            background: var(--surface-2);
+            border: 1px solid var(--gold-dim);
+            color: var(--text-muted);
+            padding: 14px;
+            border-radius: var(--r);
+            margin-bottom: 18px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            letter-spacing: .03em;
+            line-height: 1.6;
+        }
+        .setup-hint strong { color: var(--gold); }
+        .setup-hint code {
+            background: var(--surface-3);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
         @media (max-width: 480px) {
             .login-container { padding: 12px; }
             .login-form { padding: 20px 16px; }
@@ -191,6 +211,15 @@
             </div>
             <form class="login-form" method="POST" action="/login">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if no_users %}
+                <div class="setup-hint">
+                    <strong>No accounts exist yet.</strong><br>
+                    Create your first user from the terminal:<br>
+                    <code>python manage_users.py create</code><br>
+                    Then promote them to admin:<br>
+                    <code>python manage_users.py admin</code>
+                </div>
+                {% endif %}
                 {% if error %}
                 <div class="error-message">{{ error }}</div>
                 {% endif %}

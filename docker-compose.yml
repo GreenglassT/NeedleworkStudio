@@ -11,5 +11,9 @@ services:
       # - ADMIN_USERNAME=your_username
     restart: unless-stopped
 
+    # After first start, create your admin user:
+    #   docker compose exec needlework-studio python manage_users.py create
+    #   docker compose exec needlework-studio python manage_users.py admin
+
 volumes:
   needlework-data:

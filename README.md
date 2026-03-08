@@ -70,9 +70,31 @@ Open **http://localhost:6969** and log in. For production, use `gunicorn -w 1 --
 - **Desktop sync** — bidirectional sync between desktop app and self-hosted server
 - **Multi-user** — Argon2 auth, CSRF protection, rate limiting, security headers
 
+## Administration
+
+Once logged in as an admin, go to **Settings → Manage Users** (or the shield icon in the nav bar) to:
+
+- Create new user accounts
+- Reset passwords
+- Enable/disable users
+- Promote or remove admins
+- Delete users
+
+The admin panel is only available on server deployments (Docker/manual), not the desktop app.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `6969` | Server listen port |
+| `ADMIN_USERNAME` | *(none)* | Promote this user to admin on startup |
+| `NEEDLEWORK_DATA_DIR` | app directory | Directory for SQLite database and data files |
+| `SECRET_KEY` | auto-generated | Flask session secret (auto-created in data dir if not set) |
+| `HTTPS` | `false` | Set to `true` behind a reverse proxy with SSL to enable secure cookies |
+
 ## Documentation
 
-> **📖 [Read the Wiki](https://github.com/GreenglassT/NeedleworkStudio/wiki)** — Getting started, administration, deployment, desktop sync, and more.
+> [Read the Wiki](https://github.com/GreenglassT/NeedleworkStudio/wiki) — Getting started, administration, deployment, desktop sync, and more.
 
 ## License
 
