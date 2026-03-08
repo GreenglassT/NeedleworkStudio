@@ -27,7 +27,7 @@ function findFreePort() {
 }
 
 // ── Wait for Flask to respond ──────────────────────────────────
-function waitForFlask(port, timeoutMs = 15000) {
+function waitForFlask(port, timeoutMs = 45000) {
   const start = Date.now();
   return new Promise((resolve, reject) => {
     function check() {

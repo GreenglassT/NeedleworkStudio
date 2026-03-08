@@ -75,6 +75,9 @@
                 <div class="nav-sep"></div>
                 <span class="nav-section">Plan</span>
                 <a href="/pattern-calculator" class="nav-link {{ 'active' if request.path == '/pattern-calculator' }}">Materials Calculator</a>
+                <a href="https://needlework-studio.com/wiki/index.html" target="_blank" rel="noopener" class="nav-link" title="Help &amp; Documentation"><i class="ti ti-help-circle"></i></a>
+                <button class="nav-link theme-toggle-btn" id="theme-toggle"
+                        onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
                 {% if desktop_mode %}
                 <button class="sync-btn" id="sync-header-btn" title="Sync Settings">
                     <i class="ti ti-cloud sync-icon"></i>
@@ -82,10 +85,7 @@
                     Sync
                 </button>
                 {% endif %}
-                <a href="https://needlework-studio.com/wiki/index.html" target="_blank" rel="noopener" class="nav-link" title="Help &amp; Documentation"><i class="ti ti-help-circle"></i></a>
                 <a href="/settings" class="nav-link {{ 'active' if request.path == '/settings' }}" title="Settings" aria-label="Settings"><i class="ti ti-settings"></i></a>
-                <button class="nav-link theme-toggle-btn" id="theme-toggle"
-                        onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
                 {% if not desktop_mode %}<form action="/logout" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link danger" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit">Logout</button></form>{% endif %}
             </nav>
         </div>

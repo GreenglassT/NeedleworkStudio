@@ -1237,7 +1237,7 @@ document.getElementById('canvas-area').addEventListener('wheel', function(e) {
         const rect   = this.getBoundingClientRect();
         const mx     = e.clientX - rect.left;
         const my     = e.clientY - rect.top;
-        const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+        const factor = e.deltaY < 0 ? 1.06 : 1 / 1.06;
         panX   = mx - (mx - panX) * factor;
         panY   = my - (my - panY) * factor;
         scale  = Math.max(0.05, Math.min(MAX_CELL_PX / cellPx, scale * factor));

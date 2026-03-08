@@ -815,62 +815,22 @@
         .card-details-trigger .ti { font-size: 11px; transition: transform .2s ease; }
         .card-details-trigger.open .ti { transform: rotate(45deg); }
 
-        /* ——— QUICK-JUMP MINIMAP ——— */
+        /* ——— QUICK-JUMP RAIL ——— */
         .jump-rail {
             position: fixed;
-            right: 10px;
-            top: 190px;
+            right: 6px;
+            top: 0;
             bottom: 24px;
             z-index: 80;
             display: flex;
-            align-items: flex-end;
-            gap: 0;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-top: 12px;
             opacity: 0;
             pointer-events: none;
             transition: opacity .2s ease;
         }
         .jump-rail.visible { opacity: 1; pointer-events: auto; }
-        .jump-rail-track {
-            position: relative;
-            width: 3px;
-            height: 100%;
-            background: var(--border);
-            border-radius: 2px;
-            margin-right: 6px;
-            flex-shrink: 0;
-        }
-        .jump-rail-track::before,
-        .jump-rail-track::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: var(--gold);
-        }
-        .jump-rail-track::before { top: -5px; }
-        .jump-rail-track::after  { bottom: -5px; }
-        .jump-rail-thumb {
-            position: absolute;
-            width: 3px;
-            height: 36px;
-            background: var(--gold);
-            border-radius: 2px;
-            top: 0;
-            transition: top 250ms ease;
-        }
-        .jump-rail-labels {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            right: 14px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            pointer-events: none;
-        }
         .jump-rail-label {
             font-family: 'IBM Plex Mono', monospace;
             font-size: 9px;
@@ -879,7 +839,7 @@
             cursor: pointer;
             transition: color var(--t), font-weight .15s ease, font-size .15s ease;
             text-align: right;
-            padding: 1px 0;
+            padding: 2px 6px;
             line-height: 1;
         }
         .jump-rail-label:hover { color: var(--gold); }
@@ -888,7 +848,7 @@
             font-weight: 700;
             font-size: 10px;
         }
-        body.rail-visible .main-wrap { padding-right: 60px; }
+        body.rail-visible .main-wrap { padding-right: 48px; }
         @media (max-width: 640px) { .jump-rail { display: none; } body.rail-visible .main-wrap { padding-right: 28px; } }
 
         /* ——— PRINT (hidden on screen) ——— */
@@ -1038,10 +998,7 @@
     <div class="thread-list active" id="thread-list"></div>
 </main>
 
-<nav class="jump-rail" id="jump-rail">
-    <div class="jump-rail-track"><div class="jump-rail-thumb" id="jump-rail-thumb"></div></div>
-    <div class="jump-rail-labels" id="jump-rail-labels"></div>
-</nav>
+<nav class="jump-rail" id="jump-rail"></nav>
 
 <!-- ——— MODAL ——— -->
 <div class="modal-overlay" id="similar-modal" style="display:none">
@@ -1374,12 +1331,18 @@
         const markers = _computeJumpMarkers(threads);
         _jumpMarkers = markers;
         if (!markers.length) { rail.classList.remove('visible'); document.body.classList.remove('rail-visible'); return; }
-        document.getElementById('jump-rail-labels').innerHTML = markers.map(m =>
+        // Position rail below the sticky controls bar
+        const ctrlBar = document.querySelector('.controls-bar');
+        if (ctrlBar) {
+            const ctrlRect = ctrlBar.getBoundingClientRect();
+            rail.style.top = Math.ceil(ctrlRect.bottom) + 'px';
+        }
+        rail.innerHTML = markers.map(m =>
             `<span class="jump-rail-label" data-val="${m}" onclick="jumpToNumber('${m}')">${m}</span>`
         ).join('');
         rail.classList.add('visible');
         document.body.classList.add('rail-visible');
-        _updateMinimapPosition();
+        _updateNearbyLabels();
     }
 
     function _getVisibleThreadNumber() {
@@ -1399,16 +1362,8 @@
         return closestNum;
     }
 
-    function _updateMinimapPosition() {
-        const thumb = document.getElementById('jump-rail-thumb');
-        const track = document.querySelector('.jump-rail-track');
-        if (!thumb || !track || !_jumpMarkers.length) return;
-
-        const scrollFrac = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight || 1);
-        const trackH = track.clientHeight;
-        thumb.style.top = Math.min(scrollFrac * (trackH - 36), trackH - 36) + 'px';
-
-        // Highlight nearby labels
+    function _updateNearbyLabels() {
+        if (!_jumpMarkers.length) return;
         const curNum = _getVisibleThreadNumber();
         const step = _jumpMarkers.length > 1
             ? Math.abs(parseInt(_jumpMarkers[1]) - parseInt(_jumpMarkers[0])) * 0.6
@@ -1416,7 +1371,6 @@
         document.querySelectorAll('.jump-rail-label').forEach(lbl => {
             const v = parseInt(lbl.dataset.val);
             if (isNaN(v)) {
-                // "Special" label: highlight when scrolled past all numeric threads
                 const maxNum = _jumpMarkers.reduce((m, x) => { const n = parseInt(x); return !isNaN(n) && n > m ? n : m; }, 0);
                 lbl.classList.toggle('nearby', curNum >= maxNum);
             } else {
@@ -1425,7 +1379,7 @@
         });
     }
 
-    window.addEventListener('scroll', _updateMinimapPosition, { passive: true });
+    window.addEventListener('scroll', _updateNearbyLabels, { passive: true });
 
     function jumpToNumber(target) {
         const sel = currentView === 'grid' ? '.thread-card' : '.list-row';
