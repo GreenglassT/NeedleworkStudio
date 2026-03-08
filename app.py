@@ -57,6 +57,7 @@ MAX_PATTERN_DATA = 2 * 1024 * 1024     # 2 MB (grid + legend JSON)
 MAX_PATTERN_FULL = 4 * 1024 * 1024     # 4 MB (full pattern update)
 MAX_THUMBNAIL = 500_000                # 500 KB (base64 thumbnail)
 MAX_PROGRESS_DATA = 256 * 1024         # 256 KB
+DEMO_MAX_PATTERNS = 10                 # max saved patterns per demo user
 
 import pdfplumber
 import pypdfium2 as pdfium
@@ -1603,6 +1604,8 @@ def logout():
 @login_required
 def inventory():
     """Thread inventory page."""
+    if DEMO_MODE:
+        return redirect('/saved-patterns')
     return render_template('index.html')
 
 
@@ -1918,6 +1921,8 @@ def get_similar_threads(thread_id):
 @login_required
 def pattern_calculator():
     """Materials Calculator — thread needs, skein estimates, and fabric sizing."""
+    if DEMO_MODE:
+        return redirect('/saved-patterns')
     return render_template('pattern-calculator.html')
 
 
@@ -1934,6 +1939,8 @@ def stash_calculator():
 @login_required
 def settings_page():
     """User settings and preferences."""
+    if DEMO_MODE:
+        return redirect('/saved-patterns')
     return render_template('settings.html',
                            pattern_symbols=_PATTERN_SYMBOLS)
 
@@ -2703,6 +2710,13 @@ def view_pattern(pattern_slug):
 @login_required
 def api_save_pattern():
     """Save a new pattern."""
+    if DEMO_MODE:
+        count = get_db().execute(
+            "SELECT COUNT(*) as c FROM saved_patterns WHERE user_id = ?",
+            (current_user.id,)
+        ).fetchone()['c']
+        if count >= DEMO_MAX_PATTERNS:
+            return jsonify({'error': f'Demo is limited to {DEMO_MAX_PATTERNS} patterns. Download the full app for unlimited patterns.'}), 403
     data = request.get_json(silent=True) or {}
 
     name = str(data.get('name', 'Untitled')).strip()[:120] or 'Untitled'
@@ -2788,6 +2802,13 @@ def api_save_pattern():
 @login_required
 def api_import_pattern():
     """Import a pattern from a JSON export file."""
+    if DEMO_MODE:
+        count = get_db().execute(
+            "SELECT COUNT(*) as c FROM saved_patterns WHERE user_id = ?",
+            (current_user.id,)
+        ).fetchone()['c']
+        if count >= DEMO_MAX_PATTERNS:
+            return jsonify({'error': f'Demo is limited to {DEMO_MAX_PATTERNS} patterns. Download the full app for unlimited patterns.'}), 403
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'error': 'Request body must be JSON'}), 400
