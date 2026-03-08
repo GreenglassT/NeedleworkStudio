@@ -743,21 +743,21 @@
             }
         }
 
-        if (showGrid && cellPx >= 4) {
+        if (cellPx >= 4) {
             ctx.strokeStyle = viewMode === 'thread' ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.18)';
             ctx.lineWidth = 0.5;
             ctx.beginPath();
             for (let col = 0; col <= grid_w; col++) { ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); }
             for (let row = 0; row <= grid_h; row++) { ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); }
             ctx.stroke();
-            if (viewMode === 'thread') {
-                ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-                ctx.lineWidth = Math.max(1, cellPx / 7);
-                ctx.beginPath();
-                for (let col = 0; col <= grid_w; col += 10) { ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); }
-                for (let row = 0; row <= grid_h; row += 10) { ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); }
-                ctx.stroke();
-            }
+        }
+        if (showGrid && cellPx >= 4) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+            ctx.lineWidth = Math.max(1, cellPx / 7);
+            ctx.beginPath();
+            for (let col = 0; col <= grid_w; col += 10) { ctx.moveTo(col * cellPx, 0); ctx.lineTo(col * cellPx, H); }
+            for (let row = 0; row <= grid_h; row += 10) { ctx.moveTo(0, row * cellPx); ctx.lineTo(W, row * cellPx); }
+            ctx.stroke();
         }
 
         /* Backstitches — on top of gridlines */
@@ -859,20 +859,20 @@
                 }
             }
         }
-        if ((_gridlinesCheck || document.getElementById('gridlines-check')).checked && cp >= 4) {
+        if (cp >= 4) {
             ctx.strokeStyle = viewMode === 'thread' ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.18)';
             ctx.lineWidth = 0.5;
             ctx.strokeRect(x, y, cp, cp);
-            // Bold border if on a 10th boundary (thread mode only)
-            if (viewMode === 'thread' && (col % 10 === 0 || row % 10 === 0 || (col + 1) % 10 === 0 || (row + 1) % 10 === 0)) {
-                const blw = Math.max(1, cp / 7);
-                ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-                ctx.lineWidth = blw;
-                if (col % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cp); ctx.stroke(); }
-                if ((col + 1) % 10 === 0) { ctx.beginPath(); ctx.moveTo(x + cp, y); ctx.lineTo(x + cp, y + cp); ctx.stroke(); }
-                if (row % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cp, y); ctx.stroke(); }
-                if ((row + 1) % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y + cp); ctx.lineTo(x + cp, y + cp); ctx.stroke(); }
-            }
+        }
+        if ((_gridlinesCheck || document.getElementById('gridlines-check')).checked && cp >= 4 &&
+            (col % 10 === 0 || row % 10 === 0 || (col + 1) % 10 === 0 || (row + 1) % 10 === 0)) {
+            const blw = Math.max(1, cp / 7);
+            ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+            ctx.lineWidth = blw;
+            if (col % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cp); ctx.stroke(); }
+            if ((col + 1) % 10 === 0) { ctx.beginPath(); ctx.moveTo(x + cp, y); ctx.lineTo(x + cp, y + cp); ctx.stroke(); }
+            if (row % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cp, y); ctx.stroke(); }
+            if ((row + 1) % 10 === 0) { ctx.beginPath(); ctx.moveTo(x, y + cp); ctx.lineTo(x + cp, y + cp); ctx.stroke(); }
         }
         /* Beads in this cell */
         if (patternData.beads && patternData.beads.length > 0) {
