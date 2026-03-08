@@ -21,4 +21,4 @@ EXPOSE 6969
 VOLUME /data
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["gunicorn", "-w", "1", "--threads", "4", "-b", "0.0.0.0:6969", "app:app"]
+CMD ["gunicorn", "-w", "1", "--threads", "8", "-b", "0.0.0.0:6969", "app:app"]
