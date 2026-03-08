@@ -127,7 +127,7 @@ let legendSort = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let legendFilter = '';            // search query for legend filtering
 const MAX_CELL_PX = 80;           // cap re-render resolution when zooming in
 let _snapTimer = null;
-let viewMode = localStorage.getItem('pv-viewMode') || _pref('dmc-viewMode', 'chart');  // 'chart' | 'thread'
+let viewMode = (function() { var m = localStorage.getItem('pv-viewMode'); return m === 'thread' ? 'thread' : 'chart'; })();
 
 /* ——— EDITOR (shared module) ——— */
 let editMode = false;
