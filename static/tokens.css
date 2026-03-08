@@ -87,7 +87,8 @@ body {
 [data-desktop] .site-header a,
 [data-desktop] .site-header button,
 [data-desktop] .site-header input,
-[data-desktop] .site-header select { -webkit-app-region: no-drag; }
+[data-desktop] .site-header select,
+[data-desktop] .site-header nav { -webkit-app-region: no-drag; }
 [data-desktop] .desktop-drag-bar {
     position: fixed; top: 0; left: 0; right: 0;
     -webkit-app-region: drag; z-index: 1;
