@@ -736,6 +736,48 @@ def _pdf_parse_legend(page):
     return entries
 
 
+def _pdf_parse_legend_vector(page):
+    """Parse Needlework Studio vector PDF legend format.
+
+    Expects lines like: ``+ 871 Antique Violet Med 2 1,247``
+    with a header row containing "Symbol" and "Number".
+    Returns list of {dmc, brand, name, symbol, legend_count} or empty list.
+    """
+    text = page.extract_text() or ''
+    lines = text.split('\n')
+
+    # Detect our legend format by header
+    header_idx = -1
+    for i, line in enumerate(lines):
+        if 'Symbol' in line and 'Number' in line:
+            header_idx = i
+            break
+    if header_idx < 0:
+        return []
+
+    entries = []
+    seen = set()
+    for line in lines[header_idx + 1:]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Match: symbol(1 char)  number  name(words)  strands(digit)  count(with commas)
+        m = re.match(r'^(\S)\s+(\d+)\s+(.+?)\s+(\d+)\s+([\d,]+)\s*$', stripped)
+        if not m:
+            continue
+        symbol = m.group(1)
+        number = m.group(2)
+        name = m.group(3).strip()
+        count = int(m.group(5).replace(',', ''))
+        if number not in seen:
+            entries.append({
+                'dmc': number, 'brand': 'DMC', 'name': name,
+                'symbol': symbol, 'legend_count': count,
+            })
+            seen.add(number)
+    return entries
+
+
 def _pdf_grid_offset(pl_page, x_vals, top_vals, x_rank, y_rank, cell_w_pt, grid_w, grid_h):
     """
     Use ruler tick labels on a grid page to find col_start / row_start —
@@ -808,6 +850,150 @@ def _pdf_grid_offset(pl_page, x_vals, top_vals, x_rank, y_rank, cell_w_pt, grid_
         return best
 
     return _mode(col_offsets), _mode(row_offsets), bool(col_offsets), bool(row_offsets)
+
+
+def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
+    """Import a vector PDF chart using text positions instead of images.
+
+    Extracts single-character symbols from chart pages, detects the regular
+    grid spacing, and maps symbols to DMC numbers via the legend.
+    Returns the same dict format as _import_pdf_body.
+    """
+    sym_to_dmc = {e['symbol']: e['dmc'] for e in legend_entries}
+    valid_syms = set(sym_to_dmc.keys())
+
+    # Collect all symbol characters from chart pages (skip cover + legend).
+    # Use page.chars instead of extract_words() because pdfplumber merges
+    # adjacent identical symbols into multi-char words (e.g. "%%%%...").
+    chart_pages = list(range(2, len(plumber_pdf.pages)))
+    all_syms = []  # (center_x, center_y, symbol, page_idx)
+
+    for page_idx in chart_pages:
+        page = plumber_pdf.pages[page_idx]
+        for ch in page.chars:
+            t = ch['text']
+            if len(t) == 1 and t in valid_syms:
+                cx = (ch['x0'] + ch['x1']) / 2
+                cy = (ch['top'] + ch['bottom']) / 2
+                all_syms.append((cx, cy, t, page_idx))
+
+    if not all_syms:
+        raise ValueError("No chart symbols found on any page")
+
+    # Detect cell pitch from the most common spacing between adjacent symbols
+    from collections import Counter
+    xs_by_page = {}
+    ys_by_page = {}
+    for cx, cy, _s, pi in all_syms:
+        xs_by_page.setdefault(pi, []).append(cx)
+        ys_by_page.setdefault(pi, []).append(cy)
+
+    x_spacings = []
+    y_spacings = []
+    for pi in xs_by_page:
+        sxs = sorted(set(round(x, 1) for x in xs_by_page[pi]))
+        sys_ = sorted(set(round(y, 1) for y in ys_by_page[pi]))
+        x_spacings.extend(round(sxs[i+1] - sxs[i], 1) for i in range(min(20, len(sxs)-1)))
+        y_spacings.extend(round(sys_[i+1] - sys_[i], 1) for i in range(min(20, len(sys_)-1)))
+
+    if not x_spacings or not y_spacings:
+        raise ValueError("Cannot detect grid spacing from chart pages")
+
+    cell_pitch = Counter(x_spacings).most_common(1)[0][0]
+    if cell_pitch < 1:
+        raise ValueError(f"Detected cell pitch too small: {cell_pitch}pt")
+
+    # For each chart page, find grid origin (row label numbers tell us the offset)
+    # Extract row/column labels to determine absolute positions
+    page_origins = {}  # page_idx → (col_offset, row_offset)
+
+    for page_idx in chart_pages:
+        page = plumber_pdf.pages[page_idx]
+        words = page.extract_words()
+
+        # Find the bounding box of symbol-only words on this page
+        page_syms = [(cx, cy) for cx, cy, _s, pi in all_syms if pi == page_idx]
+        if not page_syms:
+            continue
+        sym_min_x = min(x for x, _ in page_syms)
+        sym_min_y = min(y for _, y in page_syms)
+
+        # Look for column labels (numbers above the chart area)
+        # and row labels (numbers left of the chart area)
+        col_labels = []
+        row_labels = []
+        for w in words:
+            try:
+                n = int(w['text'])
+            except ValueError:
+                continue
+            wcx = (w['x0'] + w['x1']) / 2
+            wcy = (w['top'] + w['bottom']) / 2
+            # Column label: above chart, aligned with a symbol column
+            if wcy < sym_min_y - cell_pitch * 0.3 and 0 <= n <= grid_w:
+                col_rank = round((wcx - sym_min_x) / cell_pitch)
+                col_labels.append(n - col_rank)
+            # Row label: left of chart, aligned with a symbol row
+            if wcx < sym_min_x - cell_pitch * 0.3 and 0 <= n <= grid_h:
+                row_rank = round((wcy - sym_min_y) / cell_pitch)
+                row_labels.append(n - row_rank)
+
+        col_off = Counter(col_labels).most_common(1)[0][0] if col_labels else 0
+        row_off = Counter(row_labels).most_common(1)[0][0] if row_labels else 0
+        page_origins[page_idx] = (col_off, row_off, sym_min_x, sym_min_y)
+
+    # Build grid
+    result = ['BG'] * (grid_w * grid_h)
+    for cx, cy, sym, page_idx in all_syms:
+        if page_idx not in page_origins:
+            continue
+        col_off, row_off, origin_x, origin_y = page_origins[page_idx]
+        col = col_off + round((cx - origin_x) / cell_pitch)
+        row = row_off + round((cy - origin_y) / cell_pitch)
+        if 0 <= col < grid_w and 0 <= row < grid_h:
+            dmc = sym_to_dmc.get(sym)
+            if dmc:
+                result[row * grid_w + col] = dmc
+
+    # Build legend with actual stitch counts
+    db = get_db()
+    uid = current_user.id
+    _thread_info = {}
+    for brand in {e.get('brand', 'DMC') for e in legend_entries}:
+        brand_numbers = [e['dmc'] for e in legend_entries if e.get('brand', 'DMC') == brand]
+        _thread_info.update(_lookup_threads_by_number(db, uid, brand, brand_numbers))
+
+    dmc_hex = {}
+    for e in legend_entries:
+        row = _thread_info.get(e['dmc'])
+        dmc_hex[e['dmc']] = row['hex_color'].lstrip('#') if row and row['hex_color'] else 'cccccc'
+
+    legend_data = []
+    for e in legend_entries:
+        stitches = result.count(e['dmc'])
+        if stitches == 0:
+            continue
+        db_row = _thread_info.get(e['dmc'])
+        legend_data.append({
+            'dmc':      e['dmc'],
+            'name':     e['name'],
+            'hex':      '#' + dmc_hex.get(e['dmc'], 'cccccc'),
+            'stitches': stitches,
+            'status':   db_row['status']   if db_row else 'dont_own',
+            'category': db_row['category'] if db_row else '',
+        })
+    legend_data.sort(key=lambda x: -x['stitches'])
+
+    for i, entry in enumerate(legend_data):
+        entry['symbol'] = _PATTERN_SYMBOLS[i % len(_PATTERN_SYMBOLS)]
+
+    return {
+        'title':  plumber_pdf.pages[0].extract_text().split('\n')[0].strip() or 'Imported Pattern',
+        'grid_w': grid_w,
+        'grid_h': grid_h,
+        'grid':   result,
+        'legend': legend_data,
+    }
 
 
 # ── Shared validation / serialization helpers ────────────────────
@@ -926,9 +1112,15 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     # -- Cover --
     grid_w, grid_h, title = _pdf_parse_cover(plumber_pdf.pages[0])
 
-    # -- Legend (last page) --
+    # -- Legend (last page for image-based, page 2 for vector) --
     legend_entries = _pdf_parse_legend(plumber_pdf.pages[-1])
     if not legend_entries:
+        # Try Needlework Studio vector PDF format (legend on page 2)
+        if len(plumber_pdf.pages) >= 3:
+            vector_legend = _pdf_parse_legend_vector(plumber_pdf.pages[1])
+            if vector_legend:
+                app.logger.info("PDF import: detected Needlework Studio vector format (%d legend entries)", len(vector_legend))
+                return _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, vector_legend)
         raise ValueError("No thread entries found in legend (expected DMC or Anchor)")
 
     # Build color reference from app's thread database (with per-user status)
@@ -1328,8 +1520,8 @@ def _match_rgb_to_dmc(r, g, b):
     return None, None
 
 
-_PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※"
-_SYMBOLS_VERSION = "3"  # increment when _PATTERN_SYMBOLS changes
+_PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※○□▽▷◁▼◀▶⊙⊘⊛⊝⊟⊠⊡☆♣♠♥∇≈≡⊃⊂∩∪⊥∂Ω⌘⌂☼✦✶⊤µ"
+_SYMBOLS_VERSION = "4"  # increment when _PATTERN_SYMBOLS changes
 
 # --- User preferences ---
 _DEFAULT_PREFS = {
@@ -2628,7 +2820,7 @@ def generate_image_pattern():
     try:
         grid_w = clamp(int(request.form.get('grid_width', 100)), 25, 250)
         grid_height_raw = int(request.form.get('grid_height', 0))
-        num_colors = clamp(int(request.form.get('num_colors', 15)), 5, 34)
+        num_colors = clamp(int(request.form.get('num_colors', 15)), 5, len(_PATTERN_SYMBOLS))
         dither = request.form.get('dither', 'true').lower() not in ('false', '0', 'no')
         contrast = clamp(float(request.form.get('contrast', 1.0)), 0.5, 2.0)
         brightness = clamp(float(request.form.get('brightness', 1.0)), 0.5, 1.5)
@@ -3648,7 +3840,8 @@ def json_to_pattern():
 @app.route('/oxs-to-pattern')
 @login_required
 def oxs_to_pattern():
-    return render_template('oxs-to-pattern.html')
+    return render_template('oxs-to-pattern.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
 
 
 @app.route('/create-pattern')
