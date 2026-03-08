@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/style.css">
-    <script src="../js/main.js?v=3"></script>
+    <link rel="stylesheet" href="../css/style.css?v=3">
+    <script src="../js/main.js?v=4"></script>
 </head>
 <body>
 
@@ -50,6 +50,11 @@
 
     <!-- Sidebar -->
     <aside class="wiki-sidebar">
+        <div class="search-wrapper sidebar-search">
+            <input type="text" class="search-input" placeholder="Search wiki…" aria-label="Search wiki" autocomplete="off">
+            <div class="search-results" role="listbox" aria-label="Search results"></div>
+        </div>
+
         <div class="sidebar-section">
             <div class="sidebar-label">User Guide</div>
             <a href="getting-started.html" class="sidebar-link">Getting Started</a>
