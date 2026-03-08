@@ -1279,8 +1279,8 @@ def _match_rgb_to_dmc(r, g, b):
     return None, None
 
 
-_PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※"
-_SYMBOLS_VERSION = "3"  # increment when _PATTERN_SYMBOLS changes
+_PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※○□▽▷◁▼◀▶⊙⊘⊛⊝⊟⊠⊡☆♣♠♥∇≈≡⊃⊂∩∪⊥∂Ω⌘⌂☼✦✶⊤µ"
+_SYMBOLS_VERSION = "4"  # increment when _PATTERN_SYMBOLS changes
 
 # --- User preferences ---
 _DEFAULT_PREFS = {
