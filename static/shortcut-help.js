@@ -7,7 +7,7 @@
         { key: '?',      desc: 'Show this help' },
         { key: 'F',      desc: 'Toggle fullscreen / zen mode' },
         { key: 'M',      desc: 'Toggle stitch marking mode' },
-        { key: ', / .',   desc: 'Previous / next legend color' },
+        { key: '\u2190\u2191\u2192\u2193 , .',   desc: 'Cycle legend color' },
         { key: 'G',      desc: 'Go to row / column' },
         { key: 'Esc',    desc: 'Exit fullscreen · clear highlight · close search' },
         { key: 'Scroll', desc: 'Zoom in / out' },

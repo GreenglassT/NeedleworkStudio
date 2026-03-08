@@ -3070,16 +3070,16 @@ function createPatternEditor(config) {
         const _skIdx = parseInt(e.key) - 1;
         if (_skIdx >= 0 && _skIdx < _stitchKeys.length) { _setTool(_stitchKeys[_skIdx]); return true; }
         if (e.key === '`') { _toggleHalfDir(); return true; }
-        // Color cycling: , = prev, . = next
-        if (e.key === ',' || e.key === '.') {
-            const pd = getPatternData();
-            if (!pd || !pd.legend) return false;
-            const colors = pd.legend.filter(c => c.dmc !== 'BG');
-            if (!colors.length) return false;
-            const idx = colors.findIndex(c => String(c.dmc) === String(activeDmc));
-            const dir = e.key === '.' ? 1 : -1;
-            const next = colors[(idx + dir + colors.length) % colors.length];
-            if (next) _setActiveColor(next.dmc);
+        // Color cycling: , / . / Arrow keys (follows visible legend/key order)
+        if (e.key === ',' || e.key === '.' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            const rows = [...document.querySelectorAll('.legend-row[data-dmc], .key-row[data-dmc]')];
+            if (!rows.length) return false;
+            const dmcs = rows.map(r => r.dataset.dmc);
+            const idx = dmcs.indexOf(String(activeDmc));
+            const dir = (e.key === '.' || e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+            const nextIdx = idx < 0 ? 0 : (idx + dir + dmcs.length) % dmcs.length;
+            _setActiveColor(dmcs[nextIdx]);
+            rows[nextIdx].scrollIntoView({ block: 'nearest' });
             return true;
         }
         return false;

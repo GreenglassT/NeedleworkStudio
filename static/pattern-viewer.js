@@ -48,6 +48,8 @@ function zenMenuAction(action) {
     if (action === 'mark-complete') {
         toggleCellMarkMode();
         _syncZenMenuLabels();
+    } else if (action === 'goto') {
+        openGotoPanel();
     } else if (action === 'view-mode') {
         toggleViewMode();
         _syncZenMenuLabels();
@@ -308,17 +310,24 @@ function renderMain() {
         }
     }
 
-    // Place markers — bright gold borders, topmost layer
+    // Place markers — double-outline borders, topmost layer
     if (markedCells.size > 0) {
         ctx.save();
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = Math.max(2, Math.min(3, cellPx * 0.15));
-        const hw = ctx.lineWidth / 2;
+        const outerLw = Math.max(3, Math.min(5, cellPx * 0.2));
+        const innerLw = Math.max(2, Math.min(3, cellPx * 0.12));
+        const ohw = outerLw / 2, ihw = innerLw / 2;
         for (const key of markedCells) {
             const parts = key.split(',');
             const c = Number(parts[0]), r = Number(parts[1]);
-            ctx.strokeRect(gutX + c * cellPx + hw, gutY + r * cellPx + hw,
-                           cellPx - ctx.lineWidth, cellPx - ctx.lineWidth);
+            const cx = gutX + c * cellPx, cy = gutY + r * cellPx;
+            // Outer dark shadow
+            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            ctx.lineWidth = outerLw;
+            ctx.strokeRect(cx + ohw, cy + ohw, cellPx - outerLw, cellPx - outerLw);
+            // Inner bright magenta
+            ctx.strokeStyle = '#FF4081';
+            ctx.lineWidth = innerLw;
+            ctx.strokeRect(cx + ihw, cy + ihw, cellPx - innerLw, cellPx - innerLw);
         }
         ctx.restore();
     }
@@ -1183,7 +1192,7 @@ document.getElementById('canvas-area').addEventListener('wheel', function(e) {
         const rect   = this.getBoundingClientRect();
         const mx     = e.clientX - rect.left;
         const my     = e.clientY - rect.top;
-        const factor = e.deltaY < 0 ? 1.06 : 1 / 1.06;
+        const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
         panX   = mx - (mx - panX) * factor;
         panY   = my - (my - panY) * factor;
         scale  = Math.max(0.05, Math.min(MAX_CELL_PX / cellPx, scale * factor));
@@ -1424,7 +1433,7 @@ function exitZenMode() {
 function _updateZenUI() {
     const btn = document.getElementById('zen-btn');
     if (btn) {
-        btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : 'Zen Mode';
+        btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : '<i class="ti ti-maximize"></i> Zen Mode';
         btn.title = zenMode ? 'Exit Zen (F)' : 'Zen Mode (F)';
     }
     // Drive zen menu button visibility
@@ -1592,18 +1601,19 @@ document.addEventListener('keydown', function(e) {
             return;
         }
     }
-    // , / . — cycle legend highlight (viewer only)
-    if ((e.key === ',' || e.key === '.') && !inInput && !editMode) {
-        if (!patternData || !patternData.legend) return;
-        const colors = patternData.legend.filter(c => c.dmc !== 'BG');
-        if (!colors.length) return;
-        const idx = colors.findIndex(c => String(c.dmc) === String(highlightDmc));
-        const dir = e.key === '.' ? 1 : -1;
-        const nextIdx = idx < 0 ? 0 : (idx + dir + colors.length) % colors.length;
-        applyHighlight(colors[nextIdx].dmc);
-        // Scroll the legend row into view
-        const row = document.querySelector(`.legend-row[data-dmc="${colors[nextIdx].dmc}"]`);
-        if (row) row.scrollIntoView({ block: 'nearest' });
+    // , / . / Arrow keys — cycle legend highlight (viewer only, follows current sort order)
+    const _isCycleKey = e.key === ',' || e.key === '.' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+    if (_isCycleKey && !inInput && !editMode) {
+        e.preventDefault();
+        // Read visible order from rendered legend rows (respects sort + filter)
+        const rows = [...document.querySelectorAll('#legend-scroll .legend-row')];
+        if (!rows.length) return;
+        const dmcs = rows.map(r => r.dataset.dmc);
+        const idx = dmcs.indexOf(String(highlightDmc));
+        const dir = (e.key === '.' || e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+        const nextIdx = idx < 0 ? 0 : (idx + dir + dmcs.length) % dmcs.length;
+        applyHighlight(dmcs[nextIdx]);
+        rows[nextIdx].scrollIntoView({ block: 'nearest' });
         return;
     }
 });
@@ -1706,18 +1716,20 @@ window.addEventListener('beforeunload', function() {
 
 /* ——— VIEW MODE TOGGLE (chart / thread) ——— */
 function toggleViewMode() {
-    viewMode = viewMode === 'chart' ? 'thread' : 'chart';
+    setViewMode(viewMode === 'chart' ? 'thread' : 'chart');
+}
+function setViewMode(mode) {
+    viewMode = mode;
     localStorage.setItem('pv-viewMode', viewMode);
     updateViewModeBtn();
     renderMain();
     renderLegend();
 }
 function updateViewModeBtn() {
-    const btn = document.getElementById('view-mode-btn');
-    if (!btn) return;
-    btn.innerHTML = viewMode === 'chart'
-        ? '<i class="ti ti-needle"></i> Thread View'
-        : '<i class="ti ti-grid-dots"></i> Chart View';
+    const chartBtn = document.getElementById('view-chart-btn');
+    const threadBtn = document.getElementById('view-thread-btn');
+    if (chartBtn) chartBtn.classList.toggle('active', viewMode === 'chart');
+    if (threadBtn) threadBtn.classList.toggle('active', viewMode === 'thread');
 }
 
 /* ——— INIT ——— */

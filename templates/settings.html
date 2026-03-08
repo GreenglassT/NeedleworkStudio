@@ -20,12 +20,7 @@
         }
 
         .section-title {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text);
             margin-bottom: 20px;
-            letter-spacing: .02em;
         }
 
         .settings-row {
@@ -150,15 +145,10 @@
             flex-wrap: wrap;
         }
 
+        /* Settings buttons: smaller sizing, outline style as default */
         .btn {
-            font-family: 'IBM Plex Mono', monospace;
             font-size: 11px;
-            letter-spacing: .06em;
             padding: 9px 18px;
-            border-radius: var(--r);
-            cursor: pointer;
-            transition: all var(--t);
-            white-space: nowrap;
             border: 1px solid var(--gold-dim);
             background: transparent;
             color: var(--gold);
@@ -167,28 +157,22 @@
             background: var(--gold-dim);
             color: var(--text);
         }
-        .btn:disabled {
-            opacity: 0.4;
-            cursor: default;
-        }
 
         .btn-primary {
-            background: var(--gold);
             border-color: var(--gold);
-            color: var(--bg);
-            font-weight: 600;
         }
         .btn-primary:hover {
             background: var(--gold-hover);
             border-color: var(--gold-hover);
+            color: var(--bg);
         }
 
         .btn-danger {
-            border-color: var(--status-dont);
-            color: var(--status-dont);
+            border-color: var(--skip);
+            color: var(--skip);
         }
         .btn-danger:hover {
-            background: var(--status-dont);
+            background: var(--skip);
             color: var(--bg);
         }
 
@@ -202,13 +186,13 @@
         }
         .feedback.ok {
             display: block;
-            background: rgba(76, 175, 80, .12);
-            color: #4caf50;
+            background: var(--owned-bg);
+            color: var(--owned);
         }
         .feedback.err {
             display: block;
-            background: rgba(244, 67, 54, .12);
-            color: #f44336;
+            background: var(--skip-bg);
+            color: var(--skip-hover);
         }
 
         .save-indicator {
@@ -243,7 +227,7 @@
 
         <!-- Stitching Defaults -->
         <section class="settings-section">
-            <h2 class="section-title">Stitching Defaults <span class="save-indicator" id="ind-stitch">Saved</span></h2>
+            <h2 class="section-title section-title-sm">Stitching Defaults <span class="save-indicator" id="ind-stitch">Saved</span></h2>
             <p class="section-desc">Default values for the Project Materials Calculator</p>
             <div class="settings-row">
                 <div class="settings-field">
@@ -291,7 +275,7 @@
 
         <!-- Display -->
         <section class="settings-section">
-            <h2 class="section-title">Display <span class="save-indicator" id="ind-display">Saved</span></h2>
+            <h2 class="section-title section-title-sm">Display <span class="save-indicator" id="ind-display">Saved</span></h2>
             <div class="settings-row">
                 <div class="settings-field">
                     <label>Theme</label>
@@ -332,7 +316,7 @@
 
         <!-- Editor -->
         <section class="settings-section">
-            <h2 class="section-title">Editor <span class="save-indicator" id="ind-editor">Saved</span></h2>
+            <h2 class="section-title section-title-sm">Editor <span class="save-indicator" id="ind-editor">Saved</span></h2>
             <div class="settings-row">
                 <div class="settings-field">
                     <label>Mirror Mode</label>
@@ -358,7 +342,7 @@
 
         <!-- Inventory -->
         <section class="settings-section">
-            <h2 class="section-title">Inventory <span class="save-indicator" id="ind-inventory">Saved</span></h2>
+            <h2 class="section-title section-title-sm">Inventory <span class="save-indicator" id="ind-inventory">Saved</span></h2>
             <div class="settings-row">
                 <div class="settings-field">
                     <label>Default Thread Brand</label>
@@ -372,7 +356,7 @@
 
         <!-- Account -->
         <section class="settings-section">
-            <h2 class="section-title">Account</h2>
+            <h2 class="section-title section-title-sm">Account</h2>
 
             <label class="section-label">Change Password</label>
             <div class="pw-form" id="pw-form">
@@ -399,7 +383,7 @@
         </section>
 
         <section class="settings-section">
-            <h2 class="section-title">About</h2>
+            <h2 class="section-title section-title-sm">About</h2>
             <p class="section-desc" style="margin-bottom:16px">Needlework Studio is free, open-source software.</p>
             <div class="btn-row" style="gap:10px; flex-wrap:wrap">
                 <a href="https://ko-fi.com/greenglasst" target="_blank" rel="noopener" class="btn"><i class="ti ti-heart"></i> Support on Ko-fi</a>

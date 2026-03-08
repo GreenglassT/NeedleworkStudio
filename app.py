@@ -1230,6 +1230,7 @@ _DEFAULT_PREFS = {
     'dmc-calc-efficiency':  'average',
     'dmc-calc-fabric-count': 14,
     'inventoryBrand':       'DMC',
+    'gallery-density':      4,
 }
 
 _PREF_VALIDATORS = {
@@ -1245,6 +1246,7 @@ _PREF_VALIDATORS = {
     'dmc-calc-efficiency':  lambda v: v in ('inefficient', 'average', 'efficient'),
     'dmc-calc-fabric-count': lambda v: v in (6, 8, 11, 14, 16, 18, 20, 22, 25, 28, 32),
     'inventoryBrand':       lambda v: v in ('DMC', 'Anchor', ''),
+    'gallery-density':      lambda v: isinstance(v, int) and 2 <= v <= 8,
 }
 
 

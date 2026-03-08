@@ -233,6 +233,26 @@
             line-height: 1.7;
         }
 
+        .card-notes-row {
+            margin-top: 4px; cursor: pointer;
+            font-size: 11px; color: var(--text-muted); line-height: 1.4;
+            display: inline-flex; align-items: center; gap: 3px;
+            max-width: 100%;
+        }
+        .card-notes-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .card-notes-row:hover { color: var(--text); }
+        .card-notes-row .ti { font-size: 13px; flex-shrink: 0; }
+        .card-notes-row.has-notes { color: var(--gold); }
+        .card-notes-row.has-notes:hover { color: var(--gold-dim); }
+        .card-notes-input {
+            display: none; width: 100%; margin-top: 4px; padding: 4px 6px;
+            font: 11px/1.4 'IBM Plex Mono', monospace; resize: vertical;
+            min-height: 36px; max-height: 80px;
+            background: var(--bg); color: var(--text);
+            border: 1px solid var(--border); border-radius: 4px;
+        }
+        .card-notes-input:focus { border-color: var(--gold); outline: none; }
+
         .card-actions {
             display: flex;
             gap: 6px;
@@ -423,7 +443,7 @@
             border-radius: var(--r);
             font-family: 'IBM Plex Mono', monospace;
             font-size: 11px;
-            color: #d07070;
+            color: var(--skip-hover);
             letter-spacing: .02em;
         }
 
@@ -485,6 +505,18 @@
         }
 
         .toolbar-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+
+        .grid-density-label {
+            display: flex; align-items: center; gap: 6px;
+            color: var(--text-dim); font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px; cursor: default; white-space: nowrap;
+        }
+        .grid-density-slider {
+            width: 80px; accent-color: var(--gold); cursor: pointer;
+        }
+        .grid-density-val {
+            min-width: 12px; text-align: center;
+        }
         .select-btn {
             padding: 5px 14px; border: 1px solid var(--border-2); border-radius: var(--r);
             background: transparent; color: var(--text-dim);
@@ -593,7 +625,7 @@
             width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
             cursor:pointer; font-size:16px; transition:all var(--t); line-height:1;
         }
-        .modal-close:hover { background:var(--skip-bg); border-color:var(--skip); color:#d07070; }
+        .modal-close:hover { background:var(--skip-bg); border-color:var(--skip); color:var(--skip-hover); }
         .modal-body { overflow-y:auto; padding:10px 20px; flex:1; }
         .modal-ft { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
         .state-msg { display:flex; flex-direction:column; align-items:center; gap:10px; padding:40px 20px; color:var(--text-muted); }
@@ -797,6 +829,12 @@
             <button class="select-btn" onclick="openTagMgmt()"><i class="ti ti-tag"></i> Tags</button>
             <button class="select-btn" id="backup-all-btn" onclick="backupAll()" title="Download all patterns as ZIP"><i class="ti ti-download"></i> Backup All</button>
             <button class="select-btn" onclick="openCrossShoppingList()" title="Threads needed across all patterns"><i class="ti ti-shopping-cart"></i> Shopping List</button>
+            <div class="toolbar-sep"></div>
+            <label class="grid-density-label" title="Cards per row">
+                <i class="ti ti-layout-grid"></i>
+                <input type="range" class="grid-density-slider" id="grid-density" min="2" max="8" step="1" value="4">
+                <span class="grid-density-val" id="grid-density-val">4</span>
+            </label>
         </div>
 
         <div class="tag-filter-row" id="tag-filter-row" style="display:none"></div>
@@ -918,6 +956,33 @@
         document.addEventListener('click', () => {
             document.getElementById('new-pattern-menu').classList.remove('open');
             closeAllCardMenus();
+        });
+
+        /* ——— GRID DENSITY ——— */
+        const _densitySlider = document.getElementById('grid-density');
+        const _densityVal = document.getElementById('grid-density-val');
+        const _gallery = document.getElementById('gallery');
+        function applyGridDensity(n) {
+            _gallery.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+            _densityVal.textContent = n;
+        }
+        (function initDensity() {
+            const saved = (window.__PREFS__ || {})['gallery-density'];
+            if (saved) {
+                const n = Math.max(2, Math.min(8, parseInt(saved, 10) || 4));
+                _densitySlider.value = n;
+                applyGridDensity(n);
+            }
+        })();
+        _densitySlider.addEventListener('input', function() {
+            applyGridDensity(parseInt(this.value, 10));
+        });
+        _densitySlider.addEventListener('change', function() {
+            fetch('/api/preferences', {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({'gallery-density': parseInt(this.value, 10)})
+            });
         });
 
         /* ——— GALLERY ——— */
@@ -1104,7 +1169,13 @@
                                    onkeydown="nameInputKey(event, this, '${p.slug}')">
                         </div>
                         <div class="card-meta">${p.grid_w} × ${p.grid_h} &middot; ${p.color_count} colors</div>
-                        <div class="card-meta">${dateStr}${p.notes ? ' <i class="ti ti-notes" title="' + escHtml(p.notes.slice(0,100)) + '" style="color:var(--gold);font-size:13px;vertical-align:middle"></i>' : ''}</div>${_renderCardTags(p)}${progressHtml}
+                        <div class="card-meta">${dateStr}</div>
+                        <div class="card-notes-row${p.notes ? ' has-notes' : ''}" onclick="startNoteEdit(event, '${p.slug}')" title="${p.notes ? escHtml(p.notes.slice(0,200)) : 'Add notes'}">
+                            <i class="ti ti-notes"></i><span>${p.notes ? escHtml(p.notes.slice(0,60)) : 'Add notes\u2026'}</span>
+                        </div>
+                        <textarea class="card-notes-input" id="notes-${p.slug}" maxlength="2000"
+                                  onblur="finishNoteEdit('${p.slug}')"
+                                  onkeydown="if(event.key==='Escape'){this.blur();event.stopPropagation()}">${escHtml(p.notes||'')}</textarea>${_renderCardTags(p)}${progressHtml}
                     </div>
                     <div class="card-actions">
                         <select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
@@ -1222,6 +1293,44 @@
                 }
             } catch (_) { toast('Rename failed.', { type: 'error' }); }
             inputEl._renaming = false;
+        }
+
+        /* ——— CARD NOTES ——— */
+        function startNoteEdit(event, slug) {
+            event.stopPropagation();
+            const row = event.currentTarget;
+            const ta = document.getElementById('notes-' + slug);
+            if (!ta) return;
+            row.style.display = 'none';
+            ta.style.display = 'block';
+            ta.focus();
+        }
+        async function finishNoteEdit(slug) {
+            const ta = document.getElementById('notes-' + slug);
+            if (!ta) return;
+            const val = ta.value.trim();
+            ta.style.display = 'none';
+            // Restore the row display
+            const card = ta.closest('.pattern-card');
+            const row = card?.querySelector('.card-notes-row');
+            if (row) row.style.display = '';
+            // Skip if unchanged
+            const p = allPatterns.find(x => x.slug === slug);
+            if (p && p.notes === val) return;
+            if (p) p.notes = val;
+            // Update the row display
+            if (row) {
+                row.className = 'card-notes-row' + (val ? ' has-notes' : '');
+                row.innerHTML = '<i class="ti ti-notes"></i><span>' + (val ? escHtml(val.slice(0, 60)) : 'Add notes\u2026') + '</span>';
+                row.title = val ? escHtml(val.slice(0, 200)) : 'Add notes';
+            }
+            try {
+                await fetch('/api/saved-patterns/' + slug, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+                    body: JSON.stringify({ notes: val }),
+                });
+            } catch (e) { console.error('Note save failed:', e); toast('Could not save notes.', { type: 'error' }); }
         }
 
         /* ——— DELETE ——— */
