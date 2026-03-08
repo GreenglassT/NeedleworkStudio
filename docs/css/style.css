@@ -132,7 +132,16 @@ html { scroll-padding-top: 80px; }
 .search-wrapper {
     position: relative;
     flex: 0 1 260px;
-    margin-left: auto;
+}
+.nav .search-wrapper {
+    flex: 0 1 200px;
+    margin: 0 4px;
+}
+.nav .search-wrapper .search-results {
+    left: auto;
+    right: 0;
+    width: min(340px, calc(100vw - 32px));
+    min-width: 0;
 }
 
 .search-input {
@@ -247,16 +256,12 @@ html { scroll-padding-top: 80px; }
 }
 
 @media (max-width: 768px) {
-    .search-wrapper:not(.sidebar-search) {
-        flex: 1 1 0;
-        min-width: 0;
-        margin-right: 8px;
+    .nav .search-wrapper {
+        flex: none;
+        width: calc(100% - 40px);
+        margin: 10px 20px;
     }
-    .search-wrapper:not(.sidebar-search) .search-results {
-        position: fixed;
-        top: 64px;
-        left: 8px;
-        right: 8px;
+    .nav .search-wrapper .search-results {
         min-width: auto;
     }
     .hamburger { display: block; }
