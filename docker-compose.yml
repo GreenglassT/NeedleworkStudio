@@ -7,6 +7,8 @@ services:
       - needlework-data:/data
     environment:
       - PORT=6969
+      # Set ADMIN_USERNAME to promote a user to admin on startup
+      # - ADMIN_USERNAME=your_username
     restart: unless-stopped
 
 volumes:
