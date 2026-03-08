@@ -187,7 +187,7 @@
     border-color: var(--skip-border);
     color: var(--skip);
 }
-.sync-btn-action.danger:hover { border-color: var(--skip); color: #d07070; }
+.sync-btn-action.danger:hover { border-color: var(--skip); color: var(--skip-hover); }
 
 /* ── Sync Results ────────────────────────────────────────────── */
 .sync-results {

@@ -73,20 +73,47 @@
             align-items: center;
         }
 
+        /* Override shared .nav-link for compact viewer toolbar + button resets */
         .nav-link {
-            font-family: 'IBM Plex Mono', monospace;
             font-size: 11px;
-            color: var(--text-muted);
-            text-decoration: none;
             padding: 6px 11px;
-            border-radius: var(--r);
-            transition: color var(--t), background var(--t);
             letter-spacing: .04em;
             background: none;
             border: none;
             cursor: pointer;
         }
-        .nav-link:hover { color: var(--text); background: var(--surface-2); }
+
+        /* ——— VIEW MODE TOGGLE ——— */
+        .view-toggle {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+            align-self: center;
+        }
+        .view-toggle-btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            padding: 4px 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background var(--t), color var(--t);
+            letter-spacing: .04em;
+            white-space: nowrap;
+        }
+        .view-toggle-btn + .view-toggle-btn {
+            border-left: 1px solid var(--border);
+        }
+        .view-toggle-btn.active {
+            background: var(--gold);
+            color: #1a1208;
+        }
+        .view-toggle-btn:hover:not(.active) {
+            background: var(--surface-2);
+            color: var(--text);
+        }
 
         .calc-dropdown-wrap {
             position: relative;
@@ -125,14 +152,7 @@
         .calc-dropdown-menu a:last-child  { border-radius: 0 0 var(--r) var(--r); }
         .calc-dropdown-menu a:hover { color: var(--text); background: var(--surface-2); }
 
-        .theme-toggle-btn {
-            background: var(--surface-2);
-            border: 1px solid var(--border-2);
-            border-radius: var(--r);
-            padding: 5px 10px;
-            transition: border-color var(--t), background var(--t);
-        }
-        .theme-toggle-btn:hover { border-color: var(--gold-dim); background: var(--surface); }
+        /* .theme-toggle-btn — defined in tokens.css */
 
         /* ——— MAIN LAYOUT ——— */
         .viewer-main {
@@ -466,6 +486,7 @@
         }
 
         body.edit-mode-on #cell-mark-btn,
+        body.edit-mode-on #marker-mode-btn,
         body.edit-mode-on .cell-progress-wrap { display: none; }
 
         /* ——— ZEN / FULLSCREEN MODE ——— */
@@ -558,6 +579,47 @@
         .zen-exit-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
         body.zen-mode .zen-exit-btn { display: flex; }
 
+        /* ——— MARKER MODE (toolbar) ——— */
+        #marker-mode-btn.active {
+            color: var(--gold);
+            background: rgba(200,145,58,0.12);
+            border-color: var(--gold-dim);
+        }
+
+        /* ——— PATTERN NOTES ——— */
+        #notes-toggle.has-notes { color: var(--gold); }
+        .notes-bar {
+            padding: 4px 16px 6px; background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        .notes-input {
+            width: 100%; min-height: 48px; max-height: 120px; resize: vertical;
+            background: var(--bg); color: var(--text); border: 1px solid var(--border);
+            border-radius: 6px; padding: 6px 8px; font: 12px/1.4 'IBM Plex Mono', monospace;
+        }
+        .notes-input:focus { border-color: var(--gold); outline: none; }
+        .notes-charcount { font-size: 10px; color: var(--text-muted); float: right; margin-top: 2px; }
+
+        /* ——— GOTO PANEL ——— */
+        .goto-panel {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 50; display: flex; align-items: center; gap: 6px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; padding: 6px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.25);
+        }
+        .goto-panel label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+        .goto-input {
+            width: 60px; padding: 3px 6px; font: 12px/1.3 'IBM Plex Mono', monospace;
+            background: var(--bg); color: var(--text); border: 1px solid var(--border);
+            border-radius: 4px; text-align: center;
+        }
+        .goto-input:focus { border-color: var(--gold); outline: none; }
+        .goto-go-btn {
+            padding: 3px 10px; font-size: 12px; cursor: pointer;
+            background: var(--gold); color: #1a1a1a; border: none; border-radius: 4px;
+        }
+        .goto-close-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; padding: 0 2px; }
+
         /* ——— LEGEND TOGGLE (default hidden, shown on mobile) ——— */
         .legend-toggle-btn { display: none; }
 
@@ -618,31 +680,45 @@
         <span class="timer-display" id="timer-display" title="Time spent on this pattern" style="display:none"></span>
         <span class="timer-display" id="stats-display" title="Estimated remaining time" style="display:none"></span>
     </div>
+    <div class="notes-bar" id="notes-bar" style="display:none">
+        <textarea class="notes-input" id="notes-input" maxlength="2000" placeholder="Add notes about this pattern…"
+                  oninput="onNotesInput()" onblur="saveNotes()"></textarea>
+        <span class="notes-charcount" id="notes-charcount">0 / 2000</span>
+    </div>
     <div class="hd-row hd-row-actions">
         <div class="hd-tools">
+            <div class="view-toggle" id="view-toggle">
+                <button class="view-toggle-btn" id="view-chart-btn" onclick="setViewMode('chart')"><i class="ti ti-grid-dots"></i> Chart</button>
+                <button class="view-toggle-btn" id="view-thread-btn" onclick="setViewMode('thread')"><i class="ti ti-needle"></i> Thread</button>
+            </div>
+            <script>!function(){var m=localStorage.getItem('pv-viewMode');if(m!=='thread')m='chart';var el=document.getElementById(m==='thread'?'view-thread-btn':'view-chart-btn');if(el)el.classList.add('active');}();</script>
+            <button class="nav-link" id="zen-btn" onclick="toggleZenMode()" title="Zen Mode (F)" aria-label="Zen mode"><i class="ti ti-maximize"></i> Zen Mode</button>
             <button class="nav-link" id="cell-mark-btn" onclick="toggleCellMarkMode()"
                     title="Mark stitched cells (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i> Mark Complete</button>
-            <button class="nav-link" id="view-mode-btn" onclick="toggleViewMode()"><i class="ti ti-needle"></i> Thread View</button>
-            <script>!function(){var m=localStorage.getItem('pv-viewMode'),b=document.getElementById('view-mode-btn');if(m==='thread'&&b)b.innerHTML='<i class="ti ti-grid-dots"></i> Chart View';}();</script>
+            <button class="nav-link" id="marker-mode-btn" onclick="toggleMarkerMode()"
+                    title="Place Marker (B)" aria-label="Place marker"><i class="ti ti-map-pin-2"></i> Place Marker</button>
+            <button class="nav-link" onclick="openGotoPanel()"
+                    title="Jump to row/column (G)" aria-label="Go to row/column"><i class="ti ti-map-pin"></i> Go to</button>
+            <button class="nav-link" id="notes-toggle" onclick="toggleNotesPanel()"
+                    title="Pattern notes" style="display:none"><i class="ti ti-notes"></i> Notes</button>
             <div class="calc-dropdown-wrap">
-                <button class="nav-link" id="calc-toggle" onclick="toggleCalcMenu(event)">Calculate Materials <i class="ti ti-chevron-down"></i></button>
+                <button class="nav-link" id="calc-toggle" onclick="toggleCalcMenu(event)"><i class="ti ti-calculator"></i> Calculate Materials <i class="ti ti-chevron-down"></i></button>
                 <div class="calc-dropdown-menu" id="calc-menu">
-                    <a href="/pattern-calculator?pattern={{ pattern_slug }}">Thread Needs</a>
-                    <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric">Fabric Size</a>
+                    <a href="/pattern-calculator?pattern={{ pattern_slug }}"><i class="ti ti-needle-thread"></i> Thread Needs</a>
+                    <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric"><i class="ti ti-ruler"></i> Fabric Size</a>
                 </div>
             </div>
-            <button class="nav-link" id="edit-toggle-btn" onclick="toggleEditMode()">Edit Pattern</button>
-            <button class="nav-link" id="cancel-btn" onclick="cancelEdit()" style="display:none">Cancel</button>
-            <button class="nav-link" id="save-btn" onclick="savePattern()" style="display:none;color:var(--gold)">Save</button>
+            <button class="nav-link" id="edit-toggle-btn" onclick="toggleEditMode()"><i class="ti ti-edit"></i> Edit Pattern</button>
+            <button class="nav-link" id="cancel-btn" onclick="cancelEdit()" style="display:none"><i class="ti ti-x"></i> Cancel</button>
+            <button class="nav-link" id="save-btn" onclick="savePattern()" style="display:none;color:var(--gold)"><i class="ti ti-device-floppy"></i> Save</button>
         </div>
         <div class="hd-utils">
             <button class="nav-link" id="help-btn"
                     onclick="showShortcutHelp(typeof editMode!=='undefined'&&editMode&&typeof editor!=='undefined'&&editor&&editor.isActive())"
                     title="Keyboard shortcuts (?)" aria-label="Show keyboard shortcuts"><i class="ti ti-keyboard"></i></button>
-            <button class="nav-link" id="zen-btn" onclick="toggleZenMode()" title="Zen Mode (F)" aria-label="Zen mode">Zen Mode</button>
             <button class="nav-link theme-toggle-btn" id="theme-toggle"
                     onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
-            <a href="/logout" class="nav-link danger">Logout</a>
+            <form action="/logout" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link danger" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit">Logout</button></form>
         </div>
     </div>
 </header>
@@ -668,6 +744,12 @@
             <button class="zoom-btn" id="zoom-out-btn" title="Zoom Out" aria-label="Zoom out"><i class="ti ti-zoom-out"></i></button>
         </div>
         <div class="kb-hint">Scroll to zoom · Drag to pan · Click legend to highlight · ? for shortcuts</div>
+        <div class="goto-panel" id="goto-panel" style="display:none">
+            <label>Row <input type="number" id="goto-row" min="1" step="1" class="goto-input"></label>
+            <label>Col <input type="number" id="goto-col" min="1" step="1" class="goto-input"></label>
+            <button class="goto-go-btn" onclick="goToPosition()">Go</button>
+            <button class="goto-close-btn" onclick="closeGotoPanel()" aria-label="Close"><i class="ti ti-x"></i></button>
+        </div>
     </div>
 
     <div class="legend-resize-handle" id="legend-resize-handle"></div>
@@ -704,11 +786,17 @@
             <i class="ti ti-menu-2"></i>
         </button>
         <div class="calc-dropdown-menu" id="zen-menu">
+            <button class="zen-menu-item" onclick="zenMenuAction('view-mode')">
+                <i class="ti ti-needle" id="zen-view-icon"></i> <span id="zen-view-label">Thread View</span>
+            </button>
             <button class="zen-menu-item" onclick="zenMenuAction('mark-complete')">
                 <i class="ti ti-pencil-check"></i> <span id="zen-mark-label">Mark Complete</span>
             </button>
-            <button class="zen-menu-item" onclick="zenMenuAction('view-mode')">
-                <i class="ti ti-needle" id="zen-view-icon"></i> <span id="zen-view-label">Thread View</span>
+            <button class="zen-menu-item" onclick="zenMenuAction('place-marker')">
+                <i class="ti ti-map-pin-2"></i> <span id="zen-marker-label">Place Marker</span>
+            </button>
+            <button class="zen-menu-item" onclick="zenMenuAction('goto')">
+                <i class="ti ti-map-pin"></i> Go to Row/Col
             </button>
             <div class="menu-divider"></div>
             <a href="/pattern-calculator?pattern={{ pattern_slug }}">

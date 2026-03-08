@@ -103,7 +103,7 @@
     border: 1px solid var(--skip);
     border-radius: var(--r);
     padding: var(--err-pad, 14px 18px);
-    color: #d07070;
+    color: var(--skip-hover);
     font-family: 'IBM Plex Mono', monospace;
     font-size: var(--err-fs, 12px);
     margin-top: var(--err-mt, 20px);
@@ -127,6 +127,16 @@
 .info-note strong { color: var(--text); display: block; margin-bottom: 2px; font-size: .9rem; }
 .info-note p { margin: 0; }
 .info-note a { color: var(--accent); text-decoration: underline; }
+
+/* ── Section Title ───────────────────────────────────────────── */
+.section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: .01em;
+}
+.section-title-sm { font-size: 18px; letter-spacing: .02em; }
 
 /* ── Page Layout ─────────────────────────────────────────────── */
 .page-wrap {

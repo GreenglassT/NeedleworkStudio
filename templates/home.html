@@ -7,43 +7,50 @@
     <style>
         /* ——— MAIN LAYOUT ——— */
         .main {
-            max-width: 1600px;
+            max-width: 1640px;
             margin: 0 auto;
             padding: 20px 28px 80px;
         }
 
-        /* ——— STATS ROW ——— */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            margin-bottom: 40px;
-            padding-bottom: 32px;
+        /* ——— STATS STRIP ——— */
+        .stats-strip {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
             border-bottom: 1px solid var(--border);
         }
 
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--r-lg);
-            padding: 22px 24px;
+        .stat-item {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
             text-decoration: none;
             color: inherit;
-            transition: border-color var(--t), background var(--t);
+            padding: 6px 12px;
+            border-radius: var(--r);
+            transition: background var(--t);
         }
 
-        .stat-card:hover {
-            border-color: var(--border-2);
-            background: var(--surface-2);
+        .stat-item:hover { background: var(--surface-2); }
+
+        .stat-item + .stat-item::before {
+            content: '';
+            display: block;
+            width: 1px;
+            height: 14px;
+            background: var(--border);
+            margin-right: 6px;
+            align-self: center;
+            flex-shrink: 0;
         }
 
         .stat-value {
-            display: block;
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 36px;
-            font-weight: 500;
+            font-size: 26px;
+            font-weight: 600;
             line-height: 1;
-            margin-bottom: 8px;
         }
 
         .stat-value.v-owned { color: var(--owned); }
@@ -52,9 +59,8 @@
 
         .stat-label {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 9px;
-            letter-spacing: .14em;
-            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: .06em;
             color: var(--text-dim);
         }
 
@@ -67,12 +73,7 @@
             margin-bottom: 12px;
         }
 
-        .section-title {
-            font-size: 22px;
-            font-weight: 600;
-            color: var(--text);
-            letter-spacing: .01em;
-        }
+        /* .section-title — defined in components.css */
 
         .section-link {
             font-family: 'IBM Plex Mono', monospace;
@@ -89,7 +90,7 @@
         /* ——— RECENT PATTERNS ——— */
         .patterns-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 14px;
             margin-bottom: 40px;
             padding-bottom: 32px;
@@ -242,7 +243,7 @@
         /* ——— FEATURE CARDS ——— */
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 320px));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 14px;
         }
 
@@ -284,9 +285,34 @@
             line-height: 1.5;
         }
 
+        .feature-sublinks {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .feature-sublink {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .04em;
+            color: var(--gold);
+            text-decoration: none;
+            padding: 3px 10px;
+            border: 1px solid var(--border-2);
+            border-radius: 12px;
+            transition: background var(--t), border-color var(--t), color var(--t);
+        }
+
+        .feature-sublink:hover {
+            background: var(--gold-dim);
+            border-color: var(--gold-dim);
+            color: var(--text);
+        }
+
         /* ——— RESPONSIVE ——— */
         @media (max-width: 900px) {
-            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .stats-strip { flex-wrap: wrap; }
         }
 
         /* ——— Brand toggle as filter buttons ——— */
@@ -330,22 +356,22 @@
             </div>
             <a href="/inventory" class="section-link">View Inventory <i class="ti ti-arrow-right"></i></a>
         </div>
-        <div class="stats-row">
-            <a href="/inventory?status=owned" class="stat-card">
+        <div class="stats-strip">
+            <a href="/inventory?status=owned" class="stat-item">
                 <span class="stat-value v-owned" id="stat-owned">—</span>
                 <span class="stat-label">Owned</span>
             </a>
-            <a href="/inventory?status=need" class="stat-card">
+            <a href="/inventory?status=need" class="stat-item">
                 <span class="stat-value v-need" id="stat-need">—</span>
                 <span class="stat-label">Need</span>
             </a>
-            <a href="/inventory?status=dont_own" class="stat-card">
+            <a href="/inventory?status=dont_own" class="stat-item">
                 <span class="stat-value v-skip" id="stat-dont-own">—</span>
                 <span class="stat-label">Don't Own</span>
             </a>
-            <a href="/saved-patterns" class="stat-card">
+            <a href="/saved-patterns" class="stat-item">
                 <span class="stat-value" id="stat-patterns" style="color: var(--gold);">—</span>
-                <span class="stat-label">Saved Patterns</span>
+                <span class="stat-label">Patterns</span>
             </a>
         </div>
 
@@ -368,14 +394,24 @@
                 <div class="feature-name">Convert Image</div>
                 <div class="feature-desc">Turn any image into a cross-stitch pattern with DMC colors</div>
             </a>
-            <a href="/pdf-to-pattern" class="feature-card">
-                <div class="feature-icon"><i class="ti ti-file-text"></i></div>
-                <div class="feature-name">Import PDF</div>
-                <div class="feature-desc">Import a cross-stitch PDF chart into your pattern library</div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ti ti-file-import"></i></div>
+                <div class="feature-name">Import Pattern</div>
+                <div class="feature-desc">Import an existing pattern from a file</div>
+                <div class="feature-sublinks">
+                    <a href="/pdf-to-pattern" class="feature-sublink">PDF</a>
+                    <a href="/json-to-pattern" class="feature-sublink">JSON</a>
+                    <a href="/oxs-to-pattern" class="feature-sublink">OXS</a>
+                </div>
+            </div>
+            <a href="/create-pattern" class="feature-card">
+                <div class="feature-icon"><i class="ti ti-artboard"></i></div>
+                <div class="feature-name">Blank Canvas</div>
+                <div class="feature-desc">Start a new pattern from scratch on an empty grid</div>
             </a>
             <a href="/pattern-calculator" class="feature-card">
                 <div class="feature-icon"><i class="ti ti-calculator"></i></div>
-                <div class="feature-name">Project Materials Calculator</div>
+                <div class="feature-name">Materials Calculator</div>
                 <div class="feature-desc">Calculate thread needs, estimate skeins, or determine fabric size</div>
             </a>
         </div>
@@ -391,6 +427,7 @@
         function setBrand(brand) {
             currentBrand = brand;
             localStorage.setItem('inventoryBrand', brand);
+            fetch('/api/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inventoryBrand: brand }) });
             const seg = document.getElementById('brand-seg');
             seg.querySelectorAll('.brand-seg-btn').forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
             _positionIndicator(seg);
@@ -421,7 +458,11 @@
                 if (!resp.ok) throw new Error();
                 const patterns = await resp.json();
                 document.getElementById('stat-patterns').textContent = patterns.length;
-                const recent = patterns.slice(0, 4);
+                // Show exactly one row: calculate how many cards fit
+                const gridW = grid.clientWidth;
+                const minCard = 220, gap = 14;
+                const cols = Math.max(1, Math.floor((gridW + gap) / (minCard + gap)));
+                const recent = patterns.slice(0, cols);
 
                 if (recent.length === 0) {
                     grid.innerHTML = `

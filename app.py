@@ -16,6 +16,7 @@ import zipfile
 import logging
 import secrets
 import string
+import hashlib
 from datetime import datetime, timedelta
 
 logging.basicConfig(
@@ -40,6 +41,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from colormath.color_objects import sRGBColor, LabColor
@@ -101,6 +103,10 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 app.config['MAX_CONTENT_LENGTH'] = MAX_PDF_SIZE  # match largest upload limit
+
+# Trust X-Forwarded-For from reverse proxy (Nginx) for correct rate-limit keying
+if not DESKTOP_MODE:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # CSRF protection — validates X-CSRFToken header on all state-changing requests
 csrf = CSRFProtect(app)
@@ -285,12 +291,13 @@ class User(UserMixin):
 
     @staticmethod
     def verify_password(stored_hash, password):
-        """Verify password against stored hash."""
+        """Verify password against stored hash. Returns (valid, new_hash_or_None)."""
         try:
             ph.verify(stored_hash, password)
-            return True
+            new_hash = ph.hash(password) if ph.check_needs_rehash(stored_hash) else None
+            return True, new_hash
         except VerifyMismatchError:
-            return False
+            return False, None
 
     @staticmethod
     def update_last_login(user_id):
@@ -369,11 +376,12 @@ def api_token_required(f):
         if not auth.startswith('Bearer '):
             return jsonify({'error': 'Missing or invalid Authorization header'}), 401
         token = auth[7:]
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
         conn = get_db()
         row = conn.execute(
             "SELECT t.id, t.user_id, u.username, u.email, u.is_active "
             "FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token = ?",
-            (token,)).fetchone()
+            (token_hash,)).fetchone()
         if not row:
             return jsonify({'error': 'Invalid API token'}), 401
         if not row['is_active']:
@@ -467,6 +475,8 @@ def _ensure_saved_patterns_table():
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sp_slug ON saved_patterns(slug)")
     if 'fabric_color' not in existing:
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN fabric_color TEXT DEFAULT '#F5F0E8'")
+    if 'notes' not in existing:
+        conn.execute("ALTER TABLE saved_patterns ADD COLUMN notes TEXT DEFAULT ''")
     # --- Pattern tags ---
     conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tags (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1220,6 +1230,7 @@ _DEFAULT_PREFS = {
     'dmc-calc-efficiency':  'average',
     'dmc-calc-fabric-count': 14,
     'inventoryBrand':       'DMC',
+    'gallery-density':      4,
 }
 
 _PREF_VALIDATORS = {
@@ -1234,7 +1245,8 @@ _PREF_VALIDATORS = {
     'dmc-calc-skein-len':   lambda v: isinstance(v, (int, float)) and 0.1 <= v <= 100,
     'dmc-calc-efficiency':  lambda v: v in ('inefficient', 'average', 'efficient'),
     'dmc-calc-fabric-count': lambda v: v in (6, 8, 11, 14, 16, 18, 20, 22, 25, 28, 32),
-    'inventoryBrand':       lambda v: v in ('DMC', 'Anchor'),
+    'inventoryBrand':       lambda v: v in ('DMC', 'Anchor', ''),
+    'gallery-density':      lambda v: isinstance(v, int) and 2 <= v <= 8,
 }
 
 
@@ -1404,13 +1416,13 @@ def login():
 
             # Constant-time: always run Argon2 verification to prevent timing leaks
             if user_data:
-                is_valid = User.verify_password(user_data['password_hash'], password)
+                is_valid, rehash = User.verify_password(user_data['password_hash'], password)
             else:
                 try:
                     ph.verify(_dummy_hash, password)
                 except Exception:
                     pass
-                is_valid = False
+                is_valid, rehash = False, None
 
             if is_valid and user_data:
                 if not user_data['is_active']:
@@ -1418,6 +1430,12 @@ def login():
                     if wants_json:
                         return jsonify({'error': error}), 403
                 else:
+                    # Upgrade hash if Argon2 parameters have changed
+                    if rehash:
+                        conn = get_db()
+                        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                                     (rehash, user_data['id']))
+                        conn.commit()
                     user = User(user_data['id'], user_data['username'], user_data['email'])
                     session.clear()
                     login_user(user, remember=remember)
@@ -1439,7 +1457,7 @@ def login():
     return render_template('login.html', error=error)
 
 
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     """Handle user logout."""
@@ -1478,19 +1496,20 @@ def home():
 @app.route('/calculator')
 @login_required
 def calculator():
-    """Redirect old calculator URL to Project Materials Calculator page."""
+    """Redirect old calculator URL to Materials Calculator page."""
     return redirect('/pattern-calculator?mode=fabric')
 
 
 @app.route('/skein-calculator')
 @login_required
 def skein_calculator():
-    """Redirect old skein-calculator URL to Project Materials Calculator page."""
+    """Redirect old skein-calculator URL to Materials Calculator page."""
     return redirect('/pattern-calculator?mode=stitch')
 
 
 @app.route('/api/threads')
 @login_required
+@limiter.limit("60 per minute")
 def get_threads():
     """Get all threads with optional filtering."""
     conn = get_db()
@@ -1776,14 +1795,14 @@ def get_similar_threads(thread_id):
 @app.route('/pattern-calculator')
 @login_required
 def pattern_calculator():
-    """Project Materials Calculator — thread needs, skein estimates, and fabric sizing."""
+    """Materials Calculator — thread needs, skein estimates, and fabric sizing."""
     return render_template('pattern-calculator.html')
 
 
 @app.route('/stash-calculator')
 @login_required
 def stash_calculator():
-    """Redirect old stash-calculator URL to Project Materials Calculator page."""
+    """Redirect old stash-calculator URL to Materials Calculator page."""
     pattern = request.args.get('pattern', '')
     url = '/pattern-calculator' + ('?pattern=' + pattern if pattern else '')
     return redirect(url)
@@ -1867,7 +1886,8 @@ def api_change_password():
     conn = get_db()
     row = conn.execute("SELECT password_hash FROM users WHERE id = ?",
                        (current_user.id,)).fetchone()
-    if not row or not User.verify_password(row['password_hash'], current_pw):
+    valid, _ = User.verify_password(row['password_hash'], current_pw) if row else (False, None)
+    if not valid:
         return jsonify({'error': 'Current password is incorrect'}), 403
 
     new_hash = ph.hash(new_pw)
@@ -2173,6 +2193,7 @@ def mark_need():
         return jsonify({'error': 'No thread numbers provided'}), 400
     if not isinstance(thread_numbers, list) or len(thread_numbers) > 750:
         return jsonify({'error': 'thread_numbers must be a list of at most 750 items'}), 400
+    thread_numbers = [str(n)[:20] for n in thread_numbers if isinstance(n, (str, int, float))]
 
     conn = get_db()
     cursor = conn.cursor()
@@ -2574,7 +2595,7 @@ def api_list_saved_patterns():
     cursor = conn.cursor()
     cursor.execute(
         """SELECT slug, name, grid_w, grid_h, color_count, thumbnail, created_at, updated_at,
-                  project_status, progress_data, brand
+                  project_status, progress_data, brand, notes
              FROM saved_patterns
             WHERE user_id = ?
             ORDER BY updated_at DESC""",
@@ -2619,7 +2640,7 @@ def api_export_all_patterns():
     cursor = conn.cursor()
     cursor.execute(
         """SELECT slug, name, grid_w, grid_h, grid_data, legend_data, thumbnail,
-                  part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color
+                  part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color, notes
              FROM saved_patterns
             WHERE user_id = ?
             ORDER BY updated_at DESC""",
@@ -2686,6 +2707,7 @@ def api_export_all_patterns():
                 'knots': knots,
                 'beads': beads,
                 'thumbnail': r.get('thumbnail') or '',
+                'notes': r.get('notes') or '',
                 'tags': tag_map.get(slug, []),
             }
             zf.writestr(filename, json.dumps(payload, separators=(',', ':')))
@@ -2704,8 +2726,68 @@ def api_export_all_patterns():
     )
 
 
+@app.route('/api/shopping-list', methods=['GET'])
+@login_required
+@limiter.limit("10 per minute")
+def api_shopping_list():
+    """Aggregate thread needs across all non-completed patterns."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT slug, name, legend_data, brand, project_status
+             FROM saved_patterns
+            WHERE user_id = ? AND project_status != 'completed'
+            ORDER BY name""",
+        (current_user.id,)
+    ).fetchall()
+
+    # Aggregate: (brand, dmc) → { name, hex, patterns: [{name, slug, stitches}], total_stitches }
+    agg = {}
+    for r in rows:
+        try:
+            legend = json.loads(r['legend_data'])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        brand = r['brand'] or 'DMC'
+        for entry in legend:
+            dmc = entry.get('dmc')
+            if not dmc or dmc == 'BG':
+                continue
+            key = (brand, str(dmc))
+            if key not in agg:
+                agg[key] = {
+                    'dmc': str(dmc), 'name': entry.get('name', ''),
+                    'hex': entry.get('hex', '#888'), 'brand': brand,
+                    'patterns': [], 'total_stitches': 0
+                }
+            agg[key]['patterns'].append({
+                'name': r['name'], 'slug': r['slug'],
+                'stitches': entry.get('stitches', 0)
+            })
+            agg[key]['total_stitches'] += entry.get('stitches', 0)
+
+    # Enrich with inventory status
+    result = list(agg.values())
+    for brand_name in set(k[0] for k in agg):
+        brand_threads = [v for v in result if v['brand'] == brand_name]
+        numbers = [v['dmc'] for v in brand_threads]
+        live = _lookup_threads_by_number(conn, current_user.id, brand_name, numbers,
+                                          extra_fields=('skein_qty',))
+        for v in brand_threads:
+            info = live.get(v['dmc'])
+            if info:
+                v['status'] = info['status']
+                v['skein_qty'] = info['skein_qty'] or 0
+            else:
+                v['status'] = 'dont_own'
+                v['skein_qty'] = 0
+
+    result.sort(key=lambda x: x['dmc'])
+    return jsonify(result)
+
+
 @app.route('/api/saved-patterns/<pattern_slug>', methods=['GET'])
 @login_required
+@limiter.limit("60 per minute")
 def api_get_saved_pattern(pattern_slug):
     """Load a single saved pattern with full data."""
     conn = get_db()
@@ -2713,7 +2795,7 @@ def api_get_saved_pattern(pattern_slug):
     cursor.execute(
         """SELECT id, slug, name, grid_w, grid_h, color_count, grid_data, legend_data, thumbnail,
                   created_at, updated_at, source_image_path, generation_settings, progress_data,
-                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color
+                  project_status, part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color, notes
              FROM saved_patterns
             WHERE slug = ? AND user_id = ?""",
         (pattern_slug, current_user.id)
@@ -2763,11 +2845,13 @@ def api_get_saved_pattern(pattern_slug):
         pd_parsed = json.loads(pd) if pd else {}
         result['completed_dmcs'] = pd_parsed.get('completed_dmcs', [])
         result['stitched_cells'] = pd_parsed.get('stitched_cells', [])
+        result['place_markers'] = pd_parsed.get('place_markers', [])
         result['accumulated_seconds'] = pd_parsed.get('accumulated_seconds', 0)
     except (json.JSONDecodeError, KeyError, TypeError):
         result['generation_settings'] = None
         result['completed_dmcs'] = []
         result['stitched_cells'] = []
+        result['place_markers'] = []
         result['accumulated_seconds'] = 0
     # Fetch tags for this pattern
     tag_rows = conn.execute(
@@ -2886,6 +2970,16 @@ def api_update_saved_pattern(pattern_slug):
             return jsonify({'error': 'Pattern not found'}), 404
         return jsonify({'ok': True, 'color_count': color_count})
 
+    if 'notes' in data:
+        notes_val = str(data['notes'] or '')[:2000]
+        cursor.execute(
+            'UPDATE saved_patterns SET notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+            [notes_val, pattern_id, current_user.id])
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Pattern not found'}), 404
+        return jsonify({'ok': True})
+
     if 'project_status' in data:
         new_status = data['project_status']
         if new_status not in ('not_started', 'in_progress', 'completed'):
@@ -2910,6 +3004,13 @@ def api_update_saved_pattern(pattern_slug):
             return jsonify({'error': 'stitched_cells must be an array'}), 400
         if sc and not all(isinstance(i, int) and not isinstance(i, bool) and i >= 0 for i in sc):
             return jsonify({'error': 'stitched_cells must contain non-negative integers'}), 400
+        # Validate place_markers if present
+        pm = pd.get('place_markers', [])
+        if not isinstance(pm, list):
+            return jsonify({'error': 'place_markers must be an array'}), 400
+        _marker_re = re.compile(r'^\d{1,6},\d{1,6}$')
+        if pm and not all(isinstance(m, str) and _marker_re.match(m) for m in pm):
+            return jsonify({'error': 'place_markers must contain "col,row" strings'}), 400
         # Validate accumulated_seconds if present
         acc = pd.get('accumulated_seconds')
         if acc is not None:
@@ -3302,26 +3403,34 @@ def api_sync_pair():
 
     user_data = User.get_by_username(username)
     if user_data:
-        is_valid = User.verify_password(user_data['password_hash'], password)
+        is_valid, rehash = User.verify_password(user_data['password_hash'], password)
     else:
         # Constant-time: run Argon2 anyway to prevent timing leaks
         try:
             ph.verify(_dummy_hash, password)
         except Exception:
             pass
-        is_valid = False
+        is_valid, rehash = False, None
 
     if not is_valid or not user_data:
         return jsonify({'error': 'Invalid username or password'}), 401
     if not user_data['is_active']:
         return jsonify({'error': 'Account disabled'}), 403
 
-    # Generate a random 64-char token
+    # Upgrade hash if Argon2 parameters have changed
+    if rehash:
+        conn = get_db()
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                     (rehash, user_data['id']))
+        conn.commit()
+
+    # Generate a random 64-char token; store only the SHA-256 hash
     token = secrets.token_urlsafe(48)  # 48 bytes → 64 base64url chars
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
     conn = get_db()
     conn.execute(
         "INSERT INTO api_tokens (user_id, token, name) VALUES (?, ?, 'Desktop Sync')",
-        (user_data['id'], token))
+        (user_data['id'], token_hash))
     conn.commit()
 
     return jsonify({'token': token, 'username': user_data['username']})
@@ -3344,6 +3453,10 @@ def api_sync_unpair():
 def api_sync_changes():
     """Return delta manifest of changes since the given timestamp."""
     since = request.args.get('since', '1970-01-01T00:00:00')
+    try:
+        datetime.fromisoformat(since)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid since timestamp'}), 400
     uid = current_user.id
     conn = get_db()
 
@@ -3353,7 +3466,7 @@ def api_sync_changes():
     # Patterns updated since
     pattern_rows = conn.execute(
         """SELECT slug, name, updated_at, grid_w, grid_h, color_count,
-                  project_status, brand, thumbnail
+                  project_status, brand, thumbnail, notes
            FROM saved_patterns WHERE user_id = ? AND updated_at > ?
            ORDER BY updated_at""",
         (uid, since)).fetchall()
@@ -3404,7 +3517,7 @@ def api_sync_pattern_download(slug):
     row = conn.execute(
         """SELECT slug, name, grid_w, grid_h, color_count, grid_data, legend_data,
                   thumbnail, created_at, updated_at, progress_data, project_status,
-                  part_stitches_data, backstitches_data, knots_data, beads_data, brand
+                  part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes
            FROM saved_patterns WHERE slug = ? AND user_id = ?""",
         (slug, uid)).fetchone()
     if not row:
@@ -3596,6 +3709,7 @@ def _write_sync_config(cfg):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w') as f:
         json.dump(cfg, f, indent=2)
+    os.chmod(path, 0o600)
 
 
 @app.route('/api/sync-config', methods=['GET'])

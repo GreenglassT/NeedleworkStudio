@@ -22,18 +22,18 @@
         }
 
         .theme-toggle-btn {
-            background: var(--surface);
-            border: 1px solid var(--border);
+            background: var(--surface-2);
+            border: 1px solid var(--border-2);
             color: var(--text-muted);
             border-radius: var(--r);
-            padding: 6px 10px;
+            padding: 5px 10px;
             cursor: pointer;
             font-size: 14px;
             line-height: 1;
-            transition: border-color var(--t), color var(--t);
+            transition: border-color var(--t), background var(--t);
         }
 
-        .theme-toggle-btn:hover { border-color: var(--border-2); color: var(--text); }
+        .theme-toggle-btn:hover { border-color: var(--gold-dim); background: var(--surface); }
 
         /* ——— LOGIN CARD ——— */
         .login-container {
@@ -166,7 +166,7 @@
         .error-message {
             background: var(--skip-bg);
             border: 1px solid var(--skip);
-            color: var(--skip);
+            color: var(--skip-hover);
             padding: 10px 14px;
             border-radius: var(--r);
             margin-bottom: 18px;

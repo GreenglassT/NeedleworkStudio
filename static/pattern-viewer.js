@@ -48,6 +48,11 @@ function zenMenuAction(action) {
     if (action === 'mark-complete') {
         toggleCellMarkMode();
         _syncZenMenuLabels();
+    } else if (action === 'place-marker') {
+        toggleMarkerMode();
+        _syncZenMenuLabels();
+    } else if (action === 'goto') {
+        openGotoPanel();
     } else if (action === 'view-mode') {
         toggleViewMode();
         _syncZenMenuLabels();
@@ -64,6 +69,9 @@ function zenMenuAction(action) {
 function _syncZenMenuLabels() {
     const markLabel = document.getElementById('zen-mark-label');
     if (markLabel) markLabel.textContent = _cellMarkMode ? 'Stop Marking' : 'Mark Complete';
+
+    const markerLabel = document.getElementById('zen-marker-label');
+    if (markerLabel) markerLabel.textContent = _markerMode ? 'Stop Placing' : 'Place Marker';
 
     const viewLabel = document.getElementById('zen-view-label');
     const viewIcon  = document.getElementById('zen-view-icon');
@@ -83,6 +91,45 @@ let panX = 0, panY = 0;   // CSS transform translate (px)
 let highlightDmc = null;  // currently highlighted DMC number, or null
 let completedDmcs  = new Set();   // DMC numbers (as strings) marked complete
 let _progressTimer = null;        // debounce handle for auto-save
+let _patternNotes = '';           // current notes text
+let _notesSaveTimer = null;       // debounce for notes save
+
+/* ——— PROGRESS UNDO/REDO ——— */
+const _undoStack = [];              // [{stitched: Set, completed: Set}]
+const _redoStack = [];
+const _UNDO_MAX = 50;
+
+function _pushProgressUndo() {
+    _undoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs) });
+    if (_undoStack.length > _UNDO_MAX) _undoStack.shift();
+    _redoStack.length = 0;
+}
+
+function undoProgress() {
+    if (!_undoStack.length) return;
+    _redoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs) });
+    const snap = _undoStack.pop();
+    stitchedCells = snap.stitched;
+    completedDmcs = snap.completed;
+    _syncColorsFromCells();
+    renderMain();
+    renderLegend();
+    _updateCellProgressBar();
+    _scheduleProgressSave();
+}
+
+function redoProgress() {
+    if (!_redoStack.length) return;
+    _undoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs) });
+    const snap = _redoStack.pop();
+    stitchedCells = snap.stitched;
+    completedDmcs = snap.completed;
+    _syncColorsFromCells();
+    renderMain();
+    renderLegend();
+    _updateCellProgressBar();
+    _scheduleProgressSave();
+}
 
 /* ——— CELL-LEVEL PROGRESS ——— */
 let stitchedCells    = new Set();   // Set<number> of flat cell indices (row*grid_w+col)
@@ -91,6 +138,10 @@ let _cellDragActive  = false;       // true while mouse button held in mark mode
 let _cellDragToggle  = null;        // bool: true=marking, false=unmarking
 let _cellDragStart   = null;        // {col, row} for rectangle start
 let _cellDragEnd     = null;        // {col, row} for rectangle end
+
+/* ——— PLACE MARKERS ——— */
+let markedCells      = new Set();   // Set<string> of "col,row" keys
+let _markerMode      = false;       // true when place-marker mode is active
 
 /* ——— AUTOSAVE ——— */
 const _autosave = createAutosaver(
@@ -119,7 +170,7 @@ let legendSort = _pref('dmc-legend-sort', 'number'); // 'number' | 'stitches'
 let legendFilter = '';            // search query for legend filtering
 const MAX_CELL_PX = 80;           // cap re-render resolution when zooming in
 let _snapTimer = null;
-let viewMode = localStorage.getItem('pv-viewMode') || _pref('dmc-viewMode', 'chart');  // 'chart' | 'thread'
+let viewMode = (function() { var m = localStorage.getItem('pv-viewMode'); return m === 'thread' ? 'thread' : 'chart'; })();
 
 /* ——— EDITOR (shared module) ——— */
 let editMode = false;
@@ -302,6 +353,28 @@ function renderMain() {
         }
     }
 
+    // Place markers — double-outline borders, topmost layer
+    if (markedCells.size > 0) {
+        ctx.save();
+        const outerLw = Math.max(3, Math.min(5, cellPx * 0.2));
+        const innerLw = Math.max(2, Math.min(3, cellPx * 0.12));
+        const ohw = outerLw / 2, ihw = innerLw / 2;
+        for (const key of markedCells) {
+            const parts = key.split(',');
+            const c = Number(parts[0]), r = Number(parts[1]);
+            const cx = gutX + c * cellPx, cy = gutY + r * cellPx;
+            // Outer dark shadow
+            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            ctx.lineWidth = outerLw;
+            ctx.strokeRect(cx + ohw, cy + ohw, cellPx - outerLw, cellPx - outerLw);
+            // Inner bright magenta
+            ctx.strokeStyle = '#FF4081';
+            ctx.lineWidth = innerLw;
+            ctx.strokeRect(cx + ihw, cy + ihw, cellPx - innerLw, cellPx - innerLw);
+        }
+        ctx.restore();
+    }
+
     // Clear overlay; re-apply highlight if one was active
     document.getElementById('overlay-canvas').getContext('2d')
         .clearRect(0, 0, W, H);
@@ -414,6 +487,7 @@ function clearHighlight() {
 
 /* ——— PROGRESS TRACKING ——— */
 function toggleColorComplete(dmc) {
+    _pushProgressUndo();
     dmc = String(dmc);
     const wasComplete = completedDmcs.has(dmc);
     if (wasComplete) completedDmcs.delete(dmc);
@@ -436,16 +510,37 @@ function _buildProgressPayload() {
     return JSON.stringify({ progress_data: {
         completed_dmcs: [...completedDmcs],
         stitched_cells: [...stitchedCells].sort((a, b) => a - b),
+        place_markers: [...markedCells],
         accumulated_seconds: _timerCurrentSeconds()
     }});
+}
+
+function _saveProgressToLocal() {
+    try {
+        localStorage.setItem('ns-progress-' + PATTERN_SLUG, JSON.stringify({
+            completed_dmcs: [...completedDmcs],
+            stitched_cells: [...stitchedCells].sort((a, b) => a - b),
+            place_markers: [...markedCells]
+        }));
+    } catch (_) {}
 }
 
 function _scheduleProgressSave() {
     clearTimeout(_progressTimer);
     _progressTimer = setTimeout(() => {
+        const payload = _buildProgressPayload();
+        _saveProgressToLocal();
         fetch('/api/saved-patterns/' + PATTERN_SLUG, {
             method: 'PATCH', headers: {'Content-Type':'application/json'},
-            body: _buildProgressPayload()
+            body: payload
+        }).catch(() => {
+            // Retry once after 3s on failure (e.g. server restart)
+            setTimeout(() => {
+                fetch('/api/saved-patterns/' + PATTERN_SLUG, {
+                    method: 'PATCH', headers: {'Content-Type':'application/json'},
+                    body: _buildProgressPayload()
+                }).catch(() => {});
+            }, 3000);
         });
     }, 800);
 }
@@ -468,7 +563,23 @@ function toggleCellMarkMode() {
     if (btn) btn.classList.toggle('active', _cellMarkMode);
     const area = document.getElementById('canvas-area');
     area.classList.toggle('cell-mark-mode', _cellMarkMode);
-    if (_cellMarkMode && highlightDmc !== null) clearHighlight();
+}
+
+function toggleMarkerMode() {
+    _markerMode = !_markerMode;
+    const btn = document.getElementById('marker-mode-btn');
+    if (btn) btn.classList.toggle('active', _markerMode);
+    document.getElementById('canvas-area').style.cursor = _markerMode ? 'crosshair' : '';
+}
+
+function _handleMarkerClick(e) {
+    const cell = _canvasEventToCell(e);
+    if (!cell) return;
+    const key = cell.col + ',' + cell.row;
+    if (markedCells.has(key)) markedCells.delete(key);
+    else markedCells.add(key);
+    renderMain();
+    _scheduleProgressSave();
 }
 
 function _updateCellProgressBar() {
@@ -529,6 +640,7 @@ function _drawCellMarkPreview() {
     if (!overlay || !_cellDragStart || !_cellDragEnd) return;
     const ctx = overlay.getContext('2d');
     ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (highlightDmc !== null) _drawHighlight(highlightDmc);
     const minR = Math.min(_cellDragStart.row, _cellDragEnd.row);
     const maxR = Math.max(_cellDragStart.row, _cellDragEnd.row);
     const minC = Math.min(_cellDragStart.col, _cellDragEnd.col);
@@ -567,6 +679,7 @@ function _moveCellMark(clientX, clientY) {
 
 function _endCellMark() {
     _cellDragActive = false;
+    _pushProgressUndo();
     _applyCellDragRect();
     _syncColorsFromCells();
     _cellDragStart = null;
@@ -658,11 +771,21 @@ function _updateLegendTotals() {
 function _timerFlush() {
     if (!_timerDirty || !PATTERN_SLUG) return;
     _timerDirty = false;
+    _saveProgressToLocal();
     fetch('/api/saved-patterns/' + PATTERN_SLUG, {
         method: 'PATCH', headers: {'Content-Type':'application/json'},
         keepalive: true,
         body: _buildProgressPayload()
-    }).catch(() => { _timerDirty = true; });
+    }).catch(() => {
+        _timerDirty = true;
+        // Retry once after 3s
+        setTimeout(() => {
+            fetch('/api/saved-patterns/' + PATTERN_SLUG, {
+                method: 'PATCH', headers: {'Content-Type':'application/json'},
+                body: _buildProgressPayload()
+            }).catch(() => { _timerDirty = true; });
+        }, 3000);
+    });
 }
 
 function _timerInit(accSeconds) {
@@ -984,6 +1107,7 @@ function toggleEditMode() {
     } else {
         if (!isForked) { showForkDialog(); return; }
         if (_cellMarkMode) toggleCellMarkMode();
+        if (_markerMode) toggleMarkerMode();
         _editSnapshot = {
             grid: patternData.grid.slice(),
             legend: JSON.parse(JSON.stringify(patternData.legend)),
@@ -1069,8 +1193,8 @@ async function confirmFork() {
 async function savePattern() {
     if (!editMode || !isForked) return;
     const saveBtn = document.getElementById('save-btn');
-    const originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saving\u2026';
+    const originalHtml = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="ti ti-loader spin"></i> Saving\u2026';
     saveBtn.disabled = true;
     try {
         const thumbnail = generateThumbnail(patternData);
@@ -1095,12 +1219,12 @@ async function savePattern() {
         editor.clearDirty();
         _clearAutosave();
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Save';
+        saveBtn.innerHTML = '<i class="ti ti-device-floppy"></i> Save';
         toggleEditMode();
         toast('Pattern saved.', { type: 'success' });
     } catch (err) {
         toast('Save failed: ' + err.message, { type: 'error' });
-        saveBtn.textContent = originalText;
+        saveBtn.innerHTML = originalHtml;
         saveBtn.disabled = false;
     }
 }
@@ -1113,7 +1237,7 @@ document.getElementById('canvas-area').addEventListener('wheel', function(e) {
         const rect   = this.getBoundingClientRect();
         const mx     = e.clientX - rect.left;
         const my     = e.clientY - rect.top;
-        const factor = e.deltaY < 0 ? 1.06 : 1 / 1.06;
+        const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
         panX   = mx - (mx - panX) * factor;
         panY   = my - (my - panY) * factor;
         scale  = Math.max(0.05, Math.min(MAX_CELL_PX / cellPx, scale * factor));
@@ -1134,6 +1258,11 @@ document.getElementById('canvas-area').addEventListener('mousedown', function(e)
     if (e.target.id === 'mini-canvas') return;
     if (editor && editor.isUIElement(e.target)) return;
     e.preventDefault();
+    // Place marker mode — intercept before cell-mark and editor
+    if (_markerMode && !editMode && e.button === 0) {
+        _handleMarkerClick(e);
+        return;
+    }
     // Cell marking mode — intercept before editor and pan
     if (_cellMarkMode && !editMode && e.button === 0) {
         _startCellMark(e.clientX, e.clientY);
@@ -1193,6 +1322,11 @@ function _touchToMouse(touch, target) {
 document.getElementById('canvas-area').addEventListener('touchstart', function(e) {
     const touches = e.touches;
     if (touches.length === 1) {
+        if (_markerMode && !editMode) {
+            e.preventDefault();
+            _handleMarkerClick(_touchToMouse(touches[0], e.target));
+            return;
+        }
         if (_cellMarkMode && !editMode) {
             e.preventDefault();
             _tEditorDrawing = false;
@@ -1344,7 +1478,7 @@ function exitZenMode() {
 function _updateZenUI() {
     const btn = document.getElementById('zen-btn');
     if (btn) {
-        btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : 'Zen Mode';
+        btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : '<i class="ti ti-maximize"></i> Zen Mode';
         btn.title = zenMode ? 'Exit Zen (F)' : 'Zen Mode (F)';
     }
     // Drive zen menu button visibility
@@ -1384,6 +1518,76 @@ document.addEventListener('mousemove', function() {
     }, 2000);
 });
 
+/* ——— PATTERN NOTES ——— */
+function toggleNotesPanel() {
+    const bar = document.getElementById('notes-bar');
+    const open = bar.style.display === 'none';
+    bar.style.display = open ? '' : 'none';
+    if (open) document.getElementById('notes-input').focus();
+}
+function onNotesInput() {
+    const ta = document.getElementById('notes-input');
+    document.getElementById('notes-charcount').textContent = ta.value.length + ' / 2000';
+    clearTimeout(_notesSaveTimer);
+    _notesSaveTimer = setTimeout(saveNotes, 1200);
+}
+function saveNotes() {
+    clearTimeout(_notesSaveTimer);
+    const ta = document.getElementById('notes-input');
+    if (!ta) return;
+    const val = ta.value.trim();
+    if (val === _patternNotes) return;
+    _patternNotes = val;
+    const toggle = document.getElementById('notes-toggle');
+    if (toggle) toggle.classList.toggle('has-notes', val.length > 0);
+    fetch(`/api/saved-patterns/${PATTERN_SLUG}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+        body: JSON.stringify({ notes: val })
+    });
+}
+
+/* ——— GOTO ROW/COL ——— */
+function openGotoPanel() {
+    const panel = document.getElementById('goto-panel');
+    panel.style.display = 'flex';
+    const rowInput = document.getElementById('goto-row');
+    const colInput = document.getElementById('goto-col');
+    if (patternData) {
+        rowInput.max = patternData.grid_h;
+        colInput.max = patternData.grid_w;
+    }
+    rowInput.value = '';
+    colInput.value = '';
+    rowInput.focus();
+}
+function closeGotoPanel() {
+    document.getElementById('goto-panel').style.display = 'none';
+}
+function goToPosition() {
+    if (!patternData) return;
+    const row = parseInt(document.getElementById('goto-row').value) || 1;
+    const col = parseInt(document.getElementById('goto-col').value) || 1;
+    const r = Math.max(1, Math.min(patternData.grid_h, row)) - 1;
+    const c = Math.max(1, Math.min(patternData.grid_w, col)) - 1;
+    const area = document.getElementById('canvas-area');
+    panX = area.clientWidth / 2 - (gX() + c * cellPx + cellPx / 2) * scale;
+    panY = area.clientHeight / 2 - (gY() + r * cellPx + cellPx / 2) * scale;
+    applyTransform();
+    closeGotoPanel();
+}
+// Enter key in goto inputs triggers go
+document.getElementById('goto-row').addEventListener('keydown', function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') goToPosition();
+    if (e.key === 'Escape') closeGotoPanel();
+});
+document.getElementById('goto-col').addEventListener('keydown', function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') goToPosition();
+    if (e.key === 'Escape') closeGotoPanel();
+});
+
 /* ——— KEYBOARD ——— */
 document.addEventListener('keydown', function(e) {
     // Suppress editor shortcuts when dialogs are open
@@ -1394,6 +1598,8 @@ document.addEventListener('keydown', function(e) {
         if (editor.handleKeyDown(e)) return;
     }
     if (e.key === 'Escape') {
+        const gotoPanel = document.getElementById('goto-panel');
+        if (gotoPanel && gotoPanel.style.display !== 'none') { closeGotoPanel(); return; }
         if (zenMode) { exitZenMode(); return; }
         const searchEl = document.getElementById('legend-search');
         if (searchEl && searchEl.value) {
@@ -1423,6 +1629,54 @@ document.addEventListener('keydown', function(e) {
             toggleCellMarkMode();
             return;
         }
+    }
+    // B key — toggle place marker mode (viewer only)
+    if (e.key.toLowerCase() === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            toggleMarkerMode();
+            return;
+        }
+    }
+    // N key — toggle notes panel (viewer only)
+    if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            toggleNotesPanel();
+            return;
+        }
+    }
+    // G key — open goto row/col panel (viewer only)
+    if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            openGotoPanel();
+            return;
+        }
+    }
+    // Ctrl+Z — undo progress (viewer only)
+    if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey) && !e.altKey && !editMode) {
+        if (e.shiftKey) { e.preventDefault(); redoProgress(); return; }
+        else { e.preventDefault(); undoProgress(); return; }
+    }
+    // Ctrl+Y — redo progress (viewer only)
+    if (e.key.toLowerCase() === 'y' && (e.ctrlKey || e.metaKey) && !e.altKey && !editMode) {
+        e.preventDefault(); redoProgress(); return;
+    }
+    // , / . / Arrow keys — cycle legend highlight (viewer only, follows current sort order)
+    const _isCycleKey = e.key === ',' || e.key === '.' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+    if (_isCycleKey && !inInput && !editMode) {
+        e.preventDefault();
+        // Read visible order from rendered legend rows (respects sort + filter)
+        const rows = [...document.querySelectorAll('#legend-scroll .legend-row')];
+        if (!rows.length) return;
+        const dmcs = rows.map(r => r.dataset.dmc);
+        const idx = dmcs.indexOf(String(highlightDmc));
+        const dir = (e.key === '.' || e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+        const nextIdx = idx < 0 ? 0 : (idx + dir + dmcs.length) % dmcs.length;
+        applyHighlight(dmcs[nextIdx]);
+        rows[nextIdx].scrollIntoView({ block: 'nearest' });
+        return;
     }
 });
 document.addEventListener('keyup', function(e) {
@@ -1524,18 +1778,20 @@ window.addEventListener('beforeunload', function() {
 
 /* ——— VIEW MODE TOGGLE (chart / thread) ——— */
 function toggleViewMode() {
-    viewMode = viewMode === 'chart' ? 'thread' : 'chart';
+    setViewMode(viewMode === 'chart' ? 'thread' : 'chart');
+}
+function setViewMode(mode) {
+    viewMode = mode;
     localStorage.setItem('pv-viewMode', viewMode);
     updateViewModeBtn();
     renderMain();
     renderLegend();
 }
 function updateViewModeBtn() {
-    const btn = document.getElementById('view-mode-btn');
-    if (!btn) return;
-    btn.innerHTML = viewMode === 'chart'
-        ? '<i class="ti ti-needle"></i> Thread View'
-        : '<i class="ti ti-grid-dots"></i> Chart View';
+    const chartBtn = document.getElementById('view-chart-btn');
+    const threadBtn = document.getElementById('view-thread-btn');
+    if (chartBtn) chartBtn.classList.toggle('active', viewMode === 'chart');
+    if (threadBtn) threadBtn.classList.toggle('active', viewMode === 'thread');
 }
 
 /* ——— INIT ——— */
@@ -1588,10 +1844,27 @@ async function init() {
         // Recount stitches to include part stitches, backstitches, and knots
         _recountLegend();
 
-        // Load saved progress
-        for (const dmc of (data.completed_dmcs || [])) completedDmcs.add(String(dmc));
-        for (const idx of (data.stitched_cells || [])) {
+        // Load saved progress — merge server data with localStorage backup
+        let serverDmcs = data.completed_dmcs || [];
+        let serverCells = data.stitched_cells || [];
+        let serverMarkers = data.place_markers || [];
+        try {
+            const local = JSON.parse(localStorage.getItem('ns-progress-' + PATTERN_SLUG) || 'null');
+            if (local) {
+                const localCells = local.stitched_cells || [];
+                const localDmcs = local.completed_dmcs || [];
+                const localMarkers = local.place_markers || [];
+                if (localCells.length > serverCells.length) serverCells = localCells;
+                if (localDmcs.length > serverDmcs.length) serverDmcs = localDmcs;
+                if (localMarkers.length > serverMarkers.length) serverMarkers = localMarkers;
+            }
+        } catch (_) {}
+        for (const dmc of serverDmcs) completedDmcs.add(String(dmc));
+        for (const idx of serverCells) {
             if (typeof idx === 'number' && patternData.grid[idx] !== 'BG') stitchedCells.add(idx);
+        }
+        for (const key of serverMarkers) {
+            if (typeof key === 'string' && /^\d+,\d+$/.test(key)) markedCells.add(key);
         }
 
         // Update header
@@ -1599,6 +1872,19 @@ async function init() {
         document.getElementById('pattern-meta').textContent =
             `${data.grid_w} × ${data.grid_h} · ${data.color_count} color${data.color_count === 1 ? '' : 's'}`;
         document.title = data.name + ' — Pattern Viewer — Needlework Studio';
+
+        // Populate notes
+        _patternNotes = data.notes || '';
+        const notesToggle = document.getElementById('notes-toggle');
+        const notesInput = document.getElementById('notes-input');
+        if (notesToggle) {
+            notesToggle.style.display = '';
+            if (_patternNotes) notesToggle.classList.add('has-notes');
+        }
+        if (notesInput) {
+            notesInput.value = _patternNotes;
+            document.getElementById('notes-charcount').textContent = _patternNotes.length + ' / 2000';
+        }
 
         // Set up view mode button
         updateViewModeBtn();

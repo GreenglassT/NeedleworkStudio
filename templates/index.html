@@ -10,7 +10,26 @@
         /* solid --skip-bg override for card backgrounds */
         :root { --skip-bg: #2c1010; }
 
-        .brand-seg { flex-shrink: 0; }
+        .brand-seg {
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            padding: 0;
+            border-radius: 0;
+            gap: 6px;
+        }
+        .brand-seg-indicator { display: none; }
+        .brand-seg-btn {
+            padding: 5px 12px;
+            border: 1px solid var(--border-2);
+            border-radius: 20px;
+            background: transparent;
+            font-size: 12px;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+        }
+        .brand-seg-btn:hover:not(.active) { color: var(--text); }
+        .brand-seg-btn.active { color: var(--text); background: var(--surface-2); }
         .brand-badge {
             display: inline-block;
             font-family: 'IBM Plex Mono', monospace;
@@ -379,13 +398,22 @@
             grid-template-columns: calc(52px * var(--zoom, 1)) calc(68px * var(--zoom, 1)) 1fr auto calc(52px * var(--zoom, 1)) calc(180px * var(--zoom, 1));
             align-items: center;
             gap: 0 calc(14px * var(--zoom, 1));
-            padding: calc(9px * var(--zoom, 1)) 0;
+            padding: calc(9px * var(--zoom, 1)) calc(12px * var(--zoom, 1));
             border-bottom: 1px solid var(--border);
+            position: relative;
             animation: fadeIn .2s ease both;
         }
 
         .list-row:last-child { border-bottom: none; }
-        .list-row:hover { background: var(--surface); }
+        .list-row:hover::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--surface);
+            border-radius: var(--r);
+            z-index: 0;
+        }
+        .list-row:hover > * { position: relative; z-index: 1; }
         .list-row:hover .list-notes-input { border-color: var(--border); }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -559,7 +587,7 @@
             line-height: 1;
         }
 
-        .modal-close:hover { background: var(--skip-bg); border-color: var(--skip); color: #d07070; }
+        .modal-close:hover { background: var(--skip-bg); border-color: var(--skip); color: var(--skip-hover); }
 
         .modal-filter {
             display: flex;
@@ -787,43 +815,81 @@
         .card-details-trigger .ti { font-size: 11px; transition: transform .2s ease; }
         .card-details-trigger.open .ti { transform: rotate(45deg); }
 
-        /* ——— QUICK-JUMP RAIL ——— */
+        /* ——— QUICK-JUMP MINIMAP ——— */
         .jump-rail {
             position: fixed;
-            right: 6px;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 10px;
+            top: 190px;
+            bottom: 24px;
             z-index: 80;
             display: flex;
-            flex-direction: column;
-            gap: 2px;
+            align-items: flex-end;
+            gap: 0;
             opacity: 0;
             pointer-events: none;
             transition: opacity .2s ease;
         }
         .jump-rail.visible { opacity: 1; pointer-events: auto; }
-        .jump-rail-btn {
-            display: block;
-            padding: 3px 6px;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: 3px;
-            color: var(--text-dim);
+        .jump-rail-track {
+            position: relative;
+            width: 3px;
+            height: 100%;
+            background: var(--border);
+            border-radius: 2px;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        .jump-rail-track::before,
+        .jump-rail-track::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--gold);
+        }
+        .jump-rail-track::before { top: -5px; }
+        .jump-rail-track::after  { bottom: -5px; }
+        .jump-rail-thumb {
+            position: absolute;
+            width: 3px;
+            height: 36px;
+            background: var(--gold);
+            border-radius: 2px;
+            top: 0;
+            transition: top 250ms ease;
+        }
+        .jump-rail-labels {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        .jump-rail-label {
             font-family: 'IBM Plex Mono', monospace;
             font-size: 9px;
-            letter-spacing: .04em;
+            color: var(--text-dim);
+            pointer-events: auto;
             cursor: pointer;
-            transition: color var(--t), border-color var(--t), background var(--t);
-            text-align: center;
-            min-width: 28px;
-            line-height: 1.3;
+            transition: color var(--t), font-weight .15s ease, font-size .15s ease;
+            text-align: right;
+            padding: 1px 0;
+            line-height: 1;
         }
-        .jump-rail-btn:hover {
+        .jump-rail-label:hover { color: var(--gold); }
+        .jump-rail-label.nearby {
             color: var(--gold);
-            border-color: var(--gold-dim);
-            background: var(--surface-3);
+            font-weight: 700;
+            font-size: 10px;
         }
-        @media (max-width: 640px) { .jump-rail { display: none; } }
+        body.rail-visible .main-wrap { padding-right: 60px; }
+        @media (max-width: 640px) { .jump-rail { display: none; } body.rail-visible .main-wrap { padding-right: 28px; } }
 
         /* ——— PRINT (hidden on screen) ——— */
         .print-header, #print-table { display: none; }
@@ -972,7 +1038,10 @@
     <div class="thread-list active" id="thread-list"></div>
 </main>
 
-<nav class="jump-rail" id="jump-rail"></nav>
+<nav class="jump-rail" id="jump-rail">
+    <div class="jump-rail-track"><div class="jump-rail-thumb" id="jump-rail-thumb"></div></div>
+    <div class="jump-rail-labels" id="jump-rail-labels"></div>
+</nav>
 
 <!-- ——— MODAL ——— -->
 <div class="modal-overlay" id="similar-modal" style="display:none">
@@ -1014,6 +1083,7 @@
     function setBrand(brand) {
         currentBrand = brand;
         localStorage.setItem('inventoryBrand', brand);
+        fetch('/api/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inventoryBrand: brand }) });
         const seg = document.getElementById('brand-seg');
         const btns = seg.querySelectorAll('.brand-seg-btn');
         btns.forEach(b => b.classList.toggle('active', b.dataset.brand === brand));
@@ -1264,7 +1334,28 @@
     }
 
     // ——— QUICK-JUMP RAIL ———
-    const _jumpMarkers = ['1','50','100','150','200','300','400','500','600','700'];
+    function _computeJumpMarkers(threadList) {
+        const nums = threadList.map(t => parseInt(t.number)).filter(n => !isNaN(n));
+        const hasSpecial = threadList.some(t => isNaN(parseInt(t.number)));
+        if (!nums.length) return hasSpecial ? ['Special'] : [];
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        const range = max - min;
+        if (range < 50) return hasSpecial ? ['Special'] : [];
+        // Pick ~10-15 evenly spaced markers, snapped to nice round numbers
+        const rawStep = range / 12;
+        const niceSteps = [10, 25, 50, 100, 250, 500, 1000, 2500];
+        const step = niceSteps.find(s => s >= rawStep) || 5000;
+        const markers = [];
+        const start = Math.ceil(min / step) * step || step;
+        for (let n = start; n <= max; n += step) markers.push(String(n));
+        // Always include first thread number
+        if (!markers.length || parseInt(markers[0]) !== min) markers.unshift(String(min));
+        if (hasSpecial) markers.push('Special');
+        return markers;
+    }
+
+    let _jumpMarkers = [];
 
     function updateJumpRail() {
         const rail = document.getElementById('jump-rail');
@@ -1276,18 +1367,84 @@
         const hasBrand = currentBrand === 'DMC' || currentBrand === 'Anchor';
         if (sort !== 'number' || search || cat || status || !hasBrand) {
             rail.classList.remove('visible');
+            document.body.classList.remove('rail-visible');
+            _jumpMarkers = [];
             return;
         }
-        rail.innerHTML = _jumpMarkers.map(m =>
-            `<button class="jump-rail-btn" onclick="jumpToNumber('${m}')">${m}</button>`
+        const markers = _computeJumpMarkers(threads);
+        _jumpMarkers = markers;
+        if (!markers.length) { rail.classList.remove('visible'); document.body.classList.remove('rail-visible'); return; }
+        document.getElementById('jump-rail-labels').innerHTML = markers.map(m =>
+            `<span class="jump-rail-label" data-val="${m}" onclick="jumpToNumber('${m}')">${m}</span>`
         ).join('');
         rail.classList.add('visible');
+        document.body.classList.add('rail-visible');
+        _updateMinimapPosition();
     }
 
-    function jumpToNumber(target) {
-        const num = parseInt(target);
+    function _getVisibleThreadNumber() {
         const sel = currentView === 'grid' ? '.thread-card' : '.list-row';
         const items = document.querySelectorAll(sel);
+        const midY = window.scrollY + window.innerHeight / 2;
+        let closestNum = 0;
+        for (const item of items) {
+            if (item.offsetTop > midY) break;
+            const id = parseInt(item.dataset.id);
+            const thread = threads.find(t => t.id === id);
+            if (thread) {
+                const n = parseInt(thread.number);
+                if (!isNaN(n)) closestNum = n;
+            }
+        }
+        return closestNum;
+    }
+
+    function _updateMinimapPosition() {
+        const thumb = document.getElementById('jump-rail-thumb');
+        const track = document.querySelector('.jump-rail-track');
+        if (!thumb || !track || !_jumpMarkers.length) return;
+
+        const scrollFrac = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight || 1);
+        const trackH = track.clientHeight;
+        thumb.style.top = Math.min(scrollFrac * (trackH - 36), trackH - 36) + 'px';
+
+        // Highlight nearby labels
+        const curNum = _getVisibleThreadNumber();
+        const step = _jumpMarkers.length > 1
+            ? Math.abs(parseInt(_jumpMarkers[1]) - parseInt(_jumpMarkers[0])) * 0.6
+            : 500;
+        document.querySelectorAll('.jump-rail-label').forEach(lbl => {
+            const v = parseInt(lbl.dataset.val);
+            if (isNaN(v)) {
+                // "Special" label: highlight when scrolled past all numeric threads
+                const maxNum = _jumpMarkers.reduce((m, x) => { const n = parseInt(x); return !isNaN(n) && n > m ? n : m; }, 0);
+                lbl.classList.toggle('nearby', curNum >= maxNum);
+            } else {
+                lbl.classList.toggle('nearby', Math.abs(v - curNum) <= step);
+            }
+        });
+    }
+
+    window.addEventListener('scroll', _updateMinimapPosition, { passive: true });
+
+    function jumpToNumber(target) {
+        const sel = currentView === 'grid' ? '.thread-card' : '.list-row';
+        const items = document.querySelectorAll(sel);
+        if (target === 'Special') {
+            // Jump to first non-numeric thread
+            for (const item of items) {
+                const id = parseInt(item.dataset.id);
+                const thread = threads.find(t => t.id === id);
+                if (thread && isNaN(parseInt(thread.number))) {
+                    item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    item.style.outline = '2px solid var(--gold-dim)';
+                    setTimeout(() => { item.style.outline = ''; }, 1200);
+                    return;
+                }
+            }
+            return;
+        }
+        const num = parseInt(target);
         for (const item of items) {
             const id = parseInt(item.dataset.id);
             const thread = threads.find(t => t.id === id);

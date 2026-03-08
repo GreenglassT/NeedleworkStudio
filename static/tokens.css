@@ -26,6 +26,7 @@
     --need-bg:     #2e1c0a;
     --need-border: #5e3818;
     --skip:        #9e4a4a;
+    --skip-hover:  #d07070;
     --skip-bg:     rgba(158,74,74,.14);
     --skip-border: #5a2020;
 }
@@ -51,6 +52,7 @@
     --need-bg:     #f5ede0;
     --need-border: #d4b080;
     --skip:        #7a2828;
+    --skip-hover:  #a03030;
     --skip-bg:     rgba(122,40,40,.08);
     --skip-border: #d4a0a0;
 }
@@ -163,8 +165,9 @@ body {
 .nav-link:hover { color: var(--text); background: var(--surface-2); }
 .nav-link.active { color: var(--gold); }
 .nav-link.nav-primary { font-size: 13px; font-weight: 500; letter-spacing: .02em; padding: 6px 12px; }
+.nav-link .ti { font-size: 18px; vertical-align: -2px; }
 .nav-link.danger { color: var(--skip); }
-.nav-link.danger:hover { background: var(--skip-bg); color: #d07070; }
+.nav-link.danger:hover { background: var(--skip-bg); color: var(--skip-hover); }
 .nav-sep:first-of-type { margin-left: auto; }
 .nav-sep { width: 1px; height: 16px; background: var(--border); align-self: center; margin: 0 2px; }
 .nav-section { display: none; font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); align-self: center; padding: 0 2px 0 4px; white-space: nowrap; }

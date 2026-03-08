@@ -60,7 +60,7 @@ Open **http://localhost:6969** and log in. For production, use `gunicorn -w 1 --
 
 ## Documentation
 
-See the [Wiki](https://github.com/GreenglassT/NeedleworkStudio/wiki) for detailed guides on administration, deployment, desktop sync, and more.
+> **📖 [Read the Wiki](https://github.com/GreenglassT/NeedleworkStudio/wiki)** — Getting started, administration, deployment, desktop sync, and more.
 
 ## License
 

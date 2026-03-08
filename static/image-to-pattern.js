@@ -1697,7 +1697,7 @@ async function maybeLoadSavedPattern() {
             const rect   = area.getBoundingClientRect();
             const mx     = e.clientX - rect.left;
             const my     = e.clientY - rect.top;
-            const factor = e.deltaY < 0 ? 1.06 : 1 / 1.06;
+            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
             cvPanX  = mx - (mx - cvPanX) * factor;
             cvPanY  = my - (my - cvPanY) * factor;
             const maxZoom = area.clientWidth / (canvasCellPx * 8);
