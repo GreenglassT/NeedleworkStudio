@@ -85,6 +85,7 @@
                     Sync
                 </button>
                 {% endif %}
+                {% if current_user_is_admin and not desktop_mode %}<a href="/admin" class="nav-link {{ 'active' if request.path == '/admin' }}" title="Admin" aria-label="Admin"><i class="ti ti-shield"></i></a>{% endif %}
                 <a href="/settings" class="nav-link {{ 'active' if request.path == '/settings' }}" title="Settings" aria-label="Settings"><i class="ti ti-settings"></i></a>
                 {% if not desktop_mode %}<form action="/logout" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link danger" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit">Logout</button></form>{% endif %}
             </nav>
