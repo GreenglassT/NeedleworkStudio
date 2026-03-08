@@ -3,8 +3,8 @@
 /* gridlines as vector paths, so PK can parse the chart pages.   */
 /* Requires: jsPDF (window.jspdf), pdf-font.js (PDF_FONT_BASE64 */
 /*           + PDF_FONT_NAME), contrastColor() from utils.js,    */
-/*           drawStitch() + drawStitchFabric() from              */
-/*           stitch-renderer.js, fmtStitches() from utils.js     */
+/*           drawStitch(), drawStitchFabric(), contrastColor(),   */
+/*           fmtStitches() from utils.js                         */
 
 /* ── Layout constants ──────────────────────────────────────────── */
 const _PDF = Object.freeze({
@@ -167,21 +167,11 @@ function _drawChartTile(doc, startCol, startRow, tileW, tileH,
             const y = oy + j * C;
 
             /* Colored cell fill */
-            const hr = parseInt(info.hex.slice(1, 3), 16);
-            const hg = parseInt(info.hex.slice(3, 5), 16);
-            const hb = parseInt(info.hex.slice(5, 7), 16);
-            doc.setFillColor(hr, hg, hb);
+            doc.setFillColor(info.r, info.g, info.b);
             doc.rect(x, y, C, C, 'F');
 
             /* Symbol as selectable text */
-            const tc = contrastColor(info.hex);
-            const tr = parseInt(tc.slice(1, 3), 16);
-            const tg = parseInt(tc.slice(3, 5), 16);
-            const tb = parseInt(tc.slice(5, 7), 16);
-            doc.setTextColor(tr, tg, tb);
-            doc.setFont(PDF_FONT_NAME);
-            doc.setFontSize(symPt);
-            /* Center text in cell: horizontal center, vertical ~40% from top */
+            doc.setTextColor(info.tr, info.tg, info.tb);
             doc.text(info.symbol, x + C / 2, y + C * 0.7, { align: 'center' });
         }
     }
@@ -267,10 +257,20 @@ async function generatePatternPDF(patternName, patternData, opts) {
     const onProgress  = opts?.onProgress;
     const showCover   = opts?.coverPage !== false;
 
-    /* Color/symbol lookup */
+    /* Color/symbol lookup (pre-compute RGB to avoid repeated parseInt in hot loops) */
     const lookup = {};
     for (const e of legend) {
-        lookup[e.dmc] = { hex: e.hex || '#888888', symbol: e.symbol || '?' };
+        const h = e.hex || '#888888';
+        const tc = contrastColor(h);
+        lookup[e.dmc] = {
+            hex: h, symbol: e.symbol || '?',
+            r: parseInt(h.slice(1, 3), 16),
+            g: parseInt(h.slice(3, 5), 16),
+            b: parseInt(h.slice(5, 7), 16),
+            tr: parseInt(tc.slice(1, 3), 16),
+            tg: parseInt(tc.slice(3, 5), 16),
+            tb: parseInt(tc.slice(5, 7), 16),
+        };
     }
 
     /* Sort legend by stitch count descending */
@@ -304,9 +304,11 @@ async function generatePatternPDF(patternName, patternData, opts) {
         compress: true,
     });
 
-    /* ── Embed DejaVu Sans font ────────────────────────────────── */
-    doc.addFileToVFS(PDF_FONT_NAME + '.ttf', PDF_FONT_BASE64);
-    doc.addFont(PDF_FONT_NAME + '.ttf', PDF_FONT_NAME, 'normal');
+    /* ── Embed DejaVu Sans font (guard against missing pdf-font.js) */
+    if (typeof PDF_FONT_BASE64 !== 'undefined' && typeof PDF_FONT_NAME !== 'undefined') {
+        doc.addFileToVFS(PDF_FONT_NAME + '.ttf', PDF_FONT_BASE64);
+        doc.addFont(PDF_FONT_NAME + '.ttf', PDF_FONT_NAME, 'normal');
+    }
 
     let pageNum = 0;
 
@@ -343,13 +345,10 @@ async function generatePatternPDF(patternName, patternData, opts) {
         }
 
         const e = legendEntries[i];
-        const hex = e.hex || '#888888';
+        const info = lookup[e.dmc] || { r: 136, g: 136, b: 136, tr: 0, tg: 0, tb: 0, symbol: '?' };
 
         /* Color swatch (vector filled rectangle) */
-        const hr = parseInt(hex.slice(1, 3), 16);
-        const hg = parseInt(hex.slice(3, 5), 16);
-        const hb = parseInt(hex.slice(5, 7), 16);
-        doc.setFillColor(hr, hg, hb);
+        doc.setFillColor(info.r, info.g, info.b);
         doc.rect(_LEG_COL.SYM - 6, yL - 4.5, 5, 5, 'F');
         /* Swatch border */
         doc.setDrawColor(160, 160, 160);
@@ -357,14 +356,10 @@ async function generatePatternPDF(patternName, patternData, opts) {
         doc.rect(_LEG_COL.SYM - 6, yL - 4.5, 5, 5, 'S');
 
         /* Symbol as selectable text (DejaVu Sans) */
-        const tc = contrastColor(hex);
-        const tr = parseInt(tc.slice(1, 3), 16);
-        const tg = parseInt(tc.slice(3, 5), 16);
-        const tb = parseInt(tc.slice(5, 7), 16);
-        doc.setTextColor(tr, tg, tb);
+        doc.setTextColor(info.tr, info.tg, info.tb);
         doc.setFont(PDF_FONT_NAME);
         doc.setFontSize(9);
-        doc.text(e.symbol || '?', _LEG_COL.SYM + 2, yL, { align: 'center' });
+        doc.text(info.symbol, _LEG_COL.SYM + 2, yL, { align: 'center' });
 
         /* Number, Name, Strands, Count */
         doc.setFont('helvetica', 'normal');
