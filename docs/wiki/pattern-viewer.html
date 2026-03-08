@@ -150,19 +150,34 @@
             <li><kbd>?</kbd> - Show keyboard shortcut help</li>
             <li><kbd>Z</kbd> or <kbd>F</kbd> - Toggle zen / fullscreen mode</li>
             <li><kbd>M</kbd> - Toggle stitch marking mode</li>
-            <li><kbd>G</kbd> - Toggle gridlines</li>
-            <li><kbd>S</kbd> - Toggle symbol overlays</li>
+            <li><kbd>B</kbd> - Toggle place marker mode</li>
+            <li><kbd>N</kbd> - Toggle notes panel</li>
+            <li><kbd>G</kbd> - Open goto row/column panel</li>
+            <li><kbd>Ctrl+Z</kbd> / <kbd>Cmd+Z</kbd> - Undo progress</li>
+            <li><kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> - Redo progress</li>
             <li><kbd>+</kbd> / <kbd>=</kbd> - Zoom in</li>
             <li><kbd>-</kbd> - Zoom out</li>
-            <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> - Pan the chart</li>
+            <li><kbd>,</kbd> / <kbd>.</kbd> / <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> - Cycle through legend colors or pan</li>
             <li><kbd>Escape</kbd> - Exit zen mode, clear highlight, close search</li>
         </ul>
 
         <h2>Progress Tracking</h2>
         <p>Progress tracking in the Pattern Viewer works at the per-color level. As you stitch your way through the pattern, you can mark each color as complete in the legend panel. The viewer keeps a running count of how many colors are finished versus how many remain, giving you a clear sense of overall progress.</p>
 
+        <h3>Progress Undo and Redo</h3>
+        <p>The viewer maintains a full undo/redo history for progress changes. If you accidentally mark a color as complete or undo a completion, press <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd> on macOS) to undo the last progress change, and <kbd>Ctrl+Y</kbd> (or <kbd>Ctrl+Shift+Z</kbd>) to redo. The history tracks up to 50 progress snapshots.</p>
+
         <h3>Estimated Remaining Time</h3>
         <p>Once you have marked at least one color as complete, the viewer calculates an estimated time remaining based on your pace so far. This is displayed as "~X hours Y minutes remaining" above the legend. The estimate updates each time you mark another color done, so it gets more accurate as you go. It disappears once all colors are finished.</p>
+
+        <h2>Place Markers</h2>
+        <p>Press <kbd>B</kbd> to enter place marker mode. In this mode, clicking on a grid cell places a colored pin marker at that location. Markers are useful for tracking your current stitching position, flagging areas that need attention, or annotating specific cells. Markers are saved with the pattern and synchronized across devices when using <a href="desktop-sync.html">Desktop Sync</a>. They do not affect the stitch data.</p>
+
+        <h2>Notes Panel</h2>
+        <p>Press <kbd>N</kbd> to toggle the notes panel. The notes panel lets you write and edit free-text notes for the current pattern. Notes are visible in the pattern viewer and also displayed on pattern cards in the Saved Patterns gallery. Use notes to record stitching reminders, fabric details, gift recipients, or any other information you want to associate with the pattern.</p>
+
+        <h2>Goto Panel</h2>
+        <p>Press <kbd>G</kbd> to open the goto panel, which lets you jump directly to a specific row and column on the grid. Enter the coordinates and press Enter to center the viewport on that location. This is especially helpful on large patterns where scrolling to a specific position would be slow.</p>
 
         <p>Progress data is saved as part of the pattern, so it persists across sessions. If you are using <a href="desktop-sync.html">Desktop Sync</a>, your progress is also synchronized between the desktop app and your server instance, allowing you to track progress from any device.</p>
         <p>For broader project management features including pattern status tracking and materials calculation, see <a href="project-management.html">Project Management</a>.</p>

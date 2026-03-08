@@ -93,10 +93,10 @@
         <p>The Image-to-Pattern converter transforms any photograph or image file into a stitchable cross-stitch chart. The workflow is as follows:</p>
         <ol>
             <li><strong>Upload an image</strong> - Select or drag-and-drop a file. Supported formats: JPEG, PNG, WebP, BMP, GIF (up to 10 MB).</li>
-            <li><strong>Configure grid size</strong> - Set the width of the resulting pattern in stitches, from <strong>10 to 500</strong>. The height is calculated automatically to maintain aspect ratio. You can lock or unlock the aspect ratio.</li>
-            <li><strong>Set color count</strong> - Choose how many thread colors the pattern should use, from <strong>2 to 256</strong>. Fewer colors produce a simpler, more stylized result; more colors capture finer gradients.</li>
-            <li><strong>Adjust image settings</strong> - Use the <strong>contrast</strong> and <strong>brightness</strong> sliders to tweak the image before conversion. A <strong>palette filter</strong> (Standard, Historical, or Modern) controls which subset of thread colors is used. You can also select the thread brand (DMC or Anchor) and toggle <strong>pixel art mode</strong> for sharp, un-antialiased output.</li>
-            <li><strong>Choose dithering</strong> - Dithering simulates additional colors by interleaving stitches. Options include no dithering (solid blocks) and Floyd-Steinberg (smoother gradients).</li>
+            <li><strong>Configure grid size</strong> - Set the width of the resulting pattern in stitches, from <strong>25 to 250</strong>. The height is calculated automatically to maintain aspect ratio. You can lock or unlock the aspect ratio.</li>
+            <li><strong>Set color count</strong> - Choose how many thread colors the pattern should use, from <strong>5 to 34</strong>. Fewer colors produce a simpler, more stylized result; more colors capture finer gradients.</li>
+            <li><strong>Adjust image settings</strong> - Use the <strong>contrast</strong> and <strong>brightness</strong> sliders to tweak the image before conversion. A <strong>palette filter</strong> (Standard, Special, or Both) controls which subset of thread colors is used. You can also select the thread brand (DMC or Anchor) and toggle <strong>pixel art mode</strong> for sharp, un-antialiased output.</li>
+            <li><strong>Choose dithering</strong> - Toggle dithering on or off. When enabled, dithering simulates additional colors by interleaving stitches of different colors, producing smoother gradients. When disabled, each stitch is the single nearest thread color, resulting in solid blocks.</li>
             <li><strong>Crop the image</strong> - An inline crop tool lets you select the region to convert. Crop shapes include rectangle, square, ellipse, and circle.</li>
             <li><strong>Generate</strong> - Click generate to produce the pattern. The converter quantizes image colors to the nearest thread colors and produces a grid chart with a real-time preview and color key.</li>
         </ol>
@@ -189,6 +189,20 @@
             <li><strong>9x9</strong> - A block of eighty-one stitches. The largest brush for rapid coverage of big areas.</li>
         </ul>
 
+        <h2>Additional Editor Tools</h2>
+
+        <h3>Auto-Outline</h3>
+        <p>The auto-outline tool automatically generates backstitch outlines around contiguous regions of color in your pattern. This saves considerable time compared to manually placing backstitches along every edge. Select the outline color and click to apply outlines to a region or the entire pattern.</p>
+
+        <h3>Place Markers</h3>
+        <p>Place colored pin markers on specific grid cells to mark your position, flag areas for later attention, or annotate the design. Press <kbd>B</kbd> to toggle marker placement mode. Markers are saved with the pattern and are visible in both the editor and viewer. They do not affect the stitch data and are purely a visual aid.</p>
+
+        <h3>Color Cycling</h3>
+        <p>Color cycling lets you rotate through perceptually similar thread colors for the currently selected palette entry. This is useful when you want to experiment with slight color variations without manually searching the full thread library. The cycling is based on the CIEDE2000 color distance algorithm.</p>
+
+        <h3>Goto Panel</h3>
+        <p>Press <kbd>G</kbd> to open the goto panel, which lets you jump directly to a specific row and column coordinate on the grid. This is helpful on large patterns where scrolling to a specific location would be tedious.</p>
+
         <h2>Canvas Operations</h2>
 
         <h3>Mirror and Symmetry Modes</h3>
@@ -222,6 +236,9 @@
             <li><strong>Replace colors</strong> - Swap one color for another throughout the entire pattern using the Replace Color tool.</li>
             <li><strong>Batch operations</strong> - Remove unused colors from the palette, or perform bulk color adjustments.</li>
         </ul>
+
+        <h3>Fabric Color</h3>
+        <p>You can customize the background color of the aida cloth in your pattern. By default, the fabric color is a warm off-white (#F5F0E8), but you can change it to any color using the fabric color picker. This is useful for patterns designed for colored fabric, such as black aida for glow-in-the-dark or white-on-dark designs. The fabric color is saved with the pattern and visible in both the editor and viewer.</p>
 
         <h2>Keyboard Shortcuts</h2>
         <p>Press <kbd>?</kbd> at any time to see the full list in the editor. The most common shortcuts:</p>

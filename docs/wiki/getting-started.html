@@ -106,7 +106,7 @@
         <h2>First Launch Walkthrough</h2>
 
         <h3>Creating Your Account</h3>
-        <p>When you open Needlework Studio for the first time, you will be presented with the login screen. If no accounts exist yet (a fresh installation), you can register a new account by clicking the <strong>Register</strong> link below the login form. Enter a username and password to create your account. On the desktop app, this step is handled automatically with a local default account.</p>
+        <p>When you open Needlework Studio for the first time, you will be presented with the login screen. To create an account, use the <code>manage_users.py create</code> command from the terminal (see <a href="administration.html">Administration</a> for details). On the desktop app, this step is handled automatically - a local default account is created on first launch so you can sign in immediately.</p>
 
         <h3>Exploring the Dashboard</h3>
         <p>After logging in, you arrive at the <strong>Home</strong> page. The dashboard gives you an at-a-glance summary of your workspace:</p>
@@ -128,16 +128,28 @@
         <h3>Saved Patterns</h3>
         <p>Displays your full pattern library as a gallery of thumbnail cards. You can search, sort by name or date, filter by status (Not Started, In Progress, Completed), and perform batch actions like deletion. Click any pattern to open it in the <a href="pattern-viewer.html">Pattern Viewer</a>.</p>
 
-        <h3>Create Menu</h3>
-        <p>The <strong>Create</strong> dropdown provides several ways to start a new pattern:</p>
+        <h3>Create Section</h3>
+        <p>The navigation bar's <strong>Create</strong> section provides several ways to start a new pattern:</p>
         <ul>
-            <li><strong>Image to Pattern</strong> - Upload a photograph or image file and convert it into a cross-stitch chart. You can configure the grid size (10 to 500 stitches), color count (2 to 256 colors), dithering, contrast, brightness, and crop the image before generating.</li>
+            <li><strong>Convert Image</strong> - Upload a photograph or image file and convert it into a cross-stitch chart. You can configure the grid size (25 to 250 stitches), color count (5 to 34 colors), dithering, contrast, brightness, and crop the image before generating.</li>
+            <li><strong>Import File</strong> - A dropdown menu with three import options:
+                <ul>
+                    <li><strong>PDF Pattern</strong> - Upload a cross-stitch PDF chart. Needlework Studio will parse the chart pages and extract the pattern data automatically.</li>
+                    <li><strong>JSON Pattern</strong> - Import a pattern in Needlework Studio's native JSON format, useful for sharing patterns between instances.</li>
+                    <li><strong>OXS Pattern</strong> - Import an Open Cross Stitch (.oxs) XML file for interoperability with other cross-stitch software.</li>
+                </ul>
+            </li>
             <li><strong>Blank Canvas</strong> - Start with an empty grid at custom dimensions. Useful when you want to design a pattern entirely from scratch.</li>
-            <li><strong>PDF Import</strong> - Upload a cross-stitch PDF chart. Needlework Studio will parse the chart pages and extract the pattern data automatically.</li>
-            <li><strong>JSON Import</strong> - Import a pattern in Needlework Studio's native JSON format, useful for sharing patterns between instances.</li>
-            <li><strong>OXS Import</strong> - Import an Open Cross Stitch (.oxs) XML file for interoperability with other cross-stitch software.</li>
         </ul>
         <p>For a deeper look at the pattern creation tools, see <a href="pattern-design.html">Pattern Design</a>. For details on file import workflows, see <a href="import-export.html">Import &amp; Export</a>.</p>
+
+        <h3>Plan Section</h3>
+        <p>The <strong>Plan</strong> section groups tools for project planning and app configuration:</p>
+        <ul>
+            <li><strong>Materials Calculator</strong> - Calculate fabric and thread requirements for your patterns. See <a href="project-management.html">Project Management</a> for details.</li>
+            <li><strong>Settings</strong> - Open the settings page to configure your preferences, including theme, gridlines, symbols, legend sort order, brush size, and calculator defaults.</li>
+        </ul>
+        <p>On the desktop app, this section also includes a <strong>Sync</strong> button for managing <a href="desktop-sync.html">Desktop Sync</a>.</p>
 
         <h2>Theme Toggle</h2>
         <p>Needlework Studio supports both a <strong>dark theme</strong> and a <strong>light theme</strong>. You can switch between them at any time by clicking the theme toggle button in the top navigation bar. Your preference is saved in your browser's local storage and will persist across sessions.</p>
