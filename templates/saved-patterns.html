@@ -1157,7 +1157,7 @@
             const st = p.project_status || 'not_started';
             const sel = (v) => st === v ? ' selected' : '';
             const { total, done, pct, fillClass, textClass } = _calcProgress(p, st);
-            const progressHtml = total > 0 ? `
+            const progressHtml = !DEMO_MODE && total > 0 ? `
                         <div class="progress-badge">
                             <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
                             <span class="progress-text ${textClass}">${pct}%</span>

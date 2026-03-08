@@ -12,6 +12,7 @@ from PIL import Image
 
 
 _MAX_THUMB = 120
+_PATTERN_SYMBOLS = "+×#@*!=?%&~^$●■▲◆★§¶†‡±÷◎⊕⊗≠√∞⊞⬡¤※"
 
 
 def _hex_to_rgb(h):
@@ -51,6 +52,10 @@ def _generate_slug(length=8):
 
 def _insert_pattern(db, user_id, name, grid_w, grid_h, grid_data, legend_data):
     """Insert a pattern with auto-generated slug and thumbnail."""
+    # Auto-assign symbols if missing
+    for i, entry in enumerate(legend_data):
+        if "symbol" not in entry:
+            entry["symbol"] = _PATTERN_SYMBOLS[i % len(_PATTERN_SYMBOLS)]
     grid_json = json.dumps(grid_data)
     legend_json = json.dumps(legend_data)
     color_count = len(legend_data)
@@ -195,6 +200,100 @@ def _make_border_sampler():
     return "Border Sampler", W, H, grid, legend
 
 
+def _make_floral_mandala():
+    """A 40x40 symmetric floral mandala with 8 colors."""
+    import math
+    W, H = 41, 41
+    cx, cy = W // 2, H // 2
+
+    colors = [
+        ("550", "Violet Very Dark", "#5B2561"),
+        ("553", "Violet", "#A363A9"),
+        ("3607", "Plum Light", "#C44D80"),
+        ("3609", "Plum Ultra Light", "#E898B2"),
+        ("907", "Parrot Green Light", "#C6E26C"),
+        ("702", "Kelly Green", "#226B30"),
+        ("726", "Topaz Light", "#FDD54A"),
+        ("740", "Tangerine", "#FF8313"),
+    ]
+    bg_dmc = "Ecru"
+
+    grid = [bg_dmc] * (W * H)
+
+    def sym_set(x, y, dmc):
+        """Set pixel with 4-fold symmetry."""
+        pts = [(cx+x, cy+y), (cx-x, cy+y), (cx+x, cy-y), (cx-x, cy-y)]
+        for px, py in pts:
+            if 0 <= px < W and 0 <= py < H:
+                grid[py * W + px] = dmc
+
+    # Center flower (tangerine core)
+    for dy in range(-1, 2):
+        for dx in range(-1, 2):
+            sym_set(dx, dy, "740")
+
+    # Inner petals (plum)
+    for d in range(2, 5):
+        sym_set(d, 0, "3607")
+        sym_set(0, d, "3607")
+    # Diagonal petals (violet)
+    for d in range(2, 4):
+        sym_set(d, d, "553")
+        sym_set(d, -d, "553")
+
+    # Gold ring
+    for angle_deg in range(0, 360, 5):
+        a = math.radians(angle_deg)
+        r = 6
+        sym_set(round(r * math.cos(a)), round(r * math.sin(a)), "726")
+
+    # Green leaves (diagonal axes)
+    for d in range(5, 10):
+        sym_set(d, d, "702")
+        sym_set(d + 1, d, "907")
+        sym_set(d, d + 1, "907")
+
+    # Outer petals (pink light, at cardinal axes)
+    for d in range(7, 13):
+        sym_set(d, 0, "3609")
+        sym_set(d, 1, "3609")
+        sym_set(d, -1, "3609")
+        sym_set(0, d, "3609")
+        sym_set(1, d, "3609")
+        sym_set(-1, d, "3609")
+
+    # Outer petal tips (dark plum)
+    for d in range(12, 15):
+        sym_set(d, 0, "3607")
+        sym_set(0, d, "3607")
+
+    # Violet corner accents
+    for d in range(12, 16):
+        sym_set(d, d, "550")
+    for d in range(10, 13):
+        sym_set(d + 1, d, "553")
+        sym_set(d, d + 1, "553")
+
+    # Outer ring (dark violet)
+    for angle_deg in range(0, 360, 3):
+        a = math.radians(angle_deg)
+        r = 17
+        x, y = round(r * math.cos(a)), round(r * math.sin(a))
+        sym_set(x, y, "550")
+
+    all_dmcs = [c[0] for c in colors] + [bg_dmc]
+    legend = []
+    for dmc, name, hex_val in colors:
+        count = grid.count(dmc)
+        if count > 0:
+            legend.append({"dmc": dmc, "name": name, "hex": hex_val, "count": count})
+    bg_count = grid.count(bg_dmc)
+    if bg_count > 0:
+        legend.append({"dmc": bg_dmc, "name": "Ecru", "hex": "#F0EADA", "count": bg_count})
+
+    return "Floral Mandala", W, H, grid, legend
+
+
 def seed_demo_patterns(user_id, db):
     """Insert sample patterns for a new demo user. Safe to call multiple times."""
     # Check if user already has patterns
@@ -206,6 +305,7 @@ def seed_demo_patterns(user_id, db):
         return
 
     patterns = [
+        _make_floral_mandala(),
         _make_heart_pattern(),
         _make_checkerboard_pattern(),
         _make_rainbow_stripes(),

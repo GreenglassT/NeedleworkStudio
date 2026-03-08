@@ -99,6 +99,14 @@
     </header>
     {% endblock %}
 
+    {% if demo_mode %}
+    <div class="demo-banner">
+        <span>You're using the demo.</span>
+        <a href="https://needlework-studio.com/#downloads" target="_blank" rel="noopener">Download the full app</a> for inventory tracking, materials planning, and more.
+        <button class="demo-banner-close" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
+    </div>
+    {% endif %}
+
     {% block content %}{% endblock %}
 
     {% if desktop_mode %}
