@@ -1045,7 +1045,7 @@
                             <span>Color Count</span>
                             <span class="ctrl-val ctrl-val-editable" id="val-colors" title="Click to type a value">15</span>
                         </div>
-                        <input type="range" id="ctrl-colors" min="5" max="34" value="15" step="1"
+                        <input type="range" id="ctrl-colors" min="5" max="{{ pattern_symbols|length }}" value="15" step="1"
                                oninput="updateVal('val-colors', this.value); scheduleRegenerate()">
                     </div>
 

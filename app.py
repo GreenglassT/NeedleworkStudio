@@ -2571,7 +2571,7 @@ def generate_image_pattern():
     try:
         grid_w = clamp(int(request.form.get('grid_width', 100)), 25, 250)
         grid_height_raw = int(request.form.get('grid_height', 0))
-        num_colors = clamp(int(request.form.get('num_colors', 15)), 5, 34)
+        num_colors = clamp(int(request.form.get('num_colors', 15)), 5, len(_PATTERN_SYMBOLS))
         dither = request.form.get('dither', 'true').lower() not in ('false', '0', 'no')
         contrast = clamp(float(request.form.get('contrast', 1.0)), 0.5, 2.0)
         brightness = clamp(float(request.form.get('brightness', 1.0)), 0.5, 1.5)
@@ -3577,7 +3577,8 @@ def json_to_pattern():
 @app.route('/oxs-to-pattern')
 @login_required
 def oxs_to_pattern():
-    return render_template('oxs-to-pattern.html')
+    return render_template('oxs-to-pattern.html',
+                           pattern_symbols=_PATTERN_SYMBOLS)
 
 
 @app.route('/create-pattern')

@@ -358,7 +358,7 @@
             .sort((a, b) => (stitchCounts[b.dmc] || 0) - (stitchCounts[a.dmc] || 0));
 
         if (usedEntries.length === 0) throw 'No stitches found in this file.';
-        if (usedEntries.length > 34) throw 'Pattern has ' + usedEntries.length + ' colors but maximum is 34.';
+        if (usedEntries.length > {{ pattern_symbols|length }}) throw 'Pattern has ' + usedEntries.length + ' colors but maximum is {{ pattern_symbols|length }}.';
 
         const legend = usedEntries.map((e, i) => ({
             dmc:      e.dmc,
