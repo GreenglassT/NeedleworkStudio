@@ -1613,7 +1613,8 @@
             }
         });
 
-        document.getElementById('filter-row').addEventListener('click', e => {
+        const _filterRow = document.getElementById('filter-row');
+        if (_filterRow) _filterRow.addEventListener('click', e => {
             const btn = e.target.closest('.filter-btn');
             if (!btn) return;
             activeFilter = btn.dataset.filter;
@@ -1887,6 +1888,7 @@
 
         function _renderTagFilterRow() {
             const row = document.getElementById('tag-filter-row');
+            if (!row) return;
             if (!allTags.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
             row.style.display = 'flex';
             let html = '';
