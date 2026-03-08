@@ -486,8 +486,8 @@
         }
 
         body.edit-mode-on #cell-mark-btn,
-        body.edit-mode-on .cell-progress-wrap,
-        body.edit-mode-on #floating-action-panel { display: none; }
+        body.edit-mode-on #marker-mode-btn,
+        body.edit-mode-on .cell-progress-wrap { display: none; }
 
         /* ——— ZEN / FULLSCREEN MODE ——— */
         body.zen-mode .site-header { display: none; }
@@ -579,35 +579,12 @@
         .zen-exit-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
         body.zen-mode .zen-exit-btn { display: flex; }
 
-        /* ——— FLOATING ACTION PANEL ——— */
-        #floating-action-panel {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 310;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
+        /* ——— MARKER MODE (toolbar) ——— */
+        #marker-mode-btn.active {
+            color: var(--gold);
+            background: rgba(200,145,58,0.12);
+            border-color: var(--gold-dim);
         }
-        .fab-btn {
-            pointer-events: auto;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            border: 2px solid var(--border-2);
-            background: var(--surface);
-            color: var(--text-muted);
-            font-size: 1.3rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,.25);
-            transition: background var(--t), color var(--t), border-color var(--t);
-        }
-        .fab-btn:hover { color: var(--text); border-color: var(--gold-dim); background: var(--surface-2); }
-        .fab-btn.active { background: var(--gold); color: #1a1a1a; border-color: var(--gold-dim); }
 
         /* ——— PATTERN NOTES ——— */
         #notes-toggle.has-notes { color: var(--gold); }
@@ -718,6 +695,8 @@
             <button class="nav-link" id="zen-btn" onclick="toggleZenMode()" title="Zen Mode (F)" aria-label="Zen mode"><i class="ti ti-maximize"></i> Zen Mode</button>
             <button class="nav-link" id="cell-mark-btn" onclick="toggleCellMarkMode()"
                     title="Mark stitched cells (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i> Mark Complete</button>
+            <button class="nav-link" id="marker-mode-btn" onclick="toggleMarkerMode()"
+                    title="Place Marker (B)" aria-label="Place marker"><i class="ti ti-map-pin-2"></i> Place Marker</button>
             <button class="nav-link" onclick="openGotoPanel()"
                     title="Jump to row/column (G)" aria-label="Go to row/column"><i class="ti ti-map-pin"></i> Go to</button>
             <button class="nav-link" id="notes-toggle" onclick="toggleNotesPanel()"
@@ -730,8 +709,8 @@
                 </div>
             </div>
             <button class="nav-link" id="edit-toggle-btn" onclick="toggleEditMode()"><i class="ti ti-edit"></i> Edit Pattern</button>
-            <button class="nav-link" id="cancel-btn" onclick="cancelEdit()" style="display:none">Cancel</button>
-            <button class="nav-link" id="save-btn" onclick="savePattern()" style="display:none;color:var(--gold)">Save</button>
+            <button class="nav-link" id="cancel-btn" onclick="cancelEdit()" style="display:none"><i class="ti ti-x"></i> Cancel</button>
+            <button class="nav-link" id="save-btn" onclick="savePattern()" style="display:none;color:var(--gold)"><i class="ti ti-device-floppy"></i> Save</button>
         </div>
         <div class="hd-utils">
             <button class="nav-link" id="help-btn"
@@ -813,6 +792,9 @@
             <button class="zen-menu-item" onclick="zenMenuAction('mark-complete')">
                 <i class="ti ti-pencil-check"></i> <span id="zen-mark-label">Mark Complete</span>
             </button>
+            <button class="zen-menu-item" onclick="zenMenuAction('place-marker')">
+                <i class="ti ti-map-pin-2"></i> <span id="zen-marker-label">Place Marker</span>
+            </button>
             <button class="zen-menu-item" onclick="zenMenuAction('goto')">
                 <i class="ti ti-map-pin"></i> Go to Row/Col
             </button>
@@ -836,12 +818,6 @@
         </div>
     </div>
 
-</div>
-
-<div id="floating-action-panel">
-    <button class="fab-btn" id="marker-mode-btn" onclick="toggleMarkerMode()" title="Place Marker (B)">
-        <i class="ti ti-map-pin"></i>
-    </button>
 </div>
 
 <!-- Fork confirmation dialog -->
