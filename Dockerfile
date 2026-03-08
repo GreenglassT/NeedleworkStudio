@@ -9,7 +9,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin/gunicorn /usr/local/bin/gunicorn
-COPY app.py init_db.py anchor_threads.py manage_users.py schema.sql ./
+COPY app.py init_db.py anchor_threads.py manage_users.py seed_demo.py schema.sql ./
 COPY static/ static/
 COPY templates/ templates/
 COPY docker-entrypoint.sh /docker-entrypoint.sh

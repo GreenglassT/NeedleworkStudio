@@ -68,6 +68,9 @@ app = Flask(__name__,
 # Desktop mode — set DESKTOP_MODE=1 to auto-login without credentials
 DESKTOP_MODE = os.environ.get('DESKTOP_MODE', '').lower() in ('1', 'true')
 
+# Demo mode — set DEMO_MODE=1 for per-visitor anonymous sessions
+DEMO_MODE = os.environ.get('DEMO_MODE', '').lower() in ('1', 'true')
+
 # Admin bootstrap — set ADMIN_USERNAME to grant admin on startup
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', '').strip()
 
@@ -361,9 +364,54 @@ def _desktop_auto_login():
         session.permanent = True
 
 
+# --- Demo mode: per-visitor anonymous sessions ---
+
+@app.before_request
+def _demo_auto_login():
+    """In demo mode, auto-create an anonymous user per browser session."""
+    if not DEMO_MODE:
+        return
+    if current_user.is_authenticated:
+        return
+    # Skip static file requests
+    if request.path.startswith('/static/'):
+        return
+    username = f"demo-{secrets.token_urlsafe(6)}"
+    email = f"{username}@demo.local"
+    password_hash = ph.hash(secrets.token_urlsafe(32))
+    db = get_db()
+    cursor = db.execute(
+        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+        (username, email, password_hash)
+    )
+    db.commit()
+    user = User.get_by_id(cursor.lastrowid)
+    login_user(user, remember=True)
+    session.permanent = True
+    # Seed sample patterns for the new user
+    try:
+        from seed_demo import seed_demo_patterns
+        seed_demo_patterns(user.id, db)
+    except Exception:
+        pass
+
+
+def _cleanup_demo_users():
+    """Delete demo users (and their data) older than 30 days."""
+    conn = sqlite3.connect(DB_PATH)
+    cutoff = (datetime.now() - timedelta(days=30)).isoformat()
+    # ON DELETE CASCADE handles patterns, tags, thread status, tokens
+    conn.execute(
+        "DELETE FROM users WHERE username LIKE 'demo-%' AND email LIKE '%@demo.local' AND created_at < ?",
+        (cutoff,)
+    )
+    conn.commit()
+    conn.close()
+
+
 @app.context_processor
 def _inject_desktop_mode():
-    return dict(desktop_mode=DESKTOP_MODE)
+    return dict(desktop_mode=DESKTOP_MODE, demo_mode=DEMO_MODE)
 
 
 @app.context_processor
@@ -4212,6 +4260,10 @@ if os.path.exists(DB_PATH):
     if DESKTOP_MODE:
         _desktop_user_id = _ensure_desktop_user()
 
+    # Demo mode: clean up expired anonymous users on startup
+    if DEMO_MODE:
+        _cleanup_demo_users()
+
 
 if __name__ == '__main__':
     if not os.path.exists(DB_PATH):
@@ -4219,7 +4271,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     port = int(os.environ.get('PORT', 6969))
-    mode = " (desktop mode)" if DESKTOP_MODE else ""
+    mode = " (desktop mode)" if DESKTOP_MODE else (" (demo mode)" if DEMO_MODE else "")
     print(f"Starting Needlework Studio server{mode}...")
     print(f"Open http://localhost:{port} in your browser")
     app.run(host='0.0.0.0', port=port,
