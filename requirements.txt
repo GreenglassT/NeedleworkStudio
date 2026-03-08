@@ -5,6 +5,7 @@ werkzeug>=3.1.6,<4.0
 argon2-cffi>=21.0.0,<22.0
 colormath>=3.0.0,<4.0
 pdfplumber>=0.9.0,<1.0
+charset-normalizer>=3.0.0,<3.4.5
 pypdfium2>=5.0.0,<6.0
 Pillow>=12.1.1,<13.0
 flask-limiter>=3.5.0,<4.0
