@@ -83,6 +83,10 @@
         <h1>Deployment</h1>
         <p class="page-sub">Production deployment strategies including reverse proxy configuration, HTTPS, systemd services, and security hardening.</p>
 
+        <div class="callout-info">
+            <strong>Desktop app users:</strong> This page is for self-hosted server deployments only. If you are using the desktop app, you do not need any of this.
+        </div>
+
         <h2>Reverse Proxy &amp; HTTPS</h2>
         <p>In production, you should place Needlework Studio behind a reverse proxy that terminates SSL/TLS. This gives you HTTPS with automatic certificate management, and lets you serve the application on standard ports (80/443) alongside other services.</p>
         <p>When running behind an SSL-terminating proxy, set the <code>HTTPS=true</code> environment variable so that session cookies are marked as <code>Secure</code> and only transmitted over encrypted connections.</p>

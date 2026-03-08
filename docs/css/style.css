@@ -819,6 +819,17 @@ svg.download-icon {
 .wiki-content .callout-warning strong {
     color: var(--gold);
 }
+.wiki-content .callout-info {
+    background: rgba(100, 160, 220, 0.1);
+    border-left: 4px solid #6496c8;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 var(--r) var(--r) 0;
+    font-size: 15px;
+}
+.wiki-content .callout-info strong {
+    color: #6496c8;
+}
 
 .wiki-content code {
     font-family: 'IBM Plex Mono', monospace;

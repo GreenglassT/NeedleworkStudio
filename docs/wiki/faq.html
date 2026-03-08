@@ -97,17 +97,18 @@
         <h3>Where does the desktop app store my data?</h3>
         <p>The desktop app stores all data (database, images, settings) locally on your machine in the application's data directory. On macOS this is in <code>~/Library/Application Support/needlework-studio</code>, on Windows in <code>%APPDATA%\needlework-studio</code>, and on Linux in <code>~/.config/needlework-studio</code>. No internet connection or server is required.</p>
 
-        <h2>Installation &amp; Docker</h2>
+        <h2>Server &amp; Docker</h2>
+        <p>The questions in this section apply to self-hosted server deployments only. The desktop app handles all of this automatically.</p>
 
         <h3>I ran init_db.py and lost all my data</h3>
         <p><code>init_db.py</code> drops and recreates the entire database from scratch. It is meant for first-time setup only. If you ran it on an existing installation, your data is gone unless you have a backup. See <a href="administration.html">Administration</a> for backup procedures to avoid this in the future.</p>
 
-        <h3>The app starts but I cannot log in</h3>
+        <h3>The server starts but I cannot log in</h3>
         <p>You need to create a user account first. For Docker:</p>
         <pre><code>docker compose exec needlework-studio python3 manage_users.py create</code></pre>
         <p>For manual installs:</p>
         <pre><code>python3 manage_users.py create</code></pre>
-        <p>Follow the prompts to set a username and password, then log in at <code>http://localhost:6969</code>.</p>
+        <p>Follow the prompts to set a username and password, then log in at <code>http://localhost:6969</code>. (The desktop app does not require this step - it logs in automatically.)</p>
 
         <h3>How do I reset my password?</h3>
         <p>Use the <code>manage_users.py</code> script with the <code>password</code> command:</p>

@@ -87,26 +87,27 @@
         <p class="screenshot-caption">The Needlework Studio dashboard with stats cards and recent patterns</p>
 
         <h2>What is Needlework Studio?</h2>
-        <p>Needlework Studio is a free, open-source, self-hosted application for managing and designing counted cross-stitch patterns. It includes a pattern editor, thread inventory for DMC and Anchor brands, project tracking, and import/export in PDF, OXS, and JSON formats. It runs in your web browser or as a desktop app.</p>
+        <p>Needlework Studio is a free, open-source desktop application for managing and designing counted cross-stitch patterns. It includes a pattern editor, thread inventory for DMC and Anchor brands, project tracking, and import/export in PDF, OXS, and JSON formats. Download it for macOS, Windows, or Linux and start using it immediately - no server, no account setup, no internet connection required.</p>
+        <p>For users who want multi-device access, Needlework Studio can also be self-hosted as a web application via Docker or manual Python setup. The desktop app can optionally <a href="desktop-sync.html">sync with a server</a> to keep your data available across devices.</p>
 
-        <h2>Three Ways to Run Needlework Studio</h2>
-        <p>All three methods run the same application with the same feature set.</p>
+        <h2>Getting Needlework Studio</h2>
 
-        <h3>Desktop App (Recommended for Personal Use)</h3>
-        <p>Download the installer for your platform - macOS (.dmg), Windows (.exe), or Linux (.AppImage). The desktop app bundles everything you need and runs locally without requiring a server. It also supports <a href="desktop-sync.html">bidirectional sync</a> with a self-hosted server instance if you want to access your data from multiple devices.</p>
+        <h3>Desktop App (Recommended)</h3>
+        <p>The desktop app is the easiest way to get started. Download the installer for your platform - macOS (.dmg), Windows (.exe), or Linux (.AppImage) - and you are ready to go. Everything runs locally on your machine with no server or internet connection required. A default account is created automatically on first launch so you can start designing immediately.</p>
+        <p>If you later want to access your data from multiple devices, the desktop app supports <a href="desktop-sync.html">bidirectional sync</a> with a self-hosted server instance.</p>
 
-        <h3>Docker (Recommended for Self-Hosting)</h3>
-        <p>The Docker image is the fastest way to deploy a server instance. A single <code>docker run</code> command or a short <code>docker-compose.yml</code> file is all you need. This is ideal if you want to access Needlework Studio from any device on your network or share it with household members.</p>
+        <h3>Self-Hosted Server (Optional)</h3>
+        <p>If you want to access Needlework Studio from any device on your network, share it with household members, or sync data between a desktop app and a web interface, you can deploy a server instance. The recommended method is Docker - a single <code>docker-compose.yml</code> file is all you need. You can also set up the Flask backend manually with Python 3.10 or later for full control over the environment.</p>
 
-        <h3>Manual Python Setup</h3>
-        <p>If you prefer to run the application directly, you can clone the repository and run the Flask backend with Python 3.10 or later. This approach gives you the most control over the environment and is useful for development or customization.</p>
+        <p>For detailed installation instructions for all methods, see the <a href="installation.html">Installation</a> page.</p>
 
-        <p>For detailed installation instructions for all three methods, see the <a href="installation.html">Installation</a> page.</p>
+        <h2>First Launch</h2>
 
-        <h2>First Launch Walkthrough</h2>
+        <h3>Desktop App</h3>
+        <p>Open the app and you are in. A local default account is created automatically on first launch, so there is no login screen or setup step. You will land directly on the dashboard and can start importing patterns or building your thread inventory right away.</p>
 
-        <h3>Creating Your Account</h3>
-        <p>When you open Needlework Studio for the first time, you will be presented with the login screen. To create an account, use the <code>manage_users.py create</code> command from the terminal (see <a href="administration.html">Administration</a> for details). On the desktop app, this step is handled automatically - a local default account is created on first launch so you can sign in immediately.</p>
+        <h3>Server Deployment</h3>
+        <p>On a server deployment (Docker or manual), you need to create a user account before you can log in. Run <code>manage_users.py create</code> from the terminal (see <a href="administration.html">Administration</a> for details). Once your account is created, open the server URL in your browser and sign in.</p>
 
         <h3>Exploring the Dashboard</h3>
         <p>After logging in, you arrive at the <strong>Home</strong> page. The dashboard gives you an at-a-glance summary of your workspace:</p>
