@@ -1496,14 +1496,14 @@ def home():
 @app.route('/calculator')
 @login_required
 def calculator():
-    """Redirect old calculator URL to Project Materials Calculator page."""
+    """Redirect old calculator URL to Materials Calculator page."""
     return redirect('/pattern-calculator?mode=fabric')
 
 
 @app.route('/skein-calculator')
 @login_required
 def skein_calculator():
-    """Redirect old skein-calculator URL to Project Materials Calculator page."""
+    """Redirect old skein-calculator URL to Materials Calculator page."""
     return redirect('/pattern-calculator?mode=stitch')
 
 
@@ -1795,14 +1795,14 @@ def get_similar_threads(thread_id):
 @app.route('/pattern-calculator')
 @login_required
 def pattern_calculator():
-    """Project Materials Calculator — thread needs, skein estimates, and fabric sizing."""
+    """Materials Calculator — thread needs, skein estimates, and fabric sizing."""
     return render_template('pattern-calculator.html')
 
 
 @app.route('/stash-calculator')
 @login_required
 def stash_calculator():
-    """Redirect old stash-calculator URL to Project Materials Calculator page."""
+    """Redirect old stash-calculator URL to Materials Calculator page."""
     pattern = request.args.get('pattern', '')
     url = '/pattern-calculator' + ('?pattern=' + pattern if pattern else '')
     return redirect(url)
