@@ -107,13 +107,15 @@
         <p>Open the app and you are in. A local default account is created automatically on first launch, so there is no login screen or setup step. You will land directly on the dashboard and can start importing patterns or building your thread inventory right away.</p>
 
         <h3>Server Deployment</h3>
-        <p>On a server deployment (Docker or manual), you need to create a user account before you can log in. Run <code>manage_users.py create</code> from the terminal (see <a href="administration.html">Administration</a> for details). Once your account is created, open the server URL in your browser and sign in.</p>
+        <p>On a server deployment (Docker or manual), you need to create a user account before you can log in. Run <code>manage_users.py create</code> from the terminal - it will prompt you for a username, email, and password (see <a href="administration.html">Administration</a> for details). After creating your account, run <code>manage_users.py admin</code> to promote yourself to an administrator. Once your account is ready, open the server URL in your browser and sign in.</p>
+        <p>Admin users can also manage other accounts from the browser using the built-in <strong>web admin panel</strong>, accessible from the navigation bar. See <a href="administration.html">Administration</a> for more information.</p>
 
         <h3>Exploring the Dashboard</h3>
         <p>After logging in, you arrive at the <strong>Home</strong> page. The dashboard gives you an at-a-glance summary of your workspace:</p>
         <ul>
-            <li><strong>Stats cards</strong> - These display your total number of saved patterns, threads owned, threads needed, and patterns in progress. As you build your inventory and save patterns, these numbers update automatically.</li>
+            <li><strong>Stats cards</strong> - Four cards summarizing your thread collection: <strong>Owned</strong> (threads you own), <strong>Need</strong> (threads you need for your patterns), <strong>Don't Own</strong> (threads not in your collection), and <strong>Patterns</strong> (total saved patterns). A brand toggle lets you filter the collection stats by <strong>DMC</strong>, <strong>Anchor</strong>, or <strong>All</strong>. As you build your inventory and save patterns, these numbers update automatically.</li>
             <li><strong>Recent patterns</strong> - A row of thumbnail cards showing your most recently saved or edited patterns. Click any card to open it in the Pattern Viewer.</li>
+            <li><strong>Tools</strong> - A set of quick-access cards for common actions: <strong>Convert Image</strong>, <strong>Import Pattern</strong> (PDF, JSON, or OXS), <strong>Blank Canvas</strong>, and <strong>Materials Calculator</strong>.</li>
         </ul>
         <p>If this is a brand-new installation, the dashboard will show zeroes and an empty recent patterns section. That is expected - once you import your first pattern or start building your thread inventory, the dashboard will populate.</p>
 
@@ -145,15 +147,15 @@
         <p>For a deeper look at the pattern creation tools, see <a href="pattern-design.html">Pattern Design</a>. For details on file import workflows, see <a href="import-export.html">Import &amp; Export</a>.</p>
 
         <h3>Plan Section</h3>
-        <p>The <strong>Plan</strong> section groups tools for project planning and app configuration:</p>
+        <p>The <strong>Plan</strong> section groups tools for project planning:</p>
         <ul>
             <li><strong>Materials Calculator</strong> - Calculate fabric and thread requirements for your patterns. See <a href="project-management.html">Project Management</a> for details.</li>
-            <li><strong>Settings</strong> - Open the settings page to configure your preferences, including theme, gridlines, symbols, legend sort order, brush size, and calculator defaults.</li>
         </ul>
         <p>On the desktop app, this section also includes a <strong>Sync</strong> button for managing <a href="desktop-sync.html">Desktop Sync</a>.</p>
 
-        <h2>Theme Toggle</h2>
-        <p>Needlework Studio supports both a <strong>dark theme</strong> and a <strong>light theme</strong>. You can switch between them at any time by clicking the theme toggle button in the top navigation bar. Your preference is saved in your browser's local storage and will persist across sessions.</p>
+        <h3>Settings &amp; Theme Toggle</h3>
+        <p>On the right side of the navigation bar you will find a <strong>gear icon</strong> for Settings and a <strong>theme toggle</strong> button. The Settings page lets you configure your preferences, including theme, gridlines, symbols, legend sort order, brush size, and calculator defaults.</p>
+        <p>Needlework Studio supports both a <strong>dark theme</strong> and a <strong>light theme</strong>. You can switch between them at any time by clicking the theme toggle button. Your preference is saved in your browser's local storage and will persist across sessions.</p>
         <p>The dark theme uses warm, low-contrast tones. The light theme is brighter and can be easier for judging thread colors.</p>
 
         <h2>Next Steps</h2>

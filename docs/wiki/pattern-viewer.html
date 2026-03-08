@@ -92,7 +92,7 @@
         <h3>Chart Mode</h3>
         <p>Chart mode displays the pattern as a traditional cross-stitch chart - a grid of colored squares with symbol overlays. This is the standard way to read a cross-stitch pattern while stitching. Each grid cell shows a colored square with a unique symbol assigned to that thread color. The symbol overlays ensure that the chart remains readable even when printed in black and white or when two similar colors are used side by side.</p>
         <p>Chart mode includes <strong>four-sided rulers</strong> along the top, bottom, left, and right edges of the grid. These rulers display stitch coordinates and make it easy to count your position on the fabric. The rulers follow your scroll position so they remain visible as you pan across the pattern.</p>
-        <p>You can toggle <strong>gridlines</strong> on or off. When gridlines are enabled, thin lines separate each stitch cell, making it easier to count stitches and follow rows. When gridlines are disabled, the cells sit flush against each other for a cleaner visual appearance.</p>
+        <p><strong>Gridlines</strong> are always displayed in chart mode, providing thin lines between each stitch cell to help with counting stitches and following rows. <strong>Symbols</strong> are shown automatically when cells are at least 8 pixels in size, ensuring the chart remains readable at all zoom levels.</p>
 
         <h3>Thread Mode</h3>
         <p>Thread mode renders the pattern with <strong>realistic stitch textures</strong> instead of flat colored squares. Each stitch is drawn to approximate the appearance of actual thread on fabric, showing the characteristic X shape of cross-stitches with simulated thread texture and shading. This mode gives you a preview of how the finished piece will look when stitched.</p>
@@ -100,7 +100,7 @@
 
         <h3>Zen Mode</h3>
         <p>Zen mode provides a <strong>distraction-free, fullscreen</strong> viewing experience. When activated, the navigation bar, sidebar, toolbar, and all other interface elements are hidden, leaving only the pattern chart filling the entire screen. This mode is designed for focused stitching sessions where you want maximum screen space for the chart.</p>
-        <p>Press <kbd>Z</kbd> or click the zen mode button to enter zen mode. Press <kbd>Z</kbd> or <kbd>Escape</kbd> to exit back to the normal view.</p>
+        <p>Press <kbd>F</kbd> or click the zen mode button to enter zen mode. Press <kbd>F</kbd> or <kbd>Escape</kbd> to exit back to the normal view.</p>
 
         <h2>Legend Panel</h2>
         <p>The legend panel is a sidebar that displays a list of all thread colors used in the current pattern. It serves as both a reference and a progress tracking tool.</p>
@@ -110,6 +110,9 @@
 
         <h3>Pattern Summary</h3>
         <p>At the top of the legend, a summary line shows the total number of colors, the weighted stitch count across all stitch types, and an approximate skein estimate for 14-count fabric. Different stitch types are weighted according to their thread usage (a half stitch counts as 0.5, a quarter stitch as 0.25, and so on) so the totals reflect actual material consumption rather than just the raw cell count.</p>
+
+        <h3>Sort Options</h3>
+        <p>The legend provides <strong>DMC #</strong> and <strong>Stitches</strong> sort buttons to reorder the thread list. Sort by DMC number for a consistent reference order, or sort by stitch count to see which colors dominate the pattern.</p>
 
         <h3>Search</h3>
         <p>The legend panel includes a search field that lets you filter the thread list by thread number or name. This is useful in patterns with many colors when you need to quickly find a specific thread.</p>
@@ -126,49 +129,46 @@
         <h2>Zoom Controls</h2>
         <p>The viewer supports a wide zoom range, giving you the flexibility to see the entire pattern at once or zoom in to inspect individual stitches.</p>
         <ul>
-            <li><strong>Zoom in</strong> - Click the <kbd>+</kbd> button in the toolbar, press the <kbd>+</kbd> or <kbd>=</kbd> key, or use your mouse scroll wheel while holding <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd> on macOS).</li>
-            <li><strong>Zoom out</strong> - Click the <kbd>-</kbd> button, press the <kbd>-</kbd> key, or scroll down while holding <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>.</li>
-            <li><strong>Fit to window</strong> - Double-click the zoom percentage indicator to automatically fit the entire pattern within the visible area.</li>
+            <li><strong>Zoom in</strong> - Click the <kbd>+</kbd> button in the toolbar, or scroll up with your mouse scroll wheel.</li>
+            <li><strong>Zoom out</strong> - Click the <kbd>-</kbd> button in the toolbar, or scroll down with your mouse scroll wheel.</li>
         </ul>
-        <p>The current zoom level is displayed as a percentage in the toolbar. At lower zoom levels (below 50%), symbols may be hidden automatically to keep the chart readable, showing only the color blocks.</p>
+        <p>The current zoom level is displayed as a percentage in the toolbar. At lower zoom levels, symbols are hidden automatically (they appear when cells are at least 8 pixels in size), showing only the color blocks.</p>
 
-        <h2>Display Toggles</h2>
-        <p>The viewer toolbar provides several toggle buttons that control what is displayed on the chart. These can be combined in any combination.</p>
+        <h2>Toolbar</h2>
+        <p>The viewer toolbar provides access to key features and tools for working with your pattern.</p>
 
-        <h3>Gridlines</h3>
-        <p>Toggles the thin lines between stitch cells on and off. Gridlines make it easier to count stitches but can add visual clutter at lower zoom levels. Press <kbd>G</kbd> to toggle gridlines.</p>
+        <h3>Edit Pattern</h3>
+        <p>Click the <strong>Edit Pattern</strong> button to open the full pattern editor inline within the viewer. This lets you make design changes without leaving the viewer context, then return to viewing and tracking progress.</p>
 
-        <h3>Symbols</h3>
-        <p>Toggles the symbol overlays on each stitch cell. When enabled, each cell displays a unique character or shape identifying its thread color. When disabled, only the color fill is shown. Press <kbd>S</kbd> to toggle symbols. Symbols are particularly important when working with a printed black-and-white chart or when the pattern contains colors that are hard to distinguish on screen.</p>
-
-        <h3>Stitches</h3>
-        <p>Toggles the visibility of different stitch types on the chart. You can selectively show or hide full stitches, part stitches (half, quarter, three-quarter), backstitches, and French knots. This is useful for focusing on one stitch type at a time during stitching - for example, hiding backstitches while you work on the cross-stitches, then hiding everything except backstitches when you are ready to outline.</p>
+        <h3>Calculate Materials</h3>
+        <p>The <strong>Calculate Materials</strong> dropdown in the toolbar provides links to material calculators. Use these to estimate fabric, thread, and supply requirements for your pattern.</p>
 
         <h2>Keyboard Shortcuts</h2>
         <p>The Pattern Viewer supports the following keyboard shortcuts for efficient navigation and control:</p>
         <ul>
-            <li><kbd>?</kbd> - Show keyboard shortcut help</li>
-            <li><kbd>Z</kbd> or <kbd>F</kbd> - Toggle zen / fullscreen mode</li>
-            <li><kbd>M</kbd> - Toggle stitch marking mode</li>
-            <li><kbd>B</kbd> - Toggle place marker mode</li>
-            <li><kbd>N</kbd> - Toggle notes panel</li>
-            <li><kbd>G</kbd> - Open goto row/column panel</li>
+            <li><kbd>F</kbd> - Toggle zen mode</li>
+            <li><kbd>M</kbd> - Toggle mark complete mode</li>
+            <li><kbd>B</kbd> - Place marker</li>
+            <li><kbd>N</kbd> - Open notes</li>
+            <li><kbd>G</kbd> - Open goto panel</li>
             <li><kbd>Ctrl+Z</kbd> / <kbd>Cmd+Z</kbd> - Undo progress</li>
-            <li><kbd>Ctrl+Shift+Z</kbd> / <kbd>Ctrl+Y</kbd> - Redo progress</li>
-            <li><kbd>+</kbd> / <kbd>=</kbd> - Zoom in</li>
-            <li><kbd>-</kbd> - Zoom out</li>
-            <li><kbd>,</kbd> / <kbd>.</kbd> / <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> - Cycle through legend colors or pan</li>
-            <li><kbd>Escape</kbd> - Exit zen mode, clear highlight, close search</li>
+            <li><kbd>Ctrl+Y</kbd> / <kbd>Ctrl+Shift+Z</kbd> - Redo progress</li>
+            <li><kbd>Escape</kbd> - Exit zen mode</li>
+            <li><kbd>?</kbd> - Show keyboard shortcuts</li>
         </ul>
 
         <h2>Progress Tracking</h2>
-        <p>Progress tracking in the Pattern Viewer works at the per-color level. As you stitch your way through the pattern, you can mark each color as complete in the legend panel. The viewer keeps a running count of how many colors are finished versus how many remain, giving you a clear sense of overall progress.</p>
+        <p>Progress tracking in the Pattern Viewer works at the <strong>cell level</strong>. Press <kbd>M</kbd> or click the <strong>Mark Complete</strong> button to enter stitch marking mode. In this mode, click or drag across cells on the chart to mark them as stitched. Marked cells are visually distinguished on the chart so you can see exactly which areas are complete.</p>
+        <p>A <strong>progress bar</strong> is displayed showing the percentage and stitch count of your progress, for example: <em>45% &middot; 6,480 / 14,400 stitches</em>. Cell-level progress feeds into per-color completion shown in the legend panel, so each color entry reflects how much of that color has been stitched.</p>
 
         <h3>Progress Undo and Redo</h3>
-        <p>The viewer maintains a full undo/redo history for progress changes. If you accidentally mark a color as complete or undo a completion, press <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd> on macOS) to undo the last progress change, and <kbd>Ctrl+Y</kbd> (or <kbd>Ctrl+Shift+Z</kbd>) to redo. The history tracks up to 50 progress snapshots.</p>
+        <p>The viewer maintains a full undo/redo history for progress changes. If you accidentally mark cells or undo a marking, press <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd> on macOS) to undo the last progress change, and <kbd>Ctrl+Y</kbd> (or <kbd>Ctrl+Shift+Z</kbd>) to redo.</p>
+
+        <h3>Session Timer</h3>
+        <p>A <strong>session timer</strong> appears in the viewer header showing the cumulative time you have spent working on the pattern. The timer automatically pauses when the browser tab is hidden or loses focus, and resumes when you return to the tab. This ensures the recorded time accurately reflects active stitching sessions.</p>
 
         <h3>Estimated Remaining Time</h3>
-        <p>Once you have marked at least one color as complete, the viewer calculates an estimated time remaining based on your pace so far. This is displayed as "~X hours Y minutes remaining" above the legend. The estimate updates each time you mark another color done, so it gets more accurate as you go. It disappears once all colors are finished.</p>
+        <p>The viewer calculates an estimated time remaining based on your cell-level stitched percentage combined with the session timer. The estimate requires at least 1% cell-level progress and nonzero elapsed time before it appears. As you mark more cells complete, the estimate becomes more accurate. It is displayed above the legend and updates in real time as you work.</p>
 
         <h2>Place Markers</h2>
         <p>Press <kbd>B</kbd> to enter place marker mode. In this mode, clicking on a grid cell places a colored pin marker at that location. Markers are useful for tracking your current stitching position, flagging areas that need attention, or annotating specific cells. Markers are saved with the pattern and synchronized across devices when using <a href="desktop-sync.html">Desktop Sync</a>. They do not affect the stitch data.</p>

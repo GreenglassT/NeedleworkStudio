@@ -138,10 +138,28 @@
         <p>Replaces every instance of one color with another across the entire pattern. Select the replacement color, then click on any stitch of the color you want to replace. Every stitch of the target color in the pattern will change to the new color. This is a global operation and is useful for swapping thread colors throughout a design.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="4 2"/></svg> Select</h3>
-        <p>Selects a rectangular region of the canvas. Click and drag to define the selection area, then drag to move it. Use <kbd>Ctrl+C</kbd> to copy, <kbd>Ctrl+V</kbd> to paste, and <kbd>Delete</kbd> to clear the selected stitches. The selection is shown with a marching-ants border.</p>
+        <p>Selects a rectangular region of the canvas. Click and drag to define the selection area, then drag to move it. The selection is shown with a marching-ants border. The following operations are available on a selection:</p>
+        <ul>
+            <li><kbd>Ctrl+C</kbd> - Copy the selected stitches</li>
+            <li><kbd>Ctrl+X</kbd> - Cut the selected stitches (copies and removes them from the canvas)</li>
+            <li>After copying or cutting, click on the canvas to stamp (paste) the buffer at the clicked position</li>
+            <li><kbd>R</kbd> (in paste mode) - Rotate the paste buffer 90 degrees</li>
+            <li><kbd>H</kbd> (in paste mode) - Flip the paste buffer horizontally</li>
+            <li><kbd>Delete</kbd> - Clear the selected stitches</li>
+        </ul>
 
-        <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><polyline points="4 7 4 4 7 4"/><polyline points="20 7 20 4 17 4"/><polyline points="4 17 4 20 7 20"/><polyline points="20 17 20 20 17 20"/><line x1="4" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="20" y2="12"/><line x1="12" y1="4" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="20"/></svg> Stitch</h3>
-        <p>Places specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, the stitch tool lets you place the seven different stitch types described in the section below. Select the desired stitch type from the stitch picker before placing.</p>
+        <h3>Stitch Tools (<kbd>1</kbd>&ndash;<kbd>7</kbd>)</h3>
+        <p>Seven individual toolbar buttons for placing specialty stitch types on the grid. Unlike the pencil tool which places full cross-stitches, each stitch tool places a specific stitch type. Press the corresponding number key to select each tool:</p>
+        <ul>
+            <li><kbd>1</kbd> - Half Stitch</li>
+            <li><kbd>2</kbd> - Quarter Stitch</li>
+            <li><kbd>3</kbd> - Three-Quarter Stitch</li>
+            <li><kbd>4</kbd> - Petite Stitch</li>
+            <li><kbd>5</kbd> - Backstitch</li>
+            <li><kbd>6</kbd> - French Knot</li>
+            <li><kbd>7</kbd> - Bead</li>
+        </ul>
+        <p>See the <strong>Stitch Types</strong> section below for a description of each stitch type.</p>
 
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="vertical-align:middle;margin-right:4px"><path d="M17.5 4H6.5a2.5 2.5 0 0 0 0 5h11a2.5 2.5 0 0 1 0 5H4"/><path d="M14 4L8 20"/></svg> Text</h3>
         <p>Renders text onto the canvas as stitches. Click on any grid cell to open the text panel, type your text, and press Enter to stamp it onto the pattern. Press <kbd>X</kbd> to select this tool.</p>
@@ -180,7 +198,7 @@
         <p>Beads are placed on individual grid cells to represent seed beads or other small beads stitched onto the fabric. They are shown on the chart as small diamond shapes and are exported alongside other stitch data in all supported formats.</p>
 
         <h2>Brush Sizes</h2>
-        <p>Several tools (including the pencil and eraser) support adjustable brush sizes. The available sizes are:</p>
+        <p>Several tools (including the pencil and eraser) support adjustable brush sizes. Press <kbd>[</kbd> to cycle to a smaller brush size and <kbd>]</kbd> to cycle to a larger brush size. The available sizes are:</p>
         <ul>
             <li><strong>1x1</strong> - Single stitch. The most precise option for detailed work.</li>
             <li><strong>2x2</strong> - A block of four stitches. Good for filling small areas quickly.</li>
@@ -192,13 +210,10 @@
         <h2>Additional Editor Tools</h2>
 
         <h3>Auto-Outline</h3>
-        <p>The auto-outline tool automatically generates backstitch outlines around contiguous regions of color in your pattern. This saves considerable time compared to manually placing backstitches along every edge. Select the outline color and click to apply outlines to a region or the entire pattern.</p>
+        <p>The auto-outline tool automatically generates backstitch outlines around contiguous regions of color in your pattern. Press <kbd>Ctrl+Shift+O</kbd> to open auto-outline. This saves considerable time compared to manually placing backstitches along every edge. Select the outline color and click to apply outlines to a region or the entire pattern.</p>
 
         <h3>Place Markers</h3>
         <p>Place colored pin markers on specific grid cells to mark your position, flag areas for later attention, or annotate the design. Press <kbd>B</kbd> to toggle marker placement mode. Markers are saved with the pattern and are visible in both the editor and viewer. They do not affect the stitch data and are purely a visual aid.</p>
-
-        <h3>Color Cycling</h3>
-        <p>Color cycling lets you rotate through perceptually similar thread colors for the currently selected palette entry. This is useful when you want to experiment with slight color variations without manually searching the full thread library. The cycling is based on the CIEDE2000 color distance algorithm.</p>
 
         <h3>Goto Panel</h3>
         <p>Press <kbd>G</kbd> to open the goto panel, which lets you jump directly to a specific row and column coordinate on the grid. This is helpful on large patterns where scrolling to a specific location would be tedious.</p>
@@ -262,8 +277,12 @@
             <li><kbd>Ctrl+Y</kbd> / <kbd>Cmd+Shift+Z</kbd> - Redo</li>
             <li><kbd>Ctrl+S</kbd> / <kbd>Cmd+S</kbd> - Save pattern</li>
             <li><kbd>Ctrl+Shift+R</kbd> - Resize canvas</li>
+            <li><kbd>[</kbd> / <kbd>]</kbd> - Decrease / increase brush size</li>
+            <li><kbd>Ctrl+Shift+O</kbd> - Auto-outline</li>
             <li><kbd>Ctrl+Shift+I</kbd> - Insert / delete rows and columns</li>
-            <li><kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd> / <kbd>Delete</kbd> - Copy / paste / clear selection</li>
+            <li><kbd>Ctrl+C</kbd> / <kbd>Ctrl+X</kbd> / <kbd>Delete</kbd> - Copy / cut / clear selection</li>
+            <li><kbd>R</kbd> (paste mode) - Rotate paste buffer</li>
+            <li><kbd>H</kbd> (paste mode) - Flip paste buffer horizontally</li>
         </ul>
     </main>
 </div>

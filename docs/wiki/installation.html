@@ -133,6 +133,8 @@
       - "6969:6969"
     volumes:
       - needlework-data:/data
+    environment:
+      # - ADMIN_USERNAME=your_username
     restart: unless-stopped
 
 volumes:
@@ -144,7 +146,10 @@ volumes:
         <h3>Create Your First User</h3>
         <p>After starting the container, create an initial user account with the built-in management script:</p>
         <pre><code>docker compose exec needlework-studio python3 manage_users.py create</code></pre>
-        <p>Follow the interactive prompts to set a username and password. Once created, open <code>http://localhost:6969</code> in your browser and log in.</p>
+        <p>Follow the interactive prompts to set a username, email (must contain <code>@</code>), and password (with confirmation). Once created, promote the account to admin so you can manage other users from the web admin panel:</p>
+        <pre><code>docker compose exec needlework-studio python3 manage_users.py admin</code></pre>
+        <p>Alternatively, you can set the <code>ADMIN_USERNAME</code> environment variable in your <code>docker-compose.yml</code> to automatically promote a user to admin on startup (see the Docker Compose example above).</p>
+        <p>Open <code>http://localhost:6969</code> in your browser and log in.</p>
 
         <h2>Manual Python Setup</h2>
         <p>If you prefer to run Needlework Studio directly on a host machine without Docker, you can set it up manually with Python.</p>
@@ -174,6 +179,8 @@ pip install -r requirements.txt</code></pre>
         <h3>Create a User</h3>
         <p>Create your first user account:</p>
         <pre><code>python3 manage_users.py create</code></pre>
+        <p>Follow the interactive prompts to set a username, email (must contain <code>@</code>), and password (with confirmation). Once created, promote the account to admin so you can manage other users from the web admin panel:</p>
+        <pre><code>python3 manage_users.py admin</code></pre>
 
         <h3>Run the Application</h3>
         <p>For development or local testing, start the application directly with Python:</p>

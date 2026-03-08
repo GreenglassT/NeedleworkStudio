@@ -126,6 +126,10 @@ volumes:
 
         <p>Replace <code>needlework.example.com</code> with your actual domain name. Caddy will automatically obtain an SSL certificate from Let's Encrypt and handle renewals. No additional port mapping is needed for the Needlework Studio container because Caddy communicates with it over the internal Docker network.</p>
 
+        <div class="callout-info">
+            <strong>Admin setup:</strong> After starting your containers for the first time and creating a user, you need to promote that user to admin. Either run <code>docker compose exec needlework-studio python manage_users.py admin</code>, or add <code>- ADMIN_USERNAME=your_username</code> to the <code>environment</code> section of the needlework-studio service in your <code>docker-compose.yml</code>.
+        </div>
+
         <h3>Other Reverse Proxies</h3>
         <p>Needlework Studio works with any reverse proxy (Nginx, Apache, Traefik, etc.). The key requirements are:</p>
         <ul>
@@ -210,6 +214,21 @@ sudo systemctl start needlework-studio</code></pre>
             <li><strong>File size limit:</strong> 25 MB maximum per upload. Requests exceeding this size are rejected before the file is saved to disk.</li>
             <li><strong>Decompression bomb protection:</strong> Image processing is capped at 50 megapixels. This prevents malicious images with extreme dimensions from consuming excessive memory during processing.</li>
         </ul>
+
+        <h2>Updating</h2>
+        <p>Your data is preserved across updates regardless of the installation method.</p>
+
+        <h3>Docker</h3>
+        <p>Pull the latest image and recreate the container:</p>
+        <pre><code>docker compose pull &amp;&amp; docker compose up -d</code></pre>
+
+        <h3>Manual Install</h3>
+        <p>Pull the latest code and install any new dependencies:</p>
+        <pre><code>git pull &amp;&amp; pip install -r requirements.txt</code></pre>
+        <p>Alternatively, download a fresh copy from the <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases page</a> and replace the application files, keeping your data directory intact.</p>
+
+        <h3>Desktop App</h3>
+        <p>Download the latest installer from the <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases page</a> and install it over the existing version. Your data is stored separately from the application and will not be affected.</p>
     </main>
 </div>
 

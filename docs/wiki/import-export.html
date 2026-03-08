@@ -94,13 +94,13 @@
         <p><strong>How it works:</strong></p>
         <ol>
             <li><strong>Upload</strong> - Select a PDF file from your computer using the file picker. The PDF should contain cross-stitch chart pages with a grid of symbols or colors.</li>
-            <li><strong>Preview</strong> - After upload, Needlework Studio displays a preview of the parsed pattern along with the extracted thread legend. Review the preview to verify that the chart was parsed correctly. The preview shows the full grid with colors and symbols as they were interpreted from the PDF.</li>
+            <li><strong>Preview</strong> - After upload, Needlework Studio displays a preview of the parsed pattern along with the extracted thread legend. Review the preview to verify that the chart was parsed correctly. The preview shows the full grid with colors and symbols as they were interpreted from the PDF. Each legend entry includes a status dot indicating whether you <strong>own</strong>, <strong>need</strong>, or <strong>don't own</strong> the thread, cross-referenced with your <a href="thread-inventory.html">Thread Inventory</a>.</li>
             <li><strong>Name and save</strong> - Enter a name for the pattern and click save to add it to your library.</li>
         </ol>
         <p>The PDF parser works best with digitally-generated chart PDFs. Scanned or photographed charts may not parse as accurately due to image quality variations. If a PDF contains multiple chart pages, Needlework Studio will stitch them together into a single continuous pattern.</p>
 
         <h3>JSON Import</h3>
-        <p>JSON is Needlework Studio's native pattern format. JSON files contain the complete pattern data structure including the stitch grid, thread legend, part stitches (half, quarter, three-quarter), backstitches, French knots, and all metadata. This format preserves every detail of the pattern with perfect fidelity.</p>
+        <p>JSON is Needlework Studio's native pattern format. JSON files contain the complete pattern data structure including the stitch grid, thread legend, part stitches (half, quarter, three-quarter), backstitches, French knots, beads, and all metadata. This format preserves every detail of the pattern with perfect fidelity.</p>
         <p><strong>Common uses for JSON import:</strong></p>
         <ul>
             <li>Transferring patterns between Needlework Studio instances (for example, from one server to another).</li>
@@ -111,7 +111,8 @@
 
         <h3>OXS Import</h3>
         <p>OXS (Open Cross Stitch) is an XML-based standard format designed for interoperability between different cross-stitch software applications. Importing an OXS file allows you to bring patterns from other cross-stitch programs into Needlework Studio.</p>
-        <p>The OXS format supports full stitches, part stitches, backstitches, French knots, and thread color definitions. Needlework Studio maps the thread colors in the OXS file to the closest matching DMC or Anchor threads in its database, using perceptual color matching when an exact match is not available.</p>
+        <p>The OXS format supports full stitches, part stitches, backstitches, French knots, beads, and thread color definitions. Needlework Studio maps the thread colors in the OXS file to the closest matching DMC or Anchor threads in its database, using perceptual color matching when an exact match is not available.</p>
+        <p>OXS import enforces a maximum of <strong>34 colors</strong> and a maximum grid size of <strong>500 &times; 500</strong> stitches. Files that exceed either limit will be rejected with an error message during the upload step.</p>
         <p>To import an OXS file, select <strong>OXS Import</strong> from the Create menu, choose the <code>.oxs</code> file, review the imported pattern, name it, and save.</p>
 
         <h2>Import Workflow</h2>
@@ -124,7 +125,7 @@
         </ol>
 
         <h2>Export Formats</h2>
-        <p>Needlework Studio can export saved patterns in four formats. Export options are available from the pattern's detail view or the viewer toolbar.</p>
+        <p>Needlework Studio can export saved patterns in four formats. Export options are available from each pattern card's dropdown menu in the <strong>Saved Patterns</strong> gallery.</p>
 
         <h3>PDF Export</h3>
         <p>The PDF exporter generates a multi-page document optimized for printing and offline use. The exported PDF includes:</p>
@@ -145,7 +146,7 @@
         <p>The exported SVG includes the full grid with color fills and symbol overlays, matching the appearance of chart mode in the Pattern Viewer.</p>
 
         <h3>OXS Export</h3>
-        <p>Export your pattern in the Open Cross Stitch XML format for compatibility with other cross-stitch software. The OXS file includes full stitches, part stitches, backstitches, French knots, and thread color definitions. This is the best format to use when you need to share a pattern with someone who uses a different cross-stitch application.</p>
+        <p>Export your pattern in the Open Cross Stitch XML format for compatibility with other cross-stitch software. The OXS file includes full stitches, part stitches, backstitches, French knots, beads, and thread color definitions. This is the best format to use when you need to share a pattern with someone who uses a different cross-stitch application.</p>
 
         <h3>JSON Export</h3>
         <p>Export the pattern in Needlework Studio's native JSON format. The JSON file contains the complete pattern data with full fidelity, including:</p>
@@ -154,7 +155,9 @@
             <li>Part stitches (half, quarter, three-quarter) with position and orientation</li>
             <li>Backstitches with start and end coordinates</li>
             <li>French knots with positions</li>
+            <li>Beads with positions</li>
             <li>The complete thread legend with DMC/Anchor thread references</li>
+            <li>Fabric color</li>
             <li>Pattern metadata (name, dimensions, creation date)</li>
             <li>Progress tracking data</li>
         </ul>

@@ -90,6 +90,15 @@
         <p>The Thread Inventory ships with all <strong>744 DMC stranded cotton colors</strong> and over <strong>400 Anchor stranded cotton colors</strong>, each with accurate color swatches, official names, and thread numbers. Every color is ready to browse, search, and track from the moment you create your account.</p>
         <p>The inventory serves two purposes: it acts as a reference catalog for all available threads, and it tracks which threads you personally own, need, or do not yet have. This information feeds into the materials calculator and helps you plan purchases for upcoming projects.</p>
 
+        <h2>Stats Strip</h2>
+        <p>At the top of the inventory page, a <strong>stats strip</strong> displays a summary of your collection at a glance. It shows three counts:</p>
+        <ul>
+            <li><strong>Owned</strong> - The number of threads you have marked as owned.</li>
+            <li><strong>Need</strong> - The number of threads you have flagged as needed.</li>
+            <li><strong>Don't Own</strong> - The number of threads with no ownership status set.</li>
+        </ul>
+        <p>These counts update automatically as you change thread statuses, giving you an always-current snapshot of your inventory.</p>
+
         <h2>Searching</h2>
         <p>At the top of the inventory page, a search bar provides <strong>instant, real-time filtering</strong> as you type. You can search by:</p>
         <ul>
@@ -102,7 +111,13 @@
         <p>Below the search bar, a set of filter controls lets you narrow the inventory by several criteria. Filters can be combined with each other and with the search bar for precise results.</p>
 
         <h3>Brand Filter</h3>
-        <p>Toggle between <strong>DMC</strong> and <strong>Anchor</strong> to show only threads from that brand, or leave both active to see the entire inventory. This is useful when you work exclusively with one brand or want to compare equivalent colors across brands.</p>
+        <p>The brand filter offers three options:</p>
+        <ul>
+            <li><strong>DMC</strong> - Show only DMC threads.</li>
+            <li><strong>Anchor</strong> - Show only Anchor threads.</li>
+            <li><strong>All</strong> - Show threads from both brands combined. When All is active, each thread displays a small brand badge so you can tell at a glance which brand it belongs to.</li>
+        </ul>
+        <p>This is useful when you work exclusively with one brand or want to browse and compare equivalent colors across brands.</p>
 
         <h3>Thread Category</h3>
         <p>Filter threads by their category classification, such as standard stranded cotton, metallic threads, or other specialty types. This helps you focus on the thread type relevant to your current project.</p>
@@ -114,6 +129,19 @@
             <li><strong>Need</strong> - Show threads you have flagged as needed. Use this as a shopping list when visiting a craft store.</li>
             <li><strong>Don't Own</strong> - Show threads with no ownership status set. These are threads you have not yet categorized.</li>
         </ul>
+
+        <h2>Sort Options</h2>
+        <p>The inventory controls bar includes a <strong>Sort</strong> dropdown that lets you reorder the thread list. Four sort options are available:</p>
+        <ul>
+            <li><strong>Number</strong> - Sort threads by their thread number in ascending order. This is the default sort order.</li>
+            <li><strong>Name</strong> - Sort threads alphabetically by their official color name.</li>
+            <li><strong>Status</strong> - Sort threads by their ownership status (Own, Need, Don't Own), grouping threads of the same status together.</li>
+            <li><strong>Skeins</strong> - Sort threads by the number of skeins you have recorded, with the highest quantities first.</li>
+        </ul>
+        <p>The selected sort order applies immediately and works in combination with any active filters or search terms.</p>
+
+        <h2>Zoom Slider</h2>
+        <p>The inventory controls bar includes a <strong>zoom slider</strong> that adjusts the size of thread cards (in grid view) or thread rows (in list view). The slider ranges from <strong>60%</strong> to <strong>150%</strong>, letting you shrink the display to fit more threads on screen or enlarge it for a closer look at color swatches. The zoom level applies to whichever view mode is currently active.</p>
 
         <h2>Status Tracking</h2>
         <p>Each thread in the inventory has a set of tracking controls that let you record your relationship with that color.</p>
@@ -145,17 +173,34 @@
         <h2>Views</h2>
         <p>The inventory can be displayed in two different view modes, and you can switch between them at any time using the view toggle buttons.</p>
 
-        <h3>Grid View</h3>
-        <p>Displays threads as a grid of color swatch cards. Each card shows the thread color, number, and name. Grid view is ideal for visual browsing and quickly scanning large numbers of colors. It makes efficient use of screen space and is the default view mode.</p>
-
         <h3>List View</h3>
-        <p>Displays threads as a vertical list with one thread per row. Each row shows the color swatch, thread number, name, ownership status, and quantity. List view provides more detail at a glance and is better suited for inventory management tasks like updating quantities or reviewing your ownership status across many threads.</p>
+        <p>Displays threads as a vertical list with one thread per row. Each row shows the color swatch, thread number, name, ownership status, and quantity. List view provides more detail at a glance and is better suited for inventory management tasks like updating quantities or reviewing your ownership status across many threads. List view is the default view mode.</p>
 
-        <h3>Batch Selection</h3>
-        <p>In both views, you can select multiple threads at once for batch operations. Use the selection checkboxes to choose threads, then apply an action to all selected items simultaneously. This is significantly faster than updating threads one at a time when you return from a shopping trip with several new colors.</p>
+        <h3>Grid View</h3>
+        <p>Displays threads as a grid of color swatch cards. Each card shows the thread color, number, and name. Grid view is ideal for visual browsing and quickly scanning large numbers of colors. It makes efficient use of screen space.</p>
 
-        <h2>Print-Friendly Thread List</h2>
-        <p>Needlework Studio can generate a print-friendly version of your thread inventory, optimized for paper output. This is useful for creating a physical reference list to take with you when shopping for threads. The printed list includes thread numbers, names, color swatches (rendered as colored blocks), and ownership status. You can filter and sort the inventory before printing to include only the threads relevant to your needs - for example, printing only threads with a "Need" status to create a focused shopping list.</p>
+        <h3>Bulk Operations</h3>
+        <p>In both views, you can select multiple threads at once for bulk status changes. The workflow is:</p>
+        <ul>
+            <li><strong>Enter selection mode</strong> - Click the <strong>Select</strong> button in the controls bar. Each thread will display a selection checkbox.</li>
+            <li><strong>Select threads</strong> - Click individual threads to select them, or click <strong>Select all visible</strong> to select every thread currently shown (respecting any active filters or search).</li>
+            <li><strong>Apply a bulk action</strong> - Once threads are selected, a bulk action bar appears with <strong>Own</strong>, <strong>Need</strong>, and <strong>Don't Own</strong> buttons. Click one to set that status on all selected threads at once.</li>
+            <li><strong>Clear selection</strong> - Click <strong>Clear</strong> to deselect all threads and exit selection mode.</li>
+        </ul>
+        <p>Bulk operations are significantly faster than updating threads one at a time, especially when you return from a shopping trip with several new colors.</p>
+
+        <h2>Export</h2>
+        <p>The inventory controls bar includes an <strong>Export</strong> dropdown with three options for getting your thread data out of the application:</p>
+        <ul>
+            <li><strong>Print Shopping List</strong> - Opens a print-friendly page containing only threads with a "Need" status. The printed list includes thread numbers, names, and color swatches rendered as colored blocks. This is designed to take with you when shopping for threads at a craft store.</li>
+            <li><strong>Shopping List CSV</strong> - Downloads a CSV file containing only threads with a "Need" status. This is useful for importing your shopping list into a spreadsheet or sharing it digitally.</li>
+            <li><strong>Full Inventory CSV</strong> - Downloads a CSV file containing all threads in the inventory along with their current ownership status. This provides a complete export of your collection data for backup or analysis.</li>
+        </ul>
+
+        <h2>Jump Rail</h2>
+        <p>On the right side of the inventory screen, a <strong>quick-jump rail</strong> displays a vertical strip of thread number markers. Clicking any marker scrolls the inventory directly to that section of the list, letting you navigate large thread collections without manual scrolling.</p>
+        <p>The jump rail adapts to your current view: it updates its markers based on the active sort order and selected brand, so the numbers always correspond to what is currently displayed. As you scroll through the inventory, the rail highlights the marker nearest to your current position to indicate where you are in the list.</p>
+        <p>On small screens (below 640px wide), the jump rail is hidden to preserve screen space for the thread list itself.</p>
     </main>
 </div>
 

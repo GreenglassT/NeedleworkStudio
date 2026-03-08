@@ -88,7 +88,18 @@
         </div>
 
         <h2>User Management</h2>
-        <p>All user management is handled through the <code>manage_users.py</code> command-line script. This script must be run on the server (or inside the Docker container) and provides the following commands:</p>
+        <p>User management can be performed through the <code>manage_users.py</code> command-line script or the <a href="#web-admin-panel">web admin panel</a>. The CLI script must be run on the server (or inside the Docker container) and provides the following commands:</p>
+
+        <h3>Initial Setup</h3>
+        <p>After installing Needlework Studio, create your first user account and promote it to admin:</p>
+        <pre><code>python manage_users.py create    # create account (username, email, password)
+python manage_users.py admin     # promote to admin</code></pre>
+        <p>For Docker deployments:</p>
+        <pre><code>docker compose exec needlework-studio python manage_users.py create
+docker compose exec needlework-studio python manage_users.py admin</code></pre>
+        <p>Alternatively, you can set the <code>ADMIN_USERNAME</code> environment variable in your <code>docker-compose.yml</code> to automatically promote a user to admin on server startup:</p>
+        <pre><code>environment:
+  - ADMIN_USERNAME=your_username</code></pre>
 
         <h3>Available Commands</h3>
         <table>
@@ -101,11 +112,11 @@
             <tbody>
                 <tr>
                     <td><code>create</code></td>
-                    <td>Create a new user account. Prompts for username and password interactively.</td>
+                    <td>Create a new user account. Prompts for username, email, and password (with confirmation) interactively. The email field is required and must contain '@'.</td>
                 </tr>
                 <tr>
                     <td><code>list</code></td>
-                    <td>List all user accounts with their status (enabled or disabled).</td>
+                    <td>List all user accounts. Shows ID, Username, Email, Active (yes/no), Admin (yes/no), and Last Login for each account.</td>
                 </tr>
                 <tr>
                     <td><code>password</code></td>
@@ -114,6 +125,10 @@
                 <tr>
                     <td><code>toggle</code></td>
                     <td>Enable or disable a user account. Disabled users cannot log in but their data is preserved.</td>
+                </tr>
+                <tr>
+                    <td><code>admin</code></td>
+                    <td>Toggle admin status for a user. Prompts for the username interactively and grants or revokes admin privileges.</td>
                 </tr>
                 <tr>
                     <td><code>delete</code></td>
@@ -136,6 +151,7 @@
 python3 manage_users.py list
 python3 manage_users.py password
 python3 manage_users.py toggle
+python3 manage_users.py admin
 python3 manage_users.py delete
 python3 manage_users.py tokens
 python3 manage_users.py revoke &lt;token-id&gt;</code></pre>
@@ -146,9 +162,27 @@ python3 manage_users.py revoke &lt;token-id&gt;</code></pre>
 docker compose exec needlework-studio python3 manage_users.py list
 docker compose exec needlework-studio python3 manage_users.py password
 docker compose exec needlework-studio python3 manage_users.py toggle
+docker compose exec needlework-studio python3 manage_users.py admin
 docker compose exec needlework-studio python3 manage_users.py delete
 docker compose exec needlework-studio python3 manage_users.py tokens
 docker compose exec needlework-studio python3 manage_users.py revoke &lt;token-id&gt;</code></pre>
+
+        <h2 id="web-admin-panel">Web Admin Panel</h2>
+        <p>Needlework Studio includes a browser-based admin panel at <code>/admin</code> that provides an alternative to the command-line interface for user management.</p>
+
+        <h3>Accessing the Admin Panel</h3>
+        <p>Users with admin privileges will see a <strong>Manage Users</strong> link on the Settings page. Clicking this link opens the admin panel.</p>
+
+        <h3>Features</h3>
+        <p>The admin panel displays a table of all registered users showing their username, email, account status, and last login date. From this panel, administrators can:</p>
+        <ul>
+            <li><strong>Create new users</strong> - add accounts directly from the browser</li>
+            <li><strong>Reset passwords</strong> - set a new password for any user</li>
+            <li><strong>Enable or disable accounts</strong> - toggle whether a user can log in</li>
+            <li><strong>Grant or revoke admin privileges</strong> - control who has access to the admin panel</li>
+            <li><strong>Delete users</strong> - permanently remove a user account and all associated data</li>
+        </ul>
+        <p>The web admin panel provides the same user management capabilities as the CLI, making it convenient for administrators who prefer not to use the command line or do not have SSH access to the server.</p>
 
         <h2>Backups</h2>
         <p>Needlework Studio stores all data - the SQLite database, uploaded images, and generated files - in a single directory.</p>
@@ -232,6 +266,11 @@ docker compose exec -T needlework-studio tar xzf - -C / < needlework-backup-2025
                     <td><code>false</code></td>
                     <td>Enable auto-login without credentials. This is used internally by the desktop (Electron) app to bypass the login screen. Do not enable this on a server-hosted deployment - it would allow anyone to access the application without authentication.</td>
                 </tr>
+                <tr>
+                    <td><code>ADMIN_USERNAME</code></td>
+                    <td>unset</td>
+                    <td>If set, automatically promotes this username to admin on server startup. Useful for initial setup in Docker deployments where you want to avoid running CLI commands inside the container.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -247,6 +286,7 @@ docker compose exec -T needlework-studio tar xzf - -C / < needlework-backup-2025
     environment:
       - HTTPS=true
       - SECRET_KEY=your-custom-secret-key
+      - ADMIN_USERNAME=your_username
     restart: unless-stopped
 
 volumes:
