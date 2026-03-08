@@ -811,6 +811,7 @@
         </div>
 
         <div class="toolbar-row">
+            {% if not demo_mode %}
             <div class="filter-row" id="filter-row">
                 <button class="filter-btn active" data-filter="">All</button>
                 <button class="filter-btn f-todo"     data-filter="not_started">Not Started</button>
@@ -818,6 +819,7 @@
                 <button class="filter-btn f-done"     data-filter="completed">Completed</button>
             </div>
             <div class="toolbar-sep"></div>
+            {% endif %}
             <input type="text" class="pattern-search" id="pattern-search" placeholder="Search name…" maxlength="100">
             <select class="sort-select" id="sort-select">
                 <option value="newest">Newest</option>
@@ -825,10 +827,12 @@
                 <option value="name-az">Name A–Z</option>
                 <option value="name-za">Name Z–A</option>
             </select>
+            {% if not demo_mode %}
             <button class="select-btn" id="select-btn" onclick="toggleSelectionMode()">Select</button>
             <button class="select-btn" onclick="openTagMgmt()"><i class="ti ti-tag"></i> Tags</button>
             <button class="select-btn" id="backup-all-btn" onclick="backupAll()" title="Download all patterns as ZIP"><i class="ti ti-download"></i> Backup All</button>
             <button class="select-btn" onclick="openCrossShoppingList()" title="Threads needed across all patterns"><i class="ti ti-shopping-cart"></i> Shopping List</button>
+            {% endif %}
             <div class="toolbar-sep"></div>
             <label class="grid-density-label" title="Cards per row">
                 <i class="ti ti-layout-grid"></i>
@@ -837,7 +841,9 @@
             </label>
         </div>
 
+        {% if not demo_mode %}
         <div class="tag-filter-row" id="tag-filter-row" style="display:none"></div>
+        {% endif %}
 
         <div class="select-all-bar" id="select-all-bar">
             <div class="select-all-inner">
@@ -986,6 +992,7 @@
         });
 
         /* ——— GALLERY ——— */
+        const DEMO_MODE = {{ 'true' if demo_mode else 'false' }};
         let allPatterns  = [];
         let activeFilter = '';
         let selectionMode = false;
@@ -1178,19 +1185,19 @@
                                   onkeydown="if(event.key==='Escape'){this.blur();event.stopPropagation()}">${escHtml(p.notes||'')}</textarea>${_renderCardTags(p)}${progressHtml}
                     </div>
                     <div class="card-actions">
-                        <select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
+                        ${DEMO_MODE ? '' : `<select class="status-select ps-${st}" onchange="setProjectStatus('${p.slug}', this)">
                             <option value="not_started"${sel('not_started')}>Not Started</option>
                             <option value="in_progress"${sel('in_progress')}>In Progress</option>
                             <option value="completed"${sel('completed')}>Completed</option>
-                        </select>
+                        </select>`}
                         <div class="card-dropdown-wrap">
                             <button class="card-overflow-btn" onclick="toggleCardMenu(event, 'overflow')" title="Actions"><i class="ti ti-dots"></i></button>
                             <div class="card-dropdown-menu card-overflow-menu" data-menu="overflow">
                                 <a href="/image-to-pattern?load=${p.slug}"><i class="ti ti-pencil"></i> Edit</a>
-                                <div class="card-dropdown-sep"></div>
+                                ${DEMO_MODE ? '' : `<div class="card-dropdown-sep"></div>
                                 <button data-pid="${p.slug}" data-pname="${escHtml(p.name)}" onclick="openShoppingModal(this.dataset.pid, this.dataset.pname)"><i class="ti ti-shopping-cart"></i> Shopping List</button>
                                 <a href="/pattern-calculator?pattern=${p.slug}"><i class="ti ti-calculator"></i> Materials Calculator</a>
-                                <button onclick="openTagPopover('${p.slug}', this)"><i class="ti ti-tag"></i> Tags</button>
+                                <button onclick="openTagPopover('${p.slug}', this)"><i class="ti ti-tag"></i> Tags</button>`}
                                 <button onclick="duplicatePattern('${p.slug}', this)"><i class="ti ti-copy"></i> Duplicate</button>
                                 <div class="card-dropdown-sep"></div>
                                 <button onclick="exportPDF('${p.slug}', this)">Export PDF</button>

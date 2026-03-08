@@ -1610,6 +1610,8 @@ def inventory():
 @login_required
 def home():
     """Dashboard homepage."""
+    if DEMO_MODE:
+        return redirect('/saved-patterns')
     return render_template('home.html')
 
 

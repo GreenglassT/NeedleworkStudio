@@ -715,6 +715,7 @@
             </div>
             <script>!function(){var m=localStorage.getItem('pv-viewMode');if(m!=='thread')m='chart';var el=document.getElementById(m==='thread'?'view-thread-btn':'view-chart-btn');if(el)el.classList.add('active');}();</script>
             <button class="nav-link" id="zen-btn" onclick="toggleZenMode()" title="Zen Mode (F)" aria-label="Zen mode"><i class="ti ti-maximize"></i> Zen Mode</button>
+            {% if not demo_mode %}
             <button class="nav-link" id="cell-mark-btn" onclick="toggleCellMarkMode()"
                     title="Mark stitched cells (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i> Mark Complete</button>
             <button class="nav-link" id="marker-mode-btn" onclick="toggleMarkerMode()"
@@ -730,6 +731,7 @@
                     <a href="/pattern-calculator?pattern={{ pattern_slug }}&mode=fabric"><i class="ti ti-ruler"></i> Fabric Size</a>
                 </div>
             </div>
+            {% endif %}
             <button class="nav-link" id="edit-toggle-btn" onclick="toggleEditMode()"><i class="ti ti-edit"></i> Edit Pattern</button>
             <button class="nav-link" id="cancel-btn" onclick="cancelEdit()" style="display:none"><i class="ti ti-x"></i> Cancel</button>
             <button class="nav-link" id="save-btn" onclick="savePattern()" style="display:none;color:var(--gold)"><i class="ti ti-device-floppy"></i> Save</button>
@@ -740,7 +742,7 @@
                     title="Keyboard shortcuts (?)" aria-label="Show keyboard shortcuts"><i class="ti ti-keyboard"></i></button>
             <button class="nav-link theme-toggle-btn" id="theme-toggle"
                     onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"></button>
-            <form action="/logout" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link danger" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit">Logout</button></form>
+            {% if not demo_mode %}<form action="/logout" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link danger" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit">Logout</button></form>{% endif %}
         </div>
     </div>
 </header>
