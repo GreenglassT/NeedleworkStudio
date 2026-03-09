@@ -17,6 +17,7 @@ import logging
 import secrets
 import string
 import hashlib
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
 logging.basicConfig(
@@ -641,50 +642,353 @@ def _bootstrap_admin_from_env():
     conn.close()
 
 
+def _pdf_normalize_line(text):
+    """Replace tabs/pipes with spaces, collapse runs, strip."""
+    s = re.sub(r'[\t|]+', ' ', text)
+    return re.sub(r'\s{2,}', ' ', s).strip()
+
+
+def _pdf_is_likely_page_number(n, x_pct, y_pct):
+    """Return True if integer n at (x_pct, y_pct) looks like a page number."""
+    if n >= 20:
+        return False
+    if x_pct > 0.60 and y_pct < 0.15:
+        return True
+    if y_pct > 0.92:
+        return True
+    return False
+
+
+# Pre-compiled dimension patterns for cover page parsing (most specific → generic)
+_PDF_DIM_PATTERNS = [re.compile(p) for p in [
+    r'[Dd]esign\s+size\s*:\s*(\d+)\s*[×xX]\s*(\d+)',
+    r'[Ss]ize\s*:\s*(\d+)\s*[×xX]\s*(\d+)',
+    r'[Dd]imensions?\s*:\s*(\d+)\s*[×xX]\s*(\d+)',
+    r'(\d+)\s*[wW]\s*[×xX]\s*(\d+)\s*[hH]',
+    r'[Ww]idth\s*:\s*(\d+).*?[Hh]eight\s*:\s*(\d+)',
+    r'(\d+)\s*[×xX]\s*(\d+)\s*stitch',
+    r'(\d+)\s*stitch(?:es)?\s*wide.*?(\d+)\s*stitch(?:es)?\s*(?:high|tall)',
+    r'\b(\d{2,})\s*[×xX]\s*(\d{2,})\b',
+]]
+
+
 def _pdf_parse_cover(page):
-    """Return (grid_w, grid_h, title) from cover page."""
+    """Return (grid_w, grid_h, title) from cover page text.
+
+    Tries multiple dimension patterns used by common cross-stitch generators:
+      - "Design size: 100×100"       (Needlework Studio, CrossStitchCreator)
+      - "Size: 100 x 100 stitches"   (FlossCross, Stitchboard)
+      - "100w x 100h"                (PCStitch, WinStitch)
+      - "Width: 100  Height: 100"    (various)
+      - "Dimensions: 100 x 100"      (various)
+      - "100 x 100 stitches"         (generic)
+      - "100×100" / "100x100"        (bare dimensions)
+    Returns (0, 0, title) if no dimensions found (caller can infer from grid).
+    """
     text = page.extract_text() or ''
-    m = re.search(r'Design size:\s*(\d+)\s*[×xX]\s*(\d+)', text)
-    if not m:
-        raise ValueError("Could not find design dimensions")
-    w, h = int(m.group(1)), int(m.group(2))
-    if w < 1 or h < 1 or w > 10000 or h > 10000:
-        raise ValueError(f"Grid dimensions out of range: {w}×{h}")
     lines = [l.strip() for l in text.split('\n') if l.strip()]
     title = lines[0] if lines else 'Imported Pattern'
-    return w, h, title
+
+    full_text = text.replace('\n', ' ')  # for multi-line "Width/Height" pattern
+    for pat in _PDF_DIM_PATTERNS:
+        m = pat.search(full_text)
+        if m:
+            w, h = int(m.group(1)), int(m.group(2))
+            if 1 <= w <= 10000 and 1 <= h <= 10000:
+                return w, h, title
+
+    # No dimensions found — return zeros so caller can try inference
+    return 0, 0, title
 
 
 def _pdf_parse_legend(page):
     """Return list of {dmc, brand, name, legend_count} from legend page text.
 
-    Supports DMC (``DMC 310 Black 245``) and Anchor (``Anchor 1 White 245``
-    or ``ANC 1 White 245``) legend formats.
+    Tries multiple legend formats in order of specificity:
+      1. Brand-prefixed: "DMC 310 Black 245", "Anchor 1 White 245"
+      2. Flexible brand: "DMC-310 Black 245", "DMC#310", "#310 (DMC)"
+      3. Pipe/tab tables: "310 | Black | 245", "+ | DMC 310 | Black | 245"
     """
     text = page.extract_text() or ''
     entries = []
     seen = set()
+
+    # Normalize pipes/tabs to spaces for uniform matching, keep original too
     for line in text.split('\n'):
         stripped = line.strip()
-        # DMC: "DMC 310 Black 245"
-        m = re.search(r'DMC\s+(\S+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$', stripped)
+        if not stripped:
+            continue
+        norm = _pdf_normalize_line(stripped)
+
+        brand = number = name = count = None
+
+        # --- Pattern 1: "DMC 310 Black 245" (standard, anywhere in line) ---
+        # Number: digits optionally prefixed by letter (B5200, E310), or names (Blanc, White, Ecru)
+        m = re.search(r'DMC[\s\-#.:]*([A-Za-z]?\d+\w*|Blanc|White|Ecru)\s+([\w\s\-\.\/]+?)\s+([\d,]+)\s*$',
+                      norm, re.IGNORECASE)
         if m:
             brand, number = 'DMC', m.group(1).strip()
-            name, count = m.group(2).strip(), int(m.group(3))
-        else:
-            # Anchor: "Anchor 1 White 245" or "ANC 1 White 245"
-            m = re.search(r'(?:Anchor|ANC)\s+(\d+)\s+([\w\s\-\.\/]+?)\s+(\d+)\s*$',
-                          stripped, re.IGNORECASE)
+            name, count = m.group(2).strip(), int(m.group(3).replace(',', ''))
+
+        # --- Pattern 2: "Anchor 1 White 245" / "ANC 1 White 245" ---
+        if not brand:
+            m = re.search(r'(?:Anchor|ANC)[\s\-#.:]*(\d+)\s+([\w\s\-\.\/]+?)\s+([\d,]+)\s*$',
+                          norm, re.IGNORECASE)
             if m:
                 brand, number = 'Anchor', m.group(1).strip()
-                name, count = m.group(2).strip(), int(m.group(3))
-            else:
-                continue
-        key = f'{brand}:{number}'
-        if key not in seen:
-            entries.append({'dmc': number, 'brand': brand, 'name': name, 'legend_count': count})
-            seen.add(key)
+                name, count = m.group(2).strip(), int(m.group(3).replace(',', ''))
+
+        # --- Pattern 3: Number with "(DMC)" or "(Anchor)" suffix ---
+        if not brand:
+            m = re.search(r'(\S+)\s*\(\s*(DMC|Anchor|ANC)\s*\)\s+([\w\s\-\.\/]+?)\s+([\d,]+)\s*$',
+                          norm, re.IGNORECASE)
+            if m:
+                number = m.group(1).strip()
+                b = m.group(2).strip()
+                brand = 'Anchor' if b.upper() == 'ANC' else ('DMC' if b.upper() == 'DMC' else b.capitalize())
+                name, count = m.group(3).strip(), int(m.group(4).replace(',', ''))
+
+        if brand and number and count is not None:
+            key = f'{brand}:{number}'
+            if key not in seen:
+                entries.append({'dmc': number, 'brand': brand,
+                                'name': name, 'legend_count': count})
+                seen.add(key)
+
     return entries
+
+
+def _pdf_parse_legend_bare(page, known_dmc=None):
+    """Fallback legend parser for formats without any brand prefix.
+
+    Matches lines like: ``310 Black 245`` or ``+ 310 Black 245``
+    where the number is a known DMC thread number in the database.
+    Requires >= 3 matches to avoid false positives from random text.
+    Returns list of {dmc, brand, name, legend_count} or empty list.
+    """
+    text = page.extract_text() or ''
+    if not text.strip():
+        return []
+
+    # Load known DMC numbers from the database for validation
+    if known_dmc is None:
+        db = get_db()
+        rows = db.execute("SELECT DISTINCT number FROM threads WHERE brand = 'DMC'").fetchall()
+        known_dmc = {r['number'] for r in rows}
+    known_dmc_lower = {n.lower(): n for n in known_dmc}
+
+    entries = []
+    seen = set()
+    for line in text.split('\n'):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        norm = _pdf_normalize_line(stripped)
+
+        # Match: optional_symbol(1 char) + thread_number + color_name + stitch_count
+        # Thread number can be: digits (310), letter+digits (B5200, E310), or names (Blanc)
+        m = re.match(
+            r'^(?:\S\s+)?'                   # optional single-char symbol
+            r'([A-Za-z]?\d{1,4}|[Bb]lanc|[Ww]hite|[Ee]cru)\s+'  # thread number
+            r'([\w\s\-\.\/]+?)\s+'           # color name
+            r'([\d,]+)\s*$',                 # stitch count
+            norm
+        )
+        if not m:
+            continue
+        number = m.group(1).strip()
+        name = m.group(2).strip()
+        count_str = m.group(3).replace(',', '')
+
+        # Validate against known DMC numbers (case-insensitive for names)
+        if number in known_dmc:
+            pass  # exact match
+        elif number.lower() in known_dmc_lower:
+            number = known_dmc_lower[number.lower()]  # normalize to DB casing
+        else:
+            continue
+        # Skip if name looks like a page header/footer
+        if len(name) < 2 or name.isdigit():
+            continue
+
+        count = int(count_str)
+        if number not in seen:
+            entries.append({'dmc': number, 'brand': 'DMC',
+                            'name': name, 'legend_count': count})
+            seen.add(number)
+
+    # Only return results if enough entries found (avoids false positives)
+    return entries if len(entries) >= 3 else []
+
+
+def _pdf_split_legend_columns(page):
+    """Split a page into left/right text columns using char x-positions.
+
+    Returns a list of column line-lists, or None if no multi-column layout
+    detected.  Each line is a string reconstructed from char positions with
+    gap-based space insertion.  Automatically skips the top 18% of the page
+    (header area) when detecting the column gap.
+    """
+    # Skip header area (top 18% of page) to avoid full-width header text
+    # filling the column gap
+    y_min = float(page.height) * 0.18
+    chars = [c for c in page.chars if c['top'] > y_min]
+    if len(chars) < 80:
+        return None
+
+    pw = float(page.width)
+    # Find the largest x-gap near the page center
+    x_positions = sorted(set(int(c['x0']) for c in chars))
+    if len(x_positions) < 10:
+        return None
+
+    best_gap, split_x = 0, None
+    for i in range(len(x_positions) - 1):
+        gap = x_positions[i + 1] - x_positions[i]
+        mid = (x_positions[i] + x_positions[i + 1]) / 2
+        if gap > best_gap and 0.3 * pw < mid < 0.7 * pw:
+            best_gap = gap
+            split_x = mid
+
+    if best_gap < 25:
+        return None
+
+    def _chars_to_lines(chars_subset):
+        rows = defaultdict(list)
+        for c in chars_subset:
+            y_key = round(c['top'] / 3) * 3
+            rows[y_key].append(c)
+        lines = []
+        for y_key in sorted(rows.keys()):
+            row_chars = sorted(rows[y_key], key=lambda c: c['x0'])
+            parts = []
+            for j, c in enumerate(row_chars):
+                if j > 0:
+                    gap = c['x0'] - row_chars[j - 1].get('x1', row_chars[j - 1]['x0'] + 6)
+                    if gap > 2:
+                        parts.append(' ')
+                parts.append(c['text'])
+            text = ''.join(parts).strip()
+            if text:
+                lines.append(text)
+        return lines
+
+    left = [c for c in chars if c['x0'] < split_x]
+    right = [c for c in chars if c['x0'] >= split_x]
+    left_lines = _chars_to_lines(left)
+    right_lines = _chars_to_lines(right)
+
+    if len(left_lines) < 5 or len(right_lines) < 5:
+        return None
+    return [left_lines, right_lines]
+
+
+def _pdf_parse_legend_tabular(page_index_pairs):
+    """Parse tabular legend: (symbol) skeins stitches color_code name.
+
+    Handles both single-column and two-column layouts.  For two-column pages,
+    uses char x-positions to split columns and parses each independently.
+    Tries every supplied page and keeps any with >= 5 matching entries.
+
+    Args:
+        page_index_pairs: list of (page_idx, page_object) tuples
+
+    Returns (entries, legend_page_indices) where entries is a list of
+    {dmc, brand, name, legend_count[, symbol]} and legend_page_indices is a
+    set of page indices that contained legend data.
+    """
+    entries = []
+    seen = set()
+    legend_pages = set()
+
+    _DMC_CODES = r'B5200|BLANC|Blanc|Ecru|White|\d{1,4}'
+
+    # Single-line entry regex (for use on split-column lines)
+    _LINE_RE = re.compile(
+        r'^(\S)?\s*'                     # optional symbol
+        r'(\d{1,2})\s+'                  # skeins
+        r'(\d+)\s+'                      # stitches
+        r'(' + _DMC_CODES + r')\b'       # DMC code (word boundary)
+        r'\s*(.*?)$',                     # color name
+    )
+
+    # Fallback: original multi-match regex for flat text (no column split)
+    _FLAT_RE = re.compile(
+        r'(?<!\d)(\d)\s+'
+        r'(\d+)\s+'
+        r'(' + _DMC_CODES + r')\s+'
+        r'([A-Z][\w\s\-\.]*?)'
+        r'(?=\s+\S\s+\d{1,2}\s+\d+\s+(?:' + _DMC_CODES + r')|\s*$)',
+    )
+
+    for page_idx, page in page_index_pairs:
+        page_entries = []
+        page_seen = set()
+
+        # Try char-position column split first
+        columns = _pdf_split_legend_columns(page)
+        if columns:
+            for col_lines in columns:
+                for line in col_lines:
+                    # Fix merged code+name from tight char spacing
+                    # e.g. "BLANCWhite" → "BLANC White"
+                    cleaned = re.sub(
+                        r'(BLANC|B5200|Ecru)(?=[A-Z][a-z])', r'\1 ', line
+                    )
+                    m = _LINE_RE.match(cleaned.strip())
+                    if not m:
+                        continue
+                    symbol = m.group(1) or ''
+                    skeins = int(m.group(2))
+                    count = int(m.group(3))
+                    code = m.group(4).strip()
+                    name = m.group(5).strip()
+
+                    # Handle merged code+name (e.g. BLANCWhite)
+                    for prefix in ('BLANC', 'Blanc', 'Ecru', 'White', 'B5200'):
+                        if code == prefix:
+                            break
+                        if code.startswith(prefix):
+                            name = code[len(prefix):] + (' ' + name if name else '')
+                            code = prefix
+                            break
+
+                    if skeins > 9 or count < 1:
+                        continue
+                    if len(name) < 2 and code not in ('BLANC', 'Blanc', 'Ecru', 'White', 'B5200'):
+                        continue
+
+                    if code not in page_seen:
+                        entry = {'dmc': code, 'brand': 'DMC',
+                                 'name': name, 'legend_count': count,
+                                 'symbol': symbol}
+                        page_entries.append(entry)
+                        page_seen.add(code)
+        else:
+            # Fallback: scan flat text with multi-match regex
+            text = page.extract_text() or ''
+            for line in text.split('\n'):
+                for m in _FLAT_RE.finditer(line):
+                    skeins = int(m.group(1))
+                    count = int(m.group(2))
+                    code = m.group(3).strip()
+                    name = m.group(4).strip()
+                    if skeins > 9 or count < 1 or len(name) < 2:
+                        continue
+                    if code not in page_seen:
+                        page_entries.append({'dmc': code, 'brand': 'DMC',
+                                             'name': name, 'legend_count': count,
+                                             'symbol': ''})
+                        page_seen.add(code)
+
+        if len(page_entries) >= 5:
+            legend_pages.add(page_idx)
+            for e in page_entries:
+                if e['dmc'] not in seen:
+                    entries.append(e)
+                    seen.add(e['dmc'])
+
+    return entries, legend_pages
 
 
 def _pdf_parse_legend_vector(page):
@@ -712,8 +1016,8 @@ def _pdf_parse_legend_vector(page):
         stripped = line.strip()
         if not stripped:
             continue
-        # Match: symbol(1 char)  number  name(words)  strands(digit)  count(with commas)
-        m = re.match(r'^(\S)\s+(\d+)\s+(.+?)\s+(\d+)\s+([\d,]+)\s*$', stripped)
+        # Match: symbol(1+ chars)  number  name(words)  strands(digit)  count(with commas)
+        m = re.match(r'^(\S+)\s+(\d+)\s+(.+?)\s+(\d+)\s+([\d,]+)\s*$', stripped)
         if not m:
             continue
         symbol = m.group(1)
@@ -803,36 +1107,76 @@ def _pdf_grid_offset(pl_page, x_vals, top_vals, x_rank, y_rank, cell_w_pt, grid_
     return _mode(col_offsets), _mode(row_offsets), bool(col_offsets), bool(row_offsets)
 
 
-def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
+def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_page_indices, title='Imported Pattern'):
     """Import a vector PDF chart using text positions instead of images.
 
     Extracts single-character symbols from chart pages, detects the regular
     grid spacing, and maps symbols to DMC numbers via the legend.
+    Supports two modes:
+      - Direct mapping: legend entries have 'symbol' keys (Needlework Studio)
+      - Count-based matching: legend entries lack symbols (FlossCross etc.)
     Returns the same dict format as _import_pdf_body.
     """
-    sym_to_dmc = {e['symbol']: e['dmc'] for e in legend_entries}
-    valid_syms = set(sym_to_dmc.keys())
+    has_symbols = all('symbol' in e for e in legend_entries)
 
-    # Collect all symbol characters from chart pages (skip cover + legend).
+    if has_symbols:
+        # Only map entries that have a non-empty symbol
+        sym_to_dmc = {e['symbol']: e['dmc'] for e in legend_entries if e.get('symbol')}
+        valid_syms = set(sym_to_dmc.keys())
+    else:
+        sym_to_dmc = None
+        valid_syms = None  # will collect all single-char non-digit symbols
+
+    # Collect all symbol characters from chart pages.
     # Use page.chars instead of extract_words() because pdfplumber merges
     # adjacent identical symbols into multi-char words (e.g. "%%%%...").
-    chart_pages = list(range(2, len(plumber_pdf.pages)))
+    #
+    # When the grid uses a custom/icon font (e.g. IcoMoon), detect it and
+    # filter to only that font — this excludes header/footer text in
+    # standard fonts (Helvetica, Times-Roman, etc.) that would pollute
+    # the grid coordinate detection.
     all_syms = []  # (center_x, center_y, symbol, page_idx)
 
-    for page_idx in chart_pages:
+    # First pass: collect candidate symbols AND track font usage
+    candidates = []  # (cx, cy, symbol, page_idx, fontname)
+    font_counter = Counter()
+    for page_idx in chart_page_indices:
         page = plumber_pdf.pages[page_idx]
         for ch in page.chars:
             t = ch['text']
-            if len(t) == 1 and t in valid_syms:
-                cx = (ch['x0'] + ch['x1']) / 2
-                cy = (ch['top'] + ch['bottom']) / 2
-                all_syms.append((cx, cy, t, page_idx))
+            if len(t) != 1:
+                continue
+            if valid_syms is not None:
+                if t not in valid_syms:
+                    continue
+            else:
+                if t.isdigit() or t.isspace() or t in ('.', ',', '-', '(', ')', '/'):
+                    continue
+            cx = (ch['x0'] + ch['x1']) / 2
+            cy = (ch['top'] + ch['bottom']) / 2
+            fn = ch.get('fontname', '')
+            candidates.append((cx, cy, t, page_idx, fn))
+            font_counter[fn] += 1
+
+    # If one font dominates (>80% of symbol chars), it's the grid font —
+    # filter out chars from other fonts (header/footer text).
+    if candidates and font_counter:
+        top_font, top_count = font_counter.most_common(1)[0]
+        if top_count > 0.80 * len(candidates):
+            all_syms = [(cx, cy, s, pi) for cx, cy, s, pi, fn in candidates if fn == top_font]
+            app.logger.info(
+                "PDF import: grid font '%s' (%d chars), filtered %d non-grid chars",
+                top_font[:40], len(all_syms), len(candidates) - len(all_syms),
+            )
+        else:
+            all_syms = [(cx, cy, s, pi) for cx, cy, s, pi, fn in candidates]
+    else:
+        all_syms = [(cx, cy, s, pi) for cx, cy, s, pi, fn in candidates]
 
     if not all_syms:
         raise ValueError("No chart symbols found on any page")
 
     # Detect cell pitch from the most common spacing between adjacent symbols
-    from collections import Counter
     xs_by_page = {}
     ys_by_page = {}
     for cx, cy, _s, pi in all_syms:
@@ -858,7 +1202,7 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
     # Extract row/column labels to determine absolute positions
     page_origins = {}  # page_idx → (col_offset, row_offset)
 
-    for page_idx in chart_pages:
+    for page_idx in chart_page_indices:
         page = plumber_pdf.pages[page_idx]
         words = page.extract_words()
 
@@ -871,6 +1215,7 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
 
         # Look for column labels (numbers above the chart area)
         # and row labels (numbers left of the chart area)
+        pw, ph = float(page.width), float(page.height)
         col_labels = []
         row_labels = []
         for w in words:
@@ -880,21 +1225,52 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
                 continue
             wcx = (w['x0'] + w['x1']) / 2
             wcy = (w['top'] + w['bottom']) / 2
+            # Skip likely page numbers (e.g. "1" "2" from "Chart 1 / 2")
+            if _pdf_is_likely_page_number(n, wcx / pw, wcy / ph):
+                continue
             # Column label: above chart, aligned with a symbol column
             if wcy < sym_min_y - cell_pitch * 0.3 and 0 <= n <= grid_w:
                 col_rank = round((wcx - sym_min_x) / cell_pitch)
-                col_labels.append(n - col_rank)
+                if col_rank >= 0:
+                    col_labels.append(n - col_rank)
             # Row label: left of chart, aligned with a symbol row
             if wcx < sym_min_x - cell_pitch * 0.3 and 0 <= n <= grid_h:
                 row_rank = round((wcy - sym_min_y) / cell_pitch)
-                row_labels.append(n - row_rank)
+                if row_rank >= 0:
+                    row_labels.append(n - row_rank)
 
+        # Filter out clearly invalid offsets (must be positive for 1-indexed grids)
+        col_labels = [v for v in col_labels if v > 0]
+        row_labels = [v for v in row_labels if v >= 0]
         col_off = Counter(col_labels).most_common(1)[0][0] if col_labels else 0
         row_off = Counter(row_labels).most_common(1)[0][0] if row_labels else 0
         page_origins[page_idx] = (col_off, row_off, sym_min_x, sym_min_y)
+        app.logger.info(
+            "PDF import: page %d origin col_off=%d row_off=%d "
+            "(col_labels=%s, row_labels=%s)",
+            page_idx + 1, col_off, row_off,
+            Counter(col_labels).most_common(3),
+            Counter(row_labels).most_common(3),
+        )
 
-    # Build grid
+    # Cross-page row offset consistency: all chart pages should share the
+    # same row_off. If a majority agree, override outliers.
+    if len(page_origins) > 1:
+        all_row_offs = [v[1] for v in page_origins.values()]
+        row_consensus = Counter(all_row_offs).most_common(1)[0]
+        if row_consensus[1] > len(all_row_offs) // 2:
+            for pi in page_origins:
+                co, ro, ox, oy = page_origins[pi]
+                if ro != row_consensus[0]:
+                    app.logger.info(
+                        "PDF import: correcting page %d row_off %d → %d (consensus)",
+                        pi + 1, ro, row_consensus[0],
+                    )
+                    page_origins[pi] = (co, row_consensus[0], ox, oy)
+
+    # Build grid — first pass places symbols, then resolves to DMC numbers
     result = ['BG'] * (grid_w * grid_h)
+    placed = 0
     for cx, cy, sym, page_idx in all_syms:
         if page_idx not in page_origins:
             continue
@@ -902,9 +1278,62 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
         col = col_off + round((cx - origin_x) / cell_pitch)
         row = row_off + round((cy - origin_y) / cell_pitch)
         if 0 <= col < grid_w and 0 <= row < grid_h:
-            dmc = sym_to_dmc.get(sym)
-            if dmc:
-                result[row * grid_w + col] = dmc
+            if sym_to_dmc is not None:
+                dmc = sym_to_dmc.get(sym)
+                if dmc:
+                    result[row * grid_w + col] = dmc
+                    placed += 1
+            else:
+                # Count-based mode: place symbol char as placeholder
+                result[row * grid_w + col] = sym
+                placed += 1
+
+    app.logger.info(
+        "PDF import: placed %d of %d symbols (%.1f%%) in %dx%d grid",
+        placed, len(all_syms), placed / len(all_syms) * 100 if all_syms else 0,
+        grid_w, grid_h,
+    )
+
+    # Count-based symbol→DMC matching (when legend has no symbol mapping)
+    if sym_to_dmc is None:
+        sym_counts = Counter(c for c in result if c != 'BG')
+        legend_counts = {e['dmc']: e.get('legend_count', 0) for e in legend_entries}
+
+        # Greedy 1-to-1 matching: pair each symbol count to closest legend count
+        unmatched_syms = list(sym_counts.items())   # [(sym, count), ...]
+        unmatched_dmc  = list(legend_counts.items()) # [(dmc, count), ...]
+        matched = {}  # sym → dmc
+
+        # Sort both by count descending for greedy matching
+        unmatched_syms.sort(key=lambda x: -x[1])
+        unmatched_dmc.sort(key=lambda x: -x[1])
+
+        used_dmc = set()
+        for sym, sym_count in unmatched_syms:
+            best_dmc = None
+            best_diff = float('inf')
+            for dmc, leg_count in unmatched_dmc:
+                if dmc in used_dmc:
+                    continue
+                diff = abs(sym_count - leg_count)
+                if diff < best_diff:
+                    best_diff = diff
+                    best_dmc = dmc
+            if best_dmc:
+                matched[sym] = best_dmc
+                used_dmc.add(best_dmc)
+
+        app.logger.info(
+            "PDF import count-based matching: %d symbols → %d DMC colors "
+            "(grid has %d filled cells)",
+            len(matched), len(used_dmc), placed,
+        )
+
+        # Replace symbol placeholders with DMC numbers
+        for i, cell in enumerate(result):
+            if cell != 'BG':
+                dmc = matched.get(cell)
+                result[i] = dmc if dmc else 'BG'
 
     # Build legend with actual stitch counts
     db = get_db()
@@ -919,9 +1348,10 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
         row = _thread_info.get(e['dmc'])
         dmc_hex[e['dmc']] = row['hex_color'].lstrip('#') if row and row['hex_color'] else 'cccccc'
 
+    cell_counts = Counter(result)
     legend_data = []
     for e in legend_entries:
-        stitches = result.count(e['dmc'])
+        stitches = cell_counts.get(e['dmc'], 0)
         if stitches == 0:
             continue
         db_row = _thread_info.get(e['dmc'])
@@ -939,7 +1369,7 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries):
         entry['symbol'] = _PATTERN_SYMBOLS[i % len(_PATTERN_SYMBOLS)]
 
     return {
-        'title':  plumber_pdf.pages[0].extract_text().split('\n')[0].strip() or 'Imported Pattern',
+        'title':  title,
         'grid_w': grid_w,
         'grid_h': grid_h,
         'grid':   result,
@@ -1058,21 +1488,198 @@ def _import_pdf_pattern(pdf_bytes):
             pdfium_doc.close()
 
 
+def _pdf_infer_grid_dims(plumber_pdf, chart_page_indices):
+    """Infer grid dimensions from row/column label numbers on chart pages.
+
+    Scans the edges of each chart page for integer labels (1, 10, 20, ...)
+    and returns (estimated_width, estimated_height).
+    Uses the label interval to estimate the full grid size beyond the last label.
+    Returns (0, 0) if no labels found.
+    """
+    col_labels = set()
+    row_labels = set()
+
+    for page_idx in chart_page_indices[:8]:  # sample up to 8 pages
+        page = plumber_pdf.pages[page_idx]
+        pw, ph = float(page.width), float(page.height)
+        words = page.extract_words()
+        for w in words:
+            try:
+                n = int(w['text'])
+            except ValueError:
+                continue
+            if n < 1 or n > 10000:
+                continue
+            wcx = (w['x0'] + w['x1']) / 2
+            wcy = (w['top'] + w['bottom']) / 2
+            x_pct = wcx / pw
+            y_pct = wcy / ph
+            if _pdf_is_likely_page_number(n, x_pct, y_pct):
+                continue
+            # Column labels: top or bottom band (within 20% of page edge)
+            if y_pct < 0.20 or y_pct > 0.85:
+                col_labels.add(n)
+            # Row labels: left or right band (within 20% of page edge)
+            if x_pct < 0.20 or x_pct > 0.82:
+                row_labels.add(n)
+
+    if not col_labels and not row_labels:
+        return 0, 0
+
+    def _estimate_dim(labels):
+        if not labels:
+            return 0
+        vals = sorted(labels)
+        if len(vals) < 2:
+            return vals[0]
+        # Detect label interval (most common spacing)
+        spacings = [vals[i+1] - vals[i] for i in range(len(vals)-1)]
+        interval = Counter(spacings).most_common(1)[0][0] if spacings else 10
+        return vals[-1] + interval
+
+    return _estimate_dim(col_labels), _estimate_dim(row_labels)
+
+
 def _import_pdf_body(plumber_pdf, pdfium_doc):
     """Inner logic for PDF pattern import — called with managed resources."""
     # -- Cover --
     grid_w, grid_h, title = _pdf_parse_cover(plumber_pdf.pages[0])
 
-    # -- Legend (last page for image-based, page 2 for vector) --
-    legend_entries = _pdf_parse_legend(plumber_pdf.pages[-1])
+    # -- Legend detection: search all non-cover pages --
+    # Priority: branded → vector header → tabular → bare number fallback
+    # Track which pages contain the legend so we can exclude them from chart pages.
+    num_pages = len(plumber_pdf.pages)
+    legend_entries = []
+    legend_page_indices = set()
+
+    # Order: last page first (most common), then page 1, then remaining inner pages
+    search_order = [num_pages - 1]
+    if num_pages >= 3:
+        search_order.append(1)
+    for i in range(2, num_pages - 1):
+        if i not in search_order:
+            search_order.append(i)
+
+    # Pass 1: per-page parsers (branded, vector header)
+    for page_idx in search_order:
+        page = plumber_pdf.pages[page_idx]
+
+        entries = _pdf_parse_legend(page)
+        if not entries:
+            entries = _pdf_parse_legend_vector(page)
+        if entries:
+            legend_entries = entries
+            legend_page_indices.add(page_idx)
+            app.logger.info("PDF import: legend found on page %d (%d entries)", page_idx + 1, len(entries))
+            break
+
+    # Pass 2: tabular format (may span multiple pages, no header dependency)
     if not legend_entries:
-        # Try Needlework Studio vector PDF format (legend on page 2)
-        if len(plumber_pdf.pages) >= 3:
-            vector_legend = _pdf_parse_legend_vector(plumber_pdf.pages[1])
-            if vector_legend:
-                app.logger.info("PDF import: detected Needlework Studio vector format (%d legend entries)", len(vector_legend))
-                return _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, vector_legend)
+        entries, tab_pages = _pdf_parse_legend_tabular(
+            [(i, plumber_pdf.pages[i]) for i in search_order]
+        )
+        if entries:
+            legend_entries = entries
+            legend_page_indices.update(tab_pages)
+            app.logger.info(
+                "PDF import: tabular legend found on page(s) %s (%d entries)",
+                ','.join(str(p + 1) for p in sorted(tab_pages)), len(entries),
+            )
+
+    # Pass 3: bare number fallback (validated against DB)
+    if not legend_entries:
+        db = get_db()
+        rows = db.execute("SELECT DISTINCT number FROM threads WHERE brand = 'DMC'").fetchall()
+        bare_known_dmc = {r['number'] for r in rows}
+        for page_idx in search_order:
+            entries = _pdf_parse_legend_bare(plumber_pdf.pages[page_idx], bare_known_dmc)
+            if entries:
+                legend_entries = entries
+                legend_page_indices.add(page_idx)
+                app.logger.info(
+                    "PDF import: legend found via bare-number fallback on page %d (%d entries)",
+                    page_idx + 1, len(entries),
+                )
+                break
+
+    if not legend_entries:
         raise ValueError("No thread entries found in legend (expected DMC or Anchor)")
+
+    # Chart pages = everything except cover (page 0), legend pages,
+    # and non-chart pages (index/TOC pages, near-empty pages).
+    # Only filter when dimensions aren't known yet (small patterns may
+    # have legitimately short chart pages).
+    chart_page_indices = []
+    for i in range(1, num_pages):
+        if i in legend_page_indices:
+            continue
+        if grid_w == 0 or grid_h == 0:
+            text = plumber_pdf.pages[i].extract_text() or ''
+            stripped = text.strip()
+            # Skip near-empty pages
+            if len(stripped) < 100:
+                continue
+            # Skip pages that are mostly header/footer with no grid content
+            # (e.g. page-index pages or final info pages).  Strip common
+            # header/footer lines and check remaining content length.
+            content_lines = [
+                ln for ln in stripped.split('\n')
+                if not re.match(
+                    r'^\d+\s*/\s*\d+$|^Powered\s+by\b|^\d+\s+/\s+\d+$|'
+                    r'www\.|info@|Make your own|Picture to pattern|'
+                    r'Cross stitch pattern\b',
+                    ln.strip(), re.IGNORECASE,
+                )
+            ]
+            content_text = ' '.join(ln.strip() for ln in content_lines)
+            if len(content_text) < 40:
+                continue
+        chart_page_indices.append(i)
+
+    app.logger.info(
+        "PDF import: %d pages total, %d legend, %d chart (pages %s)",
+        num_pages, len(legend_page_indices), len(chart_page_indices),
+        ','.join(str(p + 1) for p in chart_page_indices),
+    )
+
+    # Infer grid dimensions from chart labels if cover page didn't have them
+    if grid_w == 0 or grid_h == 0:
+        inf_w, inf_h = _pdf_infer_grid_dims(plumber_pdf, chart_page_indices)
+        if inf_w > 0 and inf_h > 0:
+            grid_w, grid_h = inf_w, inf_h
+            app.logger.info("PDF import: inferred grid dimensions from labels: %d×%d", grid_w, grid_h)
+        else:
+            raise ValueError(
+                "Could not find design dimensions on cover page or infer from chart labels"
+            )
+
+    # Check if chart pages have embedded images (image-based PDF) or text symbols (vector PDF).
+    # Two indicators of image-based charts:
+    #   1. A single large image covering >25% of page (some export formats)
+    #   2. Many small named images (>50 per page) — individual cell images (FlossCross etc.)
+    def _has_chart_images(page):
+        pa = float(page.width) * float(page.height)
+        named_count = 0
+        for img in page.images:
+            if not img.get('name'):
+                continue
+            named_count += 1
+            iw = float(img.get('width', 0) or 0)
+            ih = float(img.get('height', 0) or 0)
+            if iw * ih > 0.25 * pa:
+                return True
+        # Many small named images = image-based cell grid
+        return named_count > 50
+
+    has_images = any(_has_chart_images(plumber_pdf.pages[i]) for i in chart_page_indices[:3])
+
+    if not has_images:
+        app.logger.info(
+            "PDF import: no cell images found, using text-based grid extraction "
+            "(%d legend entries, %d chart pages)",
+            len(legend_entries), len(chart_page_indices),
+        )
+        return _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_page_indices, title)
 
     # Build color reference from app's thread database (with per-user status)
     db = get_db()
@@ -1358,9 +1965,10 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     grid_h = crop_h
 
     # Build legend data (only colors that appear in grid), sorted by stitch count
+    cell_counts = Counter(result)
     legend_data = []
     for e in legend_entries:
-        stitches = result.count(e['dmc'])
+        stitches = cell_counts.get(e['dmc'], 0)
         if stitches == 0:
             continue
         db_row = _thread_info.get(e['dmc'])
