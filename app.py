@@ -748,6 +748,20 @@ def _pdf_parse_legend(page):
                 brand = 'Anchor' if b.upper() == 'ANC' else ('DMC' if b.upper() == 'DMC' else b.capitalize())
                 name, count = m.group(3).strip(), int(m.group(4).replace(',', ''))
 
+        # --- Pattern 4: "DMC 350 - Medium Coral" (no stitch count) ---
+        if not brand:
+            m = re.search(r'DMC[\s\-#.:]*([A-Za-z]?\d+\w*|Blanc|White|Ecru)\s*[\-–—]\s*([\w\s\.\/]+)',
+                          norm, re.IGNORECASE)
+            if m:
+                brand, number = 'DMC', m.group(1).strip()
+                name, count = m.group(2).strip(), 0
+        if not brand:
+            m = re.search(r'(?:Anchor|ANC)[\s\-#.:]*(\d+)\s*[\-–—]\s*([\w\s\.\/]+)',
+                          norm, re.IGNORECASE)
+            if m:
+                brand, number = 'Anchor', m.group(1).strip()
+                name, count = m.group(2).strip(), 0
+
         if brand and number and count is not None:
             key = f'{brand}:{number}'
             if key not in seen:
@@ -1176,6 +1190,17 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_pag
     if not all_syms:
         raise ValueError("No chart symbols found on any page")
 
+    # Reject footer/header text masquerading as grid symbols.
+    # Real grid symbols spread across many y-positions (one per row);
+    # footer text clusters in 1-2 lines per page → very few unique y values.
+    unique_ys = len(set(round(cy, 0) for _, cy, _, _ in all_syms))
+    sym_per_page = len(all_syms) / max(1, len(chart_page_indices))
+    if unique_ys < 5 and sym_per_page < 100:
+        raise ValueError(
+            f"Only {unique_ys} unique y-positions for {len(all_syms)} symbols "
+            f"across {len(chart_page_indices)} pages — likely footer text, not grid"
+        )
+
     # Detect cell pitch from the most common spacing between adjacent symbols
     xs_by_page = {}
     ys_by_page = {}
@@ -1241,7 +1266,7 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_pag
 
         # Filter out clearly invalid offsets (must be positive for 1-indexed grids)
         col_labels = [v for v in col_labels if v > 0]
-        row_labels = [v for v in row_labels if v >= 0]
+        row_labels = [v for v in row_labels if v > 0]
         col_off = Counter(col_labels).most_common(1)[0][0] if col_labels else 0
         row_off = Counter(row_labels).most_common(1)[0][0] if row_labels else 0
         page_origins[page_idx] = (col_off, row_off, sym_min_x, sym_min_y)
@@ -1348,6 +1373,395 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_pag
         row = _thread_info.get(e['dmc'])
         dmc_hex[e['dmc']] = row['hex_color'].lstrip('#') if row and row['hex_color'] else 'cccccc'
 
+    cell_counts = Counter(result)
+    legend_data = []
+    for e in legend_entries:
+        stitches = cell_counts.get(e['dmc'], 0)
+        if stitches == 0:
+            continue
+        db_row = _thread_info.get(e['dmc'])
+        legend_data.append({
+            'dmc':      e['dmc'],
+            'name':     e['name'],
+            'hex':      '#' + dmc_hex.get(e['dmc'], 'cccccc'),
+            'stitches': stitches,
+            'status':   db_row['status']   if db_row else 'dont_own',
+            'category': db_row['category'] if db_row else '',
+        })
+    legend_data.sort(key=lambda x: -x['stitches'])
+
+    for i, entry in enumerate(legend_data):
+        entry['symbol'] = _PATTERN_SYMBOLS[i % len(_PATTERN_SYMBOLS)]
+
+    return {
+        'title':  title,
+        'grid_w': grid_w,
+        'grid_h': grid_h,
+        'grid':   result,
+        'legend': legend_data,
+    }
+
+
+def _pdf_rect_color_to_rgb(color):
+    """Convert a pdfplumber non_stroking_color to an (R, G, B) tuple (0-255).
+
+    Handles DeviceRGB (3 floats), DeviceCMYK (4 floats), and DeviceGray
+    (1 float or bare float).  Returns None for unsupported formats.
+    """
+    if color is None:
+        return None
+    if isinstance(color, (int, float)):
+        v = max(0, min(255, round(float(color) * 255)))
+        return (v, v, v)
+    if not isinstance(color, (list, tuple)):
+        return None
+    n = len(color)
+    if n == 3:  # RGB
+        return tuple(max(0, min(255, round(float(c) * 255))) for c in color)
+    if n == 4:  # CMYK → RGB
+        c_, m_, y_, k_ = (float(x) for x in color)
+        return (
+            max(0, min(255, round(255 * (1 - c_) * (1 - k_)))),
+            max(0, min(255, round(255 * (1 - m_) * (1 - k_)))),
+            max(0, min(255, round(255 * (1 - y_) * (1 - k_)))),
+        )
+    if n == 1:  # Gray
+        v = max(0, min(255, round(float(color[0]) * 255)))
+        return (v, v, v)
+    return None
+
+
+def _import_pdf_rect_grid(plumber_pdf, grid_w, grid_h, legend_entries,
+                          chart_page_indices, title='Imported Pattern',
+                          legend_page_indices=None):
+    """Import a PDF chart using colored vector rectangles (e.g. Stitch Fiddle).
+
+    Some generators render each grid cell as a filled PDF rectangle rather
+    than embedding images or text symbols.  This function:
+      1. Detects the uniform cell size from rectangle positions
+      2. Extracts fill colors from each rectangle
+      3. Maps fill colors to DMC numbers via legend swatch colors (preferred)
+         or closest DB-color matching (fallback)
+      4. Uses row/column labels for per-page grid offsets
+    """
+    # Build color reference from DB (used as fallback)
+    db = get_db()
+    uid = current_user.id
+    _thread_info = {}
+    for brand in {e.get('brand', 'DMC') for e in legend_entries}:
+        brand_numbers = [e['dmc'] for e in legend_entries if e.get('brand', 'DMC') == brand]
+        _thread_info.update(_lookup_threads_by_number(db, uid, brand, brand_numbers))
+    dmc_hex = {}
+    for e in legend_entries:
+        row = _thread_info.get(e['dmc'])
+        dmc_hex[e['dmc']] = row['hex_color'].lstrip('#') if row and row['hex_color'] else 'cccccc'
+    dmc_rgb = {dmc: tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) for dmc, h in dmc_hex.items()}
+
+    # ── Phase 0: extract legend swatch colors from legend page(s) ────────────
+    # The PDF legend has colored rectangles next to each DMC entry.  These
+    # exact fill colors match the chart cells, giving us a precise mapping
+    # even for very similar colors (BLANC vs B5200 vs 3865).
+    swatch_rgb_to_dmc = {}  # (r,g,b) → dmc_number — exact match map
+    if legend_page_indices:
+        for lpi in sorted(legend_page_indices):
+            lpage = plumber_pdf.pages[lpi]
+            lrects = lpage.rects or []
+            # Single pass: parse colors and count swatch sizes
+            swatch_sizes = Counter()
+            parsed = []  # (sw, sh, cy, rgb)
+            for lr in lrects:
+                rgb = _pdf_rect_color_to_rgb(lr.get('non_stroking_color'))
+                if rgb is None:
+                    continue
+                sw = round(float(lr['x1'] - lr['x0']), 0)
+                sh = round(float(lr['y1'] - lr['y0']), 0)
+                if 5 < sw < 80 and 5 < sh < 80:
+                    swatch_sizes[(sw, sh)] += 1
+                    cy = (lr['top'] + lr['bottom']) / 2
+                    parsed.append((sw, sh, cy, rgb))
+            if not swatch_sizes:
+                continue
+            (sw_w, sw_h), _ = swatch_sizes.most_common(1)[0]
+            stol = 2.0
+            # Filter to dominant swatch size, sort top-to-bottom
+            swatches = sorted(
+                (cy, rgb) for sw, sh, cy, rgb in parsed
+                if abs(sw - sw_w) <= stol and abs(sh - sw_h) <= stol
+            )
+            for i, (cy, rgb) in enumerate(swatches):
+                if i < len(legend_entries):
+                    swatch_rgb_to_dmc[rgb] = legend_entries[i]['dmc']
+        if swatch_rgb_to_dmc:
+            app.logger.info(
+                "PDF rect import: extracted %d swatch colors from legend page(s)",
+                len(swatch_rgb_to_dmc),
+            )
+
+    # ── Phase 1: detect cell size from the first chart page ──────────────────
+    # Collect all filled rects and find the dominant (most common) rect size.
+    all_rect_sizes = Counter()
+    for pi in chart_page_indices[:3]:
+        page = plumber_pdf.pages[pi]
+        for r in (page.rects or []):
+            c = r.get('non_stroking_color')
+            if c is None:
+                continue
+            w = round(float(r['x1'] - r['x0']), 1)
+            h = round(float(r['y1'] - r['y0']), 1)
+            if w > 1 and h > 1:  # skip hairline gridlines
+                all_rect_sizes[(w, h)] += 1
+
+    if not all_rect_sizes:
+        raise ValueError("No colored rectangles found on chart pages")
+
+    (cell_w, cell_h), top_count = all_rect_sizes.most_common(1)[0]
+    app.logger.info(
+        "PDF rect import: dominant cell size %.1f×%.1f (%d rects on sampled pages)",
+        cell_w, cell_h, top_count,
+    )
+
+    # Tolerance for matching cell size (allow ±0.5pt for rounding)
+    size_tol = 0.6
+
+    # ── Phase 2: collect cell rects from all chart pages ─────────────────────
+    page_rects = {}  # page_idx → [(x0, y0, rgb), ...]
+    for pi in chart_page_indices:
+        page = plumber_pdf.pages[pi]
+        cells = []
+        for r in (page.rects or []):
+            rw = float(r['x1'] - r['x0'])
+            rh = float(r['y1'] - r['y0'])
+            if abs(rw - cell_w) > size_tol or abs(rh - cell_h) > size_tol:
+                continue
+            rgb = _pdf_rect_color_to_rgb(r.get('non_stroking_color'))
+            if rgb is None:
+                continue
+            cells.append((round(float(r['x0']), 1), round(float(r['top']), 1), rgb))
+        if cells:
+            page_rects[pi] = cells
+
+    if not page_rects:
+        raise ValueError("No grid cells found in chart rectangles")
+
+    # ── Phase 3: per-page origin detection from labels ───────────────────────
+    # Same approach as _import_pdf_text_grid: use row/col labels to compute
+    # the absolute grid offset for each chart page.
+    page_origins = {}  # page_idx → (col_off, row_off, origin_x, origin_y)
+
+    for pi, cells in page_rects.items():
+        page = plumber_pdf.pages[pi]
+        pw, ph = float(page.width), float(page.height)
+
+        # Bounding box of cell rects on this page
+        xs = [x for x, y, _ in cells]
+        ys = [y for x, y, _ in cells]
+        rect_min_x = min(xs)
+        rect_min_y = min(ys)
+
+        # Parse integer labels from text on this page.
+        # Use tight x_tolerance to prevent merging of adjacent 3-digit labels
+        # (e.g. "121 122 123" rendered at 14pt pitch can merge with default gap).
+        words = page.extract_words(x_tolerance=2)
+        col_labels = []
+        row_labels = []
+        for w in words:
+            text = w['text'].strip()
+            if len(text) > 4:  # skip concatenated labels
+                continue
+            try:
+                n = int(text)
+            except ValueError:
+                continue
+            wcx = (w['x0'] + w['x1']) / 2
+            wcy = (w['top'] + w['bottom']) / 2
+            if _pdf_is_likely_page_number(n, wcx / pw, wcy / ph):
+                continue
+            # Column label: above the chart rects
+            # Don't cap at grid_w — inferred dims may be wrong; Phase 3.5
+            # determines actual extent from rect positions.
+            if wcy < rect_min_y - cell_h * 0.3 and n > 0:
+                col_rank = round((wcx - rect_min_x) / cell_w)
+                if col_rank >= 0:
+                    col_labels.append(n - col_rank)
+            # Row label: left of the chart rects
+            if wcx < rect_min_x - cell_w * 0.3 and n > 0:
+                row_rank = round((wcy - rect_min_y) / cell_h)
+                if row_rank >= 0:
+                    row_labels.append(n - row_rank)
+
+        col_labels = [v for v in col_labels if v > 0]
+        row_labels = [v for v in row_labels if v > 0]
+        col_ctr = Counter(col_labels)
+        row_ctr = Counter(row_labels)
+        col_off = col_ctr.most_common(1)[0][0] if col_labels else 0
+        row_off = row_ctr.most_common(1)[0][0] if row_labels else 0
+        page_origins[pi] = (col_off, row_off, rect_min_x, rect_min_y)
+        app.logger.info(
+            "PDF rect import: page %d origin col_off=%d row_off=%d "
+            "(%d cells, col_labels=%s, row_labels=%s)",
+            pi + 1, col_off, row_off, len(cells),
+            col_ctr.most_common(3),
+            row_ctr.most_common(3),
+        )
+
+    # ── Phase 3a: infer missing col_off from page layout stride ────────
+    # When column labels fail to extract (e.g. dense 3-digit labels at
+    # 8.7pt cell pitch), infer col_off from the stride of successfully-
+    # parsed neighbor pages within the same row band.
+    _fix_pis = {pi for pi, (co, _, _, _) in page_origins.items() if co == 0}
+    if _fix_pis:
+        # Compute local column count per page from cell x-positions
+        _page_ncols = {}
+        for pi, cells in page_rects.items():
+            xs = sorted(set(round((x - page_origins[pi][2]) / cell_w)
+                            for x, _, _ in cells))
+            _page_ncols[pi] = (max(xs) + 1) if xs else 0
+
+        # Group pages by row_off
+        _row_groups = {}
+        for pi, (co, ro, _, _) in page_origins.items():
+            _row_groups.setdefault(ro, []).append(pi)
+
+        for ro, pis in _row_groups.items():
+            pis.sort()
+            # Backward walk: infer from preceding pages
+            for i, pi in enumerate(pis):
+                if pi not in _fix_pis:
+                    continue
+                for j in range(i - 1, -1, -1):
+                    prev_co = page_origins[pis[j]][0]
+                    if prev_co > 0:
+                        offset = prev_co
+                        for k in range(j, i):
+                            offset += _page_ncols.get(pis[k], 0)
+                        page_origins[pi] = (offset, ro,
+                                            page_origins[pi][2],
+                                            page_origins[pi][3])
+                        app.logger.info(
+                            "PDF rect import: inferred page %d col_off=%d "
+                            "(from page layout stride, backward)",
+                            pi + 1, offset,
+                        )
+                        break
+            # Forward walk: infer pages at the start of a band from
+            # a successor with known col_off (e.g. first page fails
+            # but second page succeeded).
+            for i in range(len(pis) - 1, -1, -1):
+                pi = pis[i]
+                if page_origins[pi][0] > 0:
+                    continue
+                for j in range(i + 1, len(pis)):
+                    next_co = page_origins[pis[j]][0]
+                    if next_co > 0:
+                        # Subtract local widths from this page to the anchor
+                        offset = next_co
+                        for k in range(i, j):
+                            offset -= _page_ncols.get(pis[k], 0)
+                        if offset > 0:
+                            page_origins[pi] = (offset, ro,
+                                                page_origins[pi][2],
+                                                page_origins[pi][3])
+                            app.logger.info(
+                                "PDF rect import: inferred page %d col_off=%d "
+                                "(from page layout stride, forward)",
+                                pi + 1, offset,
+                            )
+                        break
+            # Warn about any pages still unfixed
+            for pi in pis:
+                if page_origins[pi][0] == 0:
+                    app.logger.warning(
+                        "PDF rect import: page %d col_off still 0 "
+                        "(no anchor page found in row band)",
+                        pi + 1,
+                    )
+
+    # Cross-page row offset consensus (same logic as text grid path)
+    if len(page_origins) > 1:
+        all_row_offs = [v[1] for v in page_origins.values()]
+        row_consensus = Counter(all_row_offs).most_common(1)[0]
+        if row_consensus[1] > len(all_row_offs) // 2:
+            for pi in page_origins:
+                co, ro, ox, oy = page_origins[pi]
+                if ro != row_consensus[0]:
+                    app.logger.info(
+                        "PDF rect import: correcting page %d row_off %d → %d (consensus)",
+                        pi + 1, ro, row_consensus[0],
+                    )
+                    page_origins[pi] = (co, row_consensus[0], ox, oy)
+
+    # ── Phase 3.5: compute actual grid dimensions from cell positions ────────
+    # The inferred dimensions from _pdf_infer_grid_dims may be wrong (label
+    # cross-contamination between row/col bands).  Compute the true extent
+    # from the cell positions we just determined.
+    max_col = 0
+    max_row = 0
+    for pi, cells in page_rects.items():
+        if pi not in page_origins:
+            continue
+        col_off, row_off, origin_x, origin_y = page_origins[pi]
+        for x0, y0, _ in cells:
+            c = col_off + round((x0 - origin_x) / cell_w)
+            r = row_off + round((y0 - origin_y) / cell_h)
+            if c > max_col:
+                max_col = c
+            if r > max_row:
+                max_row = r
+
+    if max_col > grid_w or max_row > grid_h:
+        app.logger.info(
+            "PDF rect import: expanding grid from %d×%d to %d×%d "
+            "(actual cell extent)",
+            grid_w, grid_h, max(grid_w, max_col), max(grid_h, max_row),
+        )
+        grid_w = max(grid_w, max_col)
+        grid_h = max(grid_h, max_row)
+
+    # ── Phase 4: map rect colors → DMC ──────────────────────────────────────
+    # Prefer exact swatch match (from legend page); fall back to closest DB color.
+    result = ['BG'] * (grid_w * grid_h)
+    placed = 0
+    dmc_list = list(dmc_rgb.items())  # [(dmc_number, (r,g,b)), ...]
+    color_cache = {}  # rgb_tuple → dmc_number
+
+    for pi, cells in page_rects.items():
+        if pi not in page_origins:
+            continue
+        col_off, row_off, origin_x, origin_y = page_origins[pi]
+
+        for x0, y0, rgb in cells:
+            col = col_off + round((x0 - origin_x) / cell_w)
+            row = row_off + round((y0 - origin_y) / cell_h)
+            if not (1 <= col <= grid_w and 1 <= row <= grid_h):
+                continue
+
+            # Look up or compute DMC color mapping
+            dmc = color_cache.get(rgb)
+            if dmc is None:
+                # Try exact swatch match first
+                dmc = swatch_rgb_to_dmc.get(rgb)
+                if dmc is None:
+                    # Fall back to closest DB hex color
+                    best_dist = float('inf')
+                    best_dmc = None
+                    for d, ref in dmc_list:
+                        dist = (rgb[0]-ref[0])**2 + (rgb[1]-ref[1])**2 + (rgb[2]-ref[2])**2
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_dmc = d
+                    dmc = best_dmc
+                color_cache[rgb] = dmc
+
+            idx = (row - 1) * grid_w + (col - 1)
+            result[idx] = dmc
+            placed += 1
+
+    app.logger.info(
+        "PDF rect import: placed %d cells (%.1f%%) in %d×%d grid, %d unique colors cached",
+        placed, placed / (grid_w * grid_h) * 100, grid_w, grid_h, len(color_cache),
+    )
+
+    # Build legend with actual stitch counts
     cell_counts = Counter(result)
     legend_data = []
     for e in legend_entries:
@@ -1499,7 +1913,7 @@ def _pdf_infer_grid_dims(plumber_pdf, chart_page_indices):
     col_labels = set()
     row_labels = set()
 
-    for page_idx in chart_page_indices[:8]:  # sample up to 8 pages
+    for page_idx in chart_page_indices[:20]:  # sample up to 20 pages
         page = plumber_pdf.pages[page_idx]
         pw, ph = float(page.width), float(page.height)
         words = page.extract_words()
@@ -1552,13 +1966,17 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     legend_entries = []
     legend_page_indices = set()
 
-    # Order: last page first (most common), then page 1, then remaining inner pages
+    # Order: last page first (most common), then page 1, then remaining inner
+    # pages, then page 0 (cover) as fallback — some generators (Stitch Fiddle)
+    # put the legend on the cover page itself.
     search_order = [num_pages - 1]
     if num_pages >= 3:
         search_order.append(1)
     for i in range(2, num_pages - 1):
         if i not in search_order:
             search_order.append(i)
+    if 0 not in search_order:
+        search_order.append(0)
 
     # Pass 1: per-page parsers (branded, vector header)
     for page_idx in search_order:
@@ -1674,12 +2092,39 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     has_images = any(_has_chart_images(plumber_pdf.pages[i]) for i in chart_page_indices[:3])
 
     if not has_images:
-        app.logger.info(
-            "PDF import: no cell images found, using text-based grid extraction "
-            "(%d legend entries, %d chart pages)",
-            len(legend_entries), len(chart_page_indices),
-        )
-        return _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_page_indices, title)
+        # Pre-count colored vector rects as potential fallback (Stitch Fiddle).
+        _rect_count = 0
+        for _ci in chart_page_indices[:3]:
+            _pg = plumber_pdf.pages[_ci]
+            for _r in (_pg.rects or []):
+                if _r.get('non_stroking_color') is not None:
+                    rw = float(_r['x1'] - _r['x0'])
+                    rh = float(_r['y1'] - _r['y0'])
+                    if rw > 1 and rh > 1:
+                        _rect_count += 1
+
+        # Try text-based extraction first (exact symbol mapping is preferred
+        # over color-distance matching).  Fall back to rect-based extraction
+        # if no text symbols are found on chart pages.
+        try:
+            app.logger.info(
+                "PDF import: no cell images found, trying text-based grid extraction "
+                "(%d legend entries, %d chart pages, %d rects detected)",
+                len(legend_entries), len(chart_page_indices), _rect_count,
+            )
+            return _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_page_indices, title)
+        except ValueError:
+            if _rect_count > 50:
+                app.logger.info(
+                    "PDF import: text extraction failed, falling back to rect-based "
+                    "grid extraction (%d colored rects)",
+                    _rect_count,
+                )
+                return _import_pdf_rect_grid(
+                    plumber_pdf, grid_w, grid_h, legend_entries, chart_page_indices,
+                    title, legend_page_indices,
+                )
+            raise  # re-raise if no rects either
 
     # Build color reference from app's thread database (with per-user status)
     db = get_db()
