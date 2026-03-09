@@ -91,6 +91,11 @@
 
         <h3>PDF Import</h3>
         <p>The PDF importer is designed to handle cross-stitch chart PDFs - the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data. Both <strong>DMC</strong> and <strong>Anchor</strong> thread legends are recognized.</p>
+        <p>Two types of PDFs are supported:</p>
+        <ul>
+            <li><strong>Image-based PDFs</strong> - Charts where each stitch cell is rendered as an embedded image. This is the format most third-party pattern designers use.</li>
+            <li><strong>Vector/text-based PDFs</strong> - Charts where symbols are rendered as selectable text and cells as vector rectangles. This includes PDFs exported by Needlework Studio itself. Importing a Needlework Studio PDF produces a perfect round-trip with 100% cell accuracy.</li>
+        </ul>
         <p><strong>How it works:</strong></p>
         <ol>
             <li><strong>Upload</strong> - Select a PDF file from your computer using the file picker. The PDF should contain cross-stitch chart pages with a grid of symbols or colors.</li>
@@ -112,7 +117,7 @@
         <h3>OXS Import</h3>
         <p>OXS (Open Cross Stitch) is an XML-based standard format designed for interoperability between different cross-stitch software applications. Importing an OXS file allows you to bring patterns from other cross-stitch programs into Needlework Studio.</p>
         <p>The OXS format supports full stitches, part stitches, backstitches, French knots, beads, and thread color definitions. Needlework Studio maps the thread colors in the OXS file to the closest matching DMC or Anchor threads in its database, using perceptual color matching when an exact match is not available.</p>
-        <p>OXS import enforces a maximum of <strong>34 colors</strong> and a maximum grid size of <strong>500 &times; 500</strong> stitches. Files that exceed either limit will be rejected with an error message during the upload step.</p>
+        <p>OXS import enforces a maximum of <strong>70 colors</strong> and a maximum grid size of <strong>500 &times; 500</strong> stitches. Files that exceed either limit will be rejected with an error message during the upload step.</p>
         <p>To import an OXS file, select <strong>OXS Import</strong> from the Create menu, choose the <code>.oxs</code> file, review the imported pattern, name it, and save.</p>
 
         <h2>Import Workflow</h2>
@@ -128,13 +133,13 @@
         <p>Needlework Studio can export saved patterns in four formats. Export options are available from each pattern card's dropdown menu in the <strong>Saved Patterns</strong> gallery.</p>
 
         <h3>PDF Export</h3>
-        <p>The PDF exporter generates a multi-page document optimized for printing and offline use. The exported PDF includes:</p>
+        <p>The PDF exporter generates a multi-page vector document optimized for printing, offline use, and compatibility with <strong>Pattern Keeper</strong> (the popular Android/iOS stitching companion app). The exported PDF includes:</p>
         <ul>
             <li><strong>Cover page</strong> - A title page showing the pattern name, a thumbnail preview of the design, overall dimensions in stitches, thread count, and other summary information.</li>
-            <li><strong>Tiled grid pages</strong> - The full pattern chart is split across multiple pages in a tiled layout, with each page showing a portion of the grid at a readable scale. Page-edge markers and overlap indicators help you align the pages when taping them together or navigating between sections. Each grid cell shows the color fill and symbol overlay.</li>
-            <li><strong>Legend page</strong> - A complete thread legend listing every color used in the pattern with its symbol, DMC or Anchor thread number, color name, stitch count, and a color swatch. This serves as your shopping list and reference while stitching.</li>
+            <li><strong>Tiled grid pages</strong> - The full pattern chart is split across multiple pages in a tiled layout. Symbols are rendered as selectable vector text using an embedded TrueType font (DejaVu Sans), and grid lines are drawn as vector paths, so the chart stays crisp at any zoom level. Adjacent tiles include a 1-row and 1-column overlap to make it easy to follow the chart across page boundaries. Bold grid lines mark every 10th row and column, with numeric labels for quick orientation.</li>
+            <li><strong>Legend page</strong> - A complete thread legend listing every color used in the pattern with its symbol, DMC or Anchor thread number, color name, strand count, stitch count, and a color swatch. This serves as your shopping list and reference while stitching. The legend format is compatible with Pattern Keeper's automatic legend detection.</li>
         </ul>
-        <p>The PDF output is designed for standard letter or A4 paper sizes and uses high-contrast colors and symbols that remain legible when printed in black and white.</p>
+        <p>The PDF output is designed for standard letter or A4 paper sizes and uses high-contrast colors and symbols that remain legible when printed in black and white. Because the output is fully vector-based, exported PDFs can also be re-imported into Needlework Studio with perfect round-trip accuracy.</p>
 
         <h3>SVG Export</h3>
         <p>The SVG exporter produces a vector graphics file of the pattern chart. Because SVG is a vector format, the output can be scaled to any size without loss of quality. This makes it ideal for:</p>
