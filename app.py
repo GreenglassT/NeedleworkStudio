@@ -772,11 +772,12 @@ def _pdf_parse_legend(page):
     return entries
 
 
-def _pdf_parse_legend_bare(page, known_dmc=None):
+def _pdf_parse_legend_bare(page, known_threads=None):
     """Fallback legend parser for formats without any brand prefix.
 
     Matches lines like: ``310 Black 245`` or ``+ 310 Black 245``
-    where the number is a known DMC thread number in the database.
+    where the number is a known thread number in the database.
+    Checks both DMC and Anchor; prefers DMC when a number exists in both.
     Requires >= 3 matches to avoid false positives from random text.
     Returns list of {dmc, brand, name, legend_count} or empty list.
     """
@@ -784,12 +785,16 @@ def _pdf_parse_legend_bare(page, known_dmc=None):
     if not text.strip():
         return []
 
-    # Load known DMC numbers from the database for validation
-    if known_dmc is None:
+    # Load known thread numbers from the database for validation
+    if known_threads is None:
         db = get_db()
-        rows = db.execute("SELECT DISTINCT number FROM threads WHERE brand = 'DMC'").fetchall()
-        known_dmc = {r['number'] for r in rows}
-    known_dmc_lower = {n.lower(): n for n in known_dmc}
+        rows = db.execute("SELECT DISTINCT brand, number FROM threads").fetchall()
+        known_threads = {}  # number → brand (DMC wins ties)
+        for r in rows:
+            num, brand = r['number'], r['brand']
+            if num not in known_threads or brand == 'DMC':
+                known_threads[num] = brand
+    known_lower = {n.lower(): (n, b) for n, b in known_threads.items()}
 
     entries = []
     seen = set()
@@ -814,11 +819,11 @@ def _pdf_parse_legend_bare(page, known_dmc=None):
         name = m.group(2).strip()
         count_str = m.group(3).replace(',', '')
 
-        # Validate against known DMC numbers (case-insensitive for names)
-        if number in known_dmc:
-            pass  # exact match
-        elif number.lower() in known_dmc_lower:
-            number = known_dmc_lower[number.lower()]  # normalize to DB casing
+        # Validate against known thread numbers (DMC + Anchor)
+        if number in known_threads:
+            brand = known_threads[number]
+        elif number.lower() in known_lower:
+            number, brand = known_lower[number.lower()]
         else:
             continue
         # Skip if name looks like a page header/footer
@@ -827,7 +832,7 @@ def _pdf_parse_legend_bare(page, known_dmc=None):
 
         count = int(count_str)
         if number not in seen:
-            entries.append({'dmc': number, 'brand': 'DMC',
+            entries.append({'dmc': number, 'brand': brand,
                             'name': name, 'legend_count': count})
             seen.add(number)
 
@@ -939,6 +944,10 @@ def _pdf_parse_legend_tabular(page_index_pairs):
         page_entries = []
         page_seen = set()
 
+        # Detect brand from page text (look for "Anchor" near legend area)
+        _page_text = (page.extract_text() or '').upper()
+        _page_brand = 'Anchor' if 'ANCHOR' in _page_text and 'DMC' not in _page_text else 'DMC'
+
         # Try char-position column split first
         columns = _pdf_split_legend_columns(page)
         if columns:
@@ -973,7 +982,7 @@ def _pdf_parse_legend_tabular(page_index_pairs):
                         continue
 
                     if code not in page_seen:
-                        entry = {'dmc': code, 'brand': 'DMC',
+                        entry = {'dmc': code, 'brand': _page_brand,
                                  'name': name, 'legend_count': count,
                                  'symbol': symbol}
                         page_entries.append(entry)
@@ -990,7 +999,7 @@ def _pdf_parse_legend_tabular(page_index_pairs):
                     if skeins > 9 or count < 1 or len(name) < 2:
                         continue
                     if code not in page_seen:
-                        page_entries.append({'dmc': code, 'brand': 'DMC',
+                        page_entries.append({'dmc': code, 'brand': _page_brand,
                                              'name': name, 'legend_count': count,
                                              'symbol': ''})
                         page_seen.add(code)
@@ -1024,6 +1033,10 @@ def _pdf_parse_legend_vector(page):
     if header_idx < 0:
         return []
 
+    # Detect brand from page text
+    _upper = text.upper()
+    brand = 'Anchor' if 'ANCHOR' in _upper and 'DMC' not in _upper else 'DMC'
+
     entries = []
     seen = set()
     for line in lines[header_idx + 1:]:
@@ -1040,7 +1053,7 @@ def _pdf_parse_legend_vector(page):
         count = int(m.group(5).replace(',', ''))
         if number not in seen:
             entries.append({
-                'dmc': number, 'brand': 'DMC', 'name': name,
+                'dmc': number, 'brand': brand, 'name': name,
                 'symbol': symbol, 'legend_count': count,
             })
             seen.add(number)
@@ -1188,7 +1201,10 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_pag
         all_syms = [(cx, cy, s, pi) for cx, cy, s, pi, fn in candidates]
 
     if not all_syms:
-        raise ValueError("No chart symbols found on any page")
+        raise ValueError(
+            "No chart symbols found on any page. "
+            "This PDF may use images or colored rectangles instead of text symbols."
+        )
 
     # Reject footer/header text masquerading as grid symbols.
     # Real grid symbols spread across many y-positions (one per row);
@@ -1217,7 +1233,10 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_pag
         y_spacings.extend(round(sys_[i+1] - sys_[i], 1) for i in range(min(20, len(sys_)-1)))
 
     if not x_spacings or not y_spacings:
-        raise ValueError("Cannot detect grid spacing from chart pages")
+        raise ValueError(
+            "Cannot detect grid spacing from chart pages. "
+            "The chart symbols may be too sparse or irregularly spaced."
+        )
 
     cell_pitch = Counter(x_spacings).most_common(1)[0][0]
     if cell_pitch < 1:
@@ -1512,7 +1531,10 @@ def _import_pdf_rect_grid(plumber_pdf, grid_w, grid_h, legend_entries,
                 all_rect_sizes[(w, h)] += 1
 
     if not all_rect_sizes:
-        raise ValueError("No colored rectangles found on chart pages")
+        raise ValueError(
+            "No colored rectangles found on chart pages. "
+            "This PDF may use a format that is not yet supported."
+        )
 
     (cell_w, cell_h), top_count = all_rect_sizes.most_common(1)[0]
     app.logger.info(
@@ -1541,7 +1563,10 @@ def _import_pdf_rect_grid(plumber_pdf, grid_w, grid_h, legend_entries,
             page_rects[pi] = cells
 
     if not page_rects:
-        raise ValueError("No grid cells found in chart rectangles")
+        raise ValueError(
+            "No grid cells found in chart rectangles. "
+            "The rectangles may not match the expected uniform cell size."
+        )
 
     # ── Phase 3: per-page origin detection from labels ───────────────────────
     # Same approach as _import_pdf_text_grid: use row/col labels to compute
@@ -2004,13 +2029,17 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
                 ','.join(str(p + 1) for p in sorted(tab_pages)), len(entries),
             )
 
-    # Pass 3: bare number fallback (validated against DB)
+    # Pass 3: bare number fallback (validated against DB — checks DMC + Anchor)
     if not legend_entries:
         db = get_db()
-        rows = db.execute("SELECT DISTINCT number FROM threads WHERE brand = 'DMC'").fetchall()
-        bare_known_dmc = {r['number'] for r in rows}
+        rows = db.execute("SELECT DISTINCT brand, number FROM threads").fetchall()
+        bare_known = {}  # number → brand (DMC wins ties)
+        for r in rows:
+            num, brand = r['number'], r['brand']
+            if num not in bare_known or brand == 'DMC':
+                bare_known[num] = brand
         for page_idx in search_order:
-            entries = _pdf_parse_legend_bare(plumber_pdf.pages[page_idx], bare_known_dmc)
+            entries = _pdf_parse_legend_bare(plumber_pdf.pages[page_idx], bare_known)
             if entries:
                 legend_entries = entries
                 legend_page_indices.add(page_idx)
@@ -2021,7 +2050,10 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
                 break
 
     if not legend_entries:
-        raise ValueError("No thread entries found in legend (expected DMC or Anchor)")
+        raise ValueError(
+            "Could not find a thread legend in this PDF. "
+            "The legend should list DMC or Anchor thread numbers with color names."
+        )
 
     # Chart pages = everything except cover (page 0), legend pages,
     # and non-chart pages (index/TOC pages, near-empty pages).
@@ -2054,6 +2086,12 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
                 continue
         chart_page_indices.append(i)
 
+    if not chart_page_indices:
+        raise ValueError(
+            "No chart pages found in this PDF. "
+            "The file may only contain a legend or cover page without any stitch grid."
+        )
+
     app.logger.info(
         "PDF import: %d pages total, %d legend, %d chart (pages %s)",
         num_pages, len(legend_page_indices), len(chart_page_indices),
@@ -2068,7 +2106,9 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
             app.logger.info("PDF import: inferred grid dimensions from labels: %d×%d", grid_w, grid_h)
         else:
             raise ValueError(
-                "Could not find design dimensions on cover page or infer from chart labels"
+                "Could not determine the pattern dimensions. "
+                "The cover page should list the stitch count (e.g. '150 x 123'), "
+                "or chart pages should have numbered row/column labels."
             )
 
     # Check if chart pages have embedded images (image-based PDF) or text symbols (vector PDF).
@@ -4852,6 +4892,10 @@ def api_pdf_import():
             return jsonify({'error': 'File does not appear to be a valid PDF'}), 400
         data = _import_pdf_pattern(pdf_bytes)
         return jsonify(data)
+    except ValueError as e:
+        # Controlled import-failure messages — pass through to the user
+        app.logger.warning("PDF import failed: %s", e)
+        return jsonify({'error': str(e)}), 422
     except Exception as e:
         app.logger.exception("PDF import failed")
         return jsonify({'error': 'PDF import failed. The file may be corrupted or in an unsupported format.'}), 500
