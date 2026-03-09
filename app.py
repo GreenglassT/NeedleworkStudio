@@ -18,7 +18,7 @@ import secrets
 import string
 import hashlib
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -4205,7 +4205,7 @@ def api_export_all_patterns():
             payload = {
                 'format': 'needlework-studio',
                 'version': 1,
-                'exported_at': datetime.utcnow().isoformat() + 'Z',
+                'exported_at': datetime.now(timezone.utc).isoformat(),
                 'name': r['name'],
                 'brand': r.get('brand') or 'DMC',
                 'fabric_color': r.get('fabric_color') or '#F5F0E8',
@@ -4228,7 +4228,7 @@ def api_export_all_patterns():
         return jsonify({'error': 'No patterns to export'}), 404
 
     buf.seek(0)
-    date_str = datetime.utcnow().strftime('%Y-%m-%d')
+    date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     return send_file(
         buf,
         mimetype='application/zip',
