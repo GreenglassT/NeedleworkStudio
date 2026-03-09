@@ -1,6 +1,6 @@
-/* ── Vector PDF Export — Pattern Keeper Compatible ────────────── */
+/* ── Vector PDF Export ───────────────────────────────────────── */
 /* Renders symbols as selectable TrueType text (DejaVu Sans) and */
-/* gridlines as vector paths, so PK can parse the chart pages.   */
+/* gridlines as vector paths for cross-stitch reader apps.       */
 /* Requires: jsPDF (window.jspdf), pdf-font.js (PDF_FONT_BASE64 */
 /*           + PDF_FONT_NAME), contrastColor() from utils.js,    */
 /*           drawStitch(), drawStitchFabric(), contrastColor(),   */
@@ -236,8 +236,8 @@ function _drawChartTile(doc, startCol, startRow, tileW, tileH,
 /* ── Main export function ──────────────────────────────────────── */
 /**
  * Generate and save a PDF chart for a cross-stitch pattern.
- * Output is Pattern Keeper compatible: vector gridlines, selectable
- * TrueType symbols, PK-parseable legend format.
+ * Output uses vector gridlines, selectable TrueType symbols, and a
+ * standard legend format compatible with cross-stitch reader apps.
  *
  * @param {string} patternName  — Title for cover page and filename.
  * @param {Object} patternData  — { grid, grid_w, grid_h, legend }.

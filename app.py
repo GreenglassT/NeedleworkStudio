@@ -676,9 +676,9 @@ def _pdf_parse_cover(page):
     """Return (grid_w, grid_h, title) from cover page text.
 
     Tries multiple dimension patterns used by common cross-stitch generators:
-      - "Design size: 100×100"       (Needlework Studio, CrossStitchCreator)
-      - "Size: 100 x 100 stitches"   (FlossCross, Stitchboard)
-      - "100w x 100h"                (PCStitch, WinStitch)
+      - "Design size: 100×100"       (common format)
+      - "Size: 100 x 100 stitches"   (common format)
+      - "100w x 100h"                (common format)
       - "Width: 100  Height: 100"    (various)
       - "Dimensions: 100 x 100"      (various)
       - "100 x 100 stitches"         (generic)
@@ -1113,8 +1113,8 @@ def _import_pdf_text_grid(plumber_pdf, grid_w, grid_h, legend_entries, chart_pag
     Extracts single-character symbols from chart pages, detects the regular
     grid spacing, and maps symbols to DMC numbers via the legend.
     Supports two modes:
-      - Direct mapping: legend entries have 'symbol' keys (Needlework Studio)
-      - Count-based matching: legend entries lack symbols (FlossCross etc.)
+      - Direct mapping: legend entries have 'symbol' keys
+      - Count-based matching: legend entries lack symbols
     Returns the same dict format as _import_pdf_body.
     """
     has_symbols = all('symbol' in e for e in legend_entries)
@@ -1656,7 +1656,7 @@ def _import_pdf_body(plumber_pdf, pdfium_doc):
     # Check if chart pages have embedded images (image-based PDF) or text symbols (vector PDF).
     # Two indicators of image-based charts:
     #   1. A single large image covering >25% of page (some export formats)
-    #   2. Many small named images (>50 per page) — individual cell images (FlossCross etc.)
+    #   2. Many small named images (>50 per page) — individual cell images (some generators)
     def _has_chart_images(page):
         pa = float(page.width) * float(page.height)
         named_count = 0
