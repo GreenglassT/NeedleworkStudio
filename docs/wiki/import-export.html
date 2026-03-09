@@ -91,10 +91,11 @@
 
         <h3>PDF Import</h3>
         <p>The PDF importer is designed to handle cross-stitch chart PDFs - the type of multi-page document you might purchase from a pattern designer or download from an online marketplace. Needlework Studio automatically parses the chart pages to extract the pattern grid, color legend, and stitch data. Both <strong>DMC</strong> and <strong>Anchor</strong> thread legends are recognized.</p>
-        <p>Two types of PDFs are supported:</p>
+        <p>Three chart types are supported:</p>
         <ul>
-            <li><strong>Image-based PDFs</strong> - Charts where each stitch cell is rendered as an embedded image. This is the format most third-party pattern designers use.</li>
-            <li><strong>Vector/text-based PDFs</strong> - Charts where symbols are rendered as selectable text and cells as vector rectangles. This includes PDFs exported by Needlework Studio itself. Importing a Needlework Studio PDF produces a perfect round-trip with 100% cell accuracy.</li>
+            <li><strong>Image-based charts</strong> - Each grid cell is a small embedded image. This is the format most third-party pattern designers use.</li>
+            <li><strong>Text-based charts</strong> - Grid cells use text symbols (letters, numbers, special characters) with a symbol-to-color legend. This includes PDFs exported by Needlework Studio itself, which produce a perfect round-trip with 100% cell accuracy.</li>
+            <li><strong>Colored rectangle charts</strong> - Grid cells are vector-drawn colored rectangles, matched to the legend by fill color.</li>
         </ul>
         <p><strong>How it works:</strong></p>
         <ol>
@@ -102,7 +103,7 @@
             <li><strong>Preview</strong> - After upload, Needlework Studio displays a preview of the parsed pattern along with the extracted thread legend. Review the preview to verify that the chart was parsed correctly. The preview shows the full grid with colors and symbols as they were interpreted from the PDF. Each legend entry includes a status dot indicating whether you <strong>own</strong>, <strong>need</strong>, or <strong>don't own</strong> the thread, cross-referenced with your <a href="thread-inventory.html">Thread Inventory</a>.</li>
             <li><strong>Name and save</strong> - Enter a name for the pattern and click save to add it to your library.</li>
         </ol>
-        <p>The PDF parser works best with digitally-generated chart PDFs. Scanned or photographed charts may not parse as accurately due to image quality variations. If a PDF contains multiple chart pages, Needlework Studio will stitch them together into a single continuous pattern.</p>
+        <p>The PDF parser works best with digitally-generated chart PDFs. Scanned or photographed charts are not supported — try <a href="/image-to-pattern">Image to Pattern</a> instead. If a PDF contains multiple chart pages, Needlework Studio will stitch them together into a single continuous pattern. If the import fails, you will see a specific error message explaining what went wrong (for example, "could not find a thread legend" or "no chart pages found").</p>
 
         <h3>JSON Import</h3>
         <p>JSON is Needlework Studio's native pattern format. JSON files contain the complete pattern data structure including the stitch grid, thread legend, part stitches (half, quarter, three-quarter), backstitches, French knots, beads, and all metadata. This format preserves every detail of the pattern with perfect fidelity.</p>
