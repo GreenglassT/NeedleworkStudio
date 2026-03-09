@@ -40,7 +40,7 @@
             <i class="ti ti-info-circle"></i>
             <div>
                 <strong>Compatibility note</strong>
-                <p>PDF import works best with PDFs that use embedded cell images and a DMC or Anchor legend page (e.g. patterns from CrossStitchCreator or similar generators). PDFs with vector graphics or scanned images may not import correctly. For scanned charts, try <a href="/image-to-pattern">Image to Pattern</a> instead.</p>
+                <p>Supports DMC and Anchor thread PDFs from some cross-stitch editors — image-based, text-based, and colored rectangle charts. Scanned or hand-drawn charts won't work; try <a href="/image-to-pattern">Image to Pattern</a> instead.</p>
             </div>
         </div>
 
@@ -167,7 +167,8 @@
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
             showStep(1);
-            showUploadError((body.error || 'Import failed') + ' (HTTP ' + res.status + ')');
+            const msg = body.error || 'Import failed';
+            showUploadError(res.status === 422 ? msg : msg + ' (HTTP ' + res.status + ')');
             return;
         }
 

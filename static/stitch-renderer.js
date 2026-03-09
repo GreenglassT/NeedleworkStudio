@@ -341,7 +341,7 @@ function drawChartBead(ctx, cx, cy, hex, cp, symbol, opts) {
     ctx.restore();
 }
 
-/* ── Chart-mode rendering (FlossCross style) ─────────── */
+/* ── Chart-mode rendering ────────────────────────────── */
 
 /** Quadrant corner offsets within a cell. */
 const _QUAD_OFFSETS = {
