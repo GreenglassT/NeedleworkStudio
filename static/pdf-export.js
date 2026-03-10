@@ -183,7 +183,7 @@ function _drawCoverPage(doc, patternName, patternData, lookup, logoDataUrl) {
 const _LEG_COL = Object.freeze({
     SYM:     24,    // Symbol (center of swatch+symbol area)
     NUM:     42,    // Number (DMC #)
-    NAME:    58,    // Name
+    NAME:    66,    // Name
     COUNT:   175,   // Count (right-aligned)
 });
 
@@ -316,6 +316,7 @@ async function generatePatternPDF(patternName, patternData, opts) {
     // opts.symbolScale — symbol size is auto-computed from cell size
     const onProgress  = opts?.onProgress;
     const showCover   = opts?.coverPage !== false;
+    const brand       = patternData.brand || 'DMC';
 
     /* Color/symbol lookup (pre-compute RGB to avoid repeated parseInt in hot loops) */
     const lookup = {};
@@ -485,7 +486,10 @@ async function generatePatternPDF(patternName, patternData, opts) {
         doc.setFont(_PDF_BODY_FONT, 'normal');
         doc.setFontSize(9);
         doc.setTextColor(40, 30, 20);
-        doc.text(String(e.dmc || '\u2014'), _LEG_COL.NUM, yL - 1.1);
+        const dmcStr = String(e.dmc || '\u2014');
+        doc.text(brand + ' ', _LEG_COL.NUM, yL - 1.1);
+        const brandW = doc.getTextWidth(brand + ' ');
+        doc.text(dmcStr, _LEG_COL.NUM + brandW, yL - 1.8);
         doc.text((e.name || '\u2014').slice(0, 40), _LEG_COL.NAME, yL - 1.1);
         doc.text(fmtStitches(e.stitches || 0), _LEG_COL.COUNT, yL - 1.1, { align: 'right' });
 
