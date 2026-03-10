@@ -5083,16 +5083,17 @@ def api_sync_push():
                 legend_json = json.dumps(p['legend_data']) if isinstance(p.get('legend_data'), list) else p.get('legend_data', '[]')
                 ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
                 progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
+                notes_val = str(p.get('notes', '') or '')[:2000]
                 cursor.execute(
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,
                               grid_data=?, legend_data=?, thumbnail=?, updated_at=?,
                               progress_data=?, project_status=?,
-                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?
+                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?, notes=?
                        WHERE id=? AND user_id=?""",
                     (p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'), p.get('color_count', 0),
                      grid_json, legend_json, p.get('thumbnail'),
                      pushed_at, progress_json, p.get('project_status', 'not_started'),
-                     ps_json, bs_json, kn_json, bd_json, p.get('brand', 'DMC'),
+                     ps_json, bs_json, kn_json, bd_json, p.get('brand', 'DMC'), notes_val,
                      existing['id'], uid))
                 stats['patterns_updated'] += 1
             else:
@@ -5103,17 +5104,18 @@ def api_sync_push():
             legend_json = json.dumps(p['legend_data']) if isinstance(p.get('legend_data'), list) else p.get('legend_data', '[]')
             ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
             progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
+            notes_val = str(p.get('notes', '') or '')[:2000]
             cursor.execute(
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, created_at, updated_at, progress_data, project_status,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, uid, p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'),
                  p.get('color_count', 0), grid_json, legend_json, p.get('thumbnail'),
                  p.get('created_at', pushed_at), pushed_at, progress_json,
                  p.get('project_status', 'not_started'), ps_json, bs_json, kn_json, bd_json,
-                 p.get('brand', 'DMC')))
+                 p.get('brand', 'DMC'), notes_val))
             stats['patterns_created'] += 1
 
     # --- Pattern deletes ---

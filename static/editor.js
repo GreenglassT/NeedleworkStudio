@@ -467,7 +467,16 @@ function createPatternEditor(config) {
      *  - half:          dir = 'fwd' | 'bwd'
      *  - quarter:       dir = 'TL' | 'TR' | 'BL' | 'BR'
      *  - three_quarter: dir = 'fwd_TL' | 'bwd_TR' | etc.
+     *
+     *  Diagonal mapping: fwd(/) = BL,TR  |  bwd(\) = TL,BR
+     *  Cross-type conflict rules:
+     *   - Half replaces same-dir half + quarters/petites on same diagonal
+     *   - Quarter/petite replaces same-corner quarter/petite + half on same diagonal
+     *   - Three-quarter clears all existing part_stitches in the cell
      */
+    const _DIAG_CORNERS = { fwd: ['BL', 'TR'], bwd: ['TL', 'BR'] };
+    const _CORNER_DIAG  = { TL: 'bwd', TR: 'fwd', BL: 'fwd', BR: 'bwd' };
+
     function _placePartStitch(col, row, type, extra) {
         if (!activeDmc) return;
         const pd = getPatternData();
@@ -480,16 +489,35 @@ function createPatternEditor(config) {
         else if (type === 'petite')         dir = extra.corner;
         else if (type === 'three_quarter')  dir = extra.halfDir + '_' + extra.shortCorner;
         const entry = { x: col, y: row, type, dmc: activeDmc, dir };
-        // Remove any existing stitch that conflicts
+        // Remove any existing stitch that conflicts (same cell only)
         pd.part_stitches = pd.part_stitches.filter(s => {
             if (s.x !== col || s.y !== row) return true;
-            if (type === 'half' && s.type === 'half' && s.dir === dir) return false;
-            if (type === 'quarter' && s.type === 'quarter' && s.dir === dir) return false;
-            if (type === 'petite' && s.type === 'petite' && s.dir === dir) return false;
-            if (type === 'three_quarter' && s.type === 'three_quarter') return false;
+            // Three-quarter clears everything in the cell
+            if (type === 'three_quarter') return false;
+            if (type === 'half') {
+                // Half replaces: same-dir half, quarters/petites on same diagonal
+                if (s.type === 'half' && s.dir === dir) return false;
+                const diagCorners = _DIAG_CORNERS[dir];
+                if ((s.type === 'quarter' || s.type === 'petite') && diagCorners.includes(s.dir)) return false;
+                if (s.type === 'three_quarter') return false;
+                return true;
+            }
+            if (type === 'quarter' || type === 'petite') {
+                // Quarter/petite replaces: same-corner quarter/petite, half on same diagonal
+                if ((s.type === 'quarter' || s.type === 'petite') && s.dir === dir) return false;
+                const diag = _CORNER_DIAG[dir];
+                if (s.type === 'half' && s.dir === diag) return false;
+                if (s.type === 'three_quarter') return false;
+                return true;
+            }
             return true;
         });
         pd.part_stitches.push(entry);
+        // Clear full stitch from grid if part stitch covers significant area
+        if (type === 'three_quarter' || type === 'half') {
+            const idx = row * pd.grid_w + col;
+            if (pd.grid[idx] !== 'BG') pd.grid[idx] = 'BG';
+        }
     }
 
     /** Place a backstitch between two intersections. */
@@ -1894,7 +1922,7 @@ function createPatternEditor(config) {
             // Show/hide direction toggle for half/three-quarter
             if (_dirToggle) {
                 _dirToggle.style.display = (activeStitchMode === 'half' || activeStitchMode === 'three_quarter') ? '' : 'none';
-                _dirToggle.textContent = _halfDir === 'fwd' ? '/' : '\\';
+                _dirToggle.querySelector('span:first-child').textContent = _halfDir === 'fwd' ? '/' : '\\';
             }
         } else {
             activeTool = tool;

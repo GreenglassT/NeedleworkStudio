@@ -150,30 +150,32 @@ class SyncEngine:
             if thumbnail and (not isinstance(thumbnail, str) or len(thumbnail) > _MAX_THUMBNAIL):
                 thumbnail = None
 
+            notes = str(p.get('notes', '') or '')[:2000]
+
             if local:
                 cursor.execute(
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,
                               grid_data=?, legend_data=?, thumbnail=?, updated_at=?,
                               progress_data=?, project_status=?,
-                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?
+                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?, notes=?
                        WHERE id=? AND user_id=?""",
                     (name, grid_w, grid_h, color_count,
                      grid_json, legend_json, thumbnail,
                      server_updated, progress_json, project_status,
-                     ps_json, bs_json, kn_json, bd_json, brand,
+                     ps_json, bs_json, kn_json, bd_json, brand, notes,
                      local['id'], user_id))
             else:
                 cursor.execute(
                     """INSERT INTO saved_patterns
                            (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                             thumbnail, created_at, updated_at, progress_data, project_status,
-                            part_stitches_data, backstitches_data, knots_data, beads_data, brand)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (slug, user_id, name, grid_w, grid_h,
                      color_count, grid_json, legend_json, thumbnail,
                      _clamp_timestamp(p.get('created_at', server_updated), server_time),
                      server_updated, progress_json,
-                     project_status, ps_json, bs_json, kn_json, bd_json, brand))
+                     project_status, ps_json, bs_json, kn_json, bd_json, brand, notes))
             stats['patterns_pulled'] += 1
 
         # --- Pull pattern deletes ---
@@ -258,7 +260,7 @@ class SyncEngine:
         pattern_rows = cursor.execute(
             """SELECT slug, name, grid_w, grid_h, color_count, grid_data, legend_data,
                       thumbnail, created_at, updated_at, progress_data, project_status,
-                      part_stitches_data, backstitches_data, knots_data, beads_data, brand
+                      part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes
                FROM saved_patterns WHERE user_id = ? AND updated_at > ?""",
             (user_id, since)).fetchall()
 
