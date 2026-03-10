@@ -19,7 +19,7 @@ const _PDF = Object.freeze({
     FOOTER_Y: 287,                      // footer baseline y
 });
 
-const _PDF_BODY_FONT = 'CormorantGaramond';
+let _PDF_BODY_FONT = 'helvetica';  /* upgraded to Garamond at runtime if font loads */
 
 /* Derived: how many cells fit in one tile page */
 const _PDF_COLS_PER_PAGE = Math.floor(
@@ -32,7 +32,7 @@ const _PDF_ROWS_PER_PAGE = Math.floor(
 /* ── Footer ────────────────────────────────────────────────────── */
 function _drawFooter(doc, pageNum, totalPages) {
     const yr = new Date().getFullYear();
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont(_PDF_BODY_FONT, 'normal');
     doc.setTextColor(120, 100, 80);
     doc.text('\u00a9' + yr, _PDF.ML, _PDF.FOOTER_Y);
@@ -52,14 +52,16 @@ async function _renderLogo() {
         let svg = await resp.text();
         /* Swap light text fill for dark (print-friendly on white paper) */
         svg = svg.replace('fill="#e8dcc8"', 'fill="#2a1f14"');
+        /* Crop viewBox to visual content (original 360-wide has dead space on right) */
+        svg = svg.replace('viewBox="0 0 360 80"', 'viewBox="0 0 290 80"');
         const blob = new Blob([svg], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         return await new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
                 const c = document.createElement('canvas');
-                c.width = 720; c.height = 160;
-                c.getContext('2d').drawImage(img, 0, 0, 720, 160);
+                c.width = 580; c.height = 160;
+                c.getContext('2d').drawImage(img, 0, 0, 580, 160);
                 URL.revokeObjectURL(url);
                 resolve(c.toDataURL('image/png'));
             };
@@ -77,36 +79,38 @@ function _drawCoverPage(doc, patternName, patternData, lookup, logoDataUrl) {
 
     /* Logo */
     if (logoDataUrl) {
-        const logoW = 45, logoH = 10;  /* 360:80 aspect ratio */
+        const logoW = 65, logoH = 17.9;  /* 580:160 = 3.625:1 aspect ratio */
         doc.addImage(logoDataUrl, 'PNG',
             (_PDF.PW - logoW) / 2, curY, logoW, logoH, undefined, 'FAST');
-        curY += logoH + 2;
+        curY += logoH + 4;
     }
 
     /* Website link */
-    doc.setFont(_PDF_BODY_FONT, 'normal');
+    doc.setFont(_PDF_BODY_FONT, 'italic');
     doc.setFontSize(8);
-    doc.setTextColor(100, 80, 60);
+    doc.setTextColor(120, 100, 80);
     const siteText = 'needlework-studio.com';
-    doc.text(siteText, _PDF.PW / 2, curY + 4, { align: 'center' });
+    doc.text(siteText, _PDF.PW / 2, curY + 2, { align: 'center' });
     const siteW = doc.getTextWidth(siteText);
-    doc.link(_PDF.PW / 2 - siteW / 2, curY + 1, siteW, 5,
+    doc.link(_PDF.PW / 2 - siteW / 2, curY - 1, siteW, 5,
         { url: 'https://needlework-studio.com' });
-    curY += 10;
+    curY += 14;
 
     /* Title block */
     doc.setTextColor(40, 30, 20);
     doc.setFont(_PDF_BODY_FONT, 'bold');
-    doc.setFontSize(22);
+    doc.setFontSize(28);
     doc.text(patternName, _PDF.PW / 2, curY + 4, { align: 'center' });
-    curY += 12;
+    curY += 16;
     doc.setFont(_PDF_BODY_FONT, 'normal');
-    doc.setFontSize(13);
+    doc.setFontSize(14);
     doc.text('Cross stitch chart', _PDF.PW / 2, curY, { align: 'center' });
-    curY += 5;
+    curY += 7;
     doc.setDrawColor(180, 150, 100);
-    doc.line(_PDF.ML, curY, _PDF.PW - _PDF.MR, curY);
-    curY += 5;
+    doc.setLineWidth(0.3);
+    doc.line(_PDF.ML + 20, curY, _PDF.PW - _PDF.MR - 20, curY);
+    doc.setLineWidth(0.2);
+    curY += 7;
 
     /* Raster preview — NO grid lines (prevents PK from mis-detecting cover) */
     const prevCellPx = 19;
@@ -160,33 +164,18 @@ function _drawCoverPage(doc, patternName, patternData, lookup, logoDataUrl) {
 
     /* Info text below preview */
     doc.setFont(_PDF_BODY_FONT, 'normal');
-    doc.setFontSize(11);
+    doc.setFontSize(12);
     doc.setTextColor(40, 30, 20);
     doc.text('Design size: ' + grid_w + ' \u00d7 ' + grid_h + ' stitches',
         _PDF.PW / 2, prevBot + 8, { align: 'center' });
 
-    /* Fabric size recommendations */
-    doc.setFontSize(9);
-    doc.setTextColor(80, 60, 40);
-    const counts = [14, 16, 18];
-    let fy = prevBot + 17;
-    for (const ct of counts) {
-        const wIn = (grid_w / ct).toFixed(1);
-        const hIn = (grid_h / ct).toFixed(1);
-        const wM = (grid_w / ct + 3).toFixed(1);
-        const hM = (grid_h / ct + 3).toFixed(1);
-        doc.text(ct + '-count: ' + wIn + '" \u00d7 ' + hIn + '"  (with margins: ' + wM + '" \u00d7 ' + hM + '")',
-            _PDF.PW / 2, fy, { align: 'center' });
-        fy += 5;
-    }
-
     /* Color count */
-    doc.setFontSize(11);
+    doc.setFontSize(12);
     doc.setTextColor(40, 30, 20);
     const brand = patternData.brand || 'DMC';
     const colorCount = (patternData.legend || []).filter(e => e.dmc !== 'BG').length;
     doc.text(colorCount + ' colors (' + brand + ')',
-        _PDF.PW / 2, fy + 3, { align: 'center' });
+        _PDF.PW / 2, prevBot + 17, { align: 'center' });
 }
 
 /* ── Legend headers ─────────────────────────────────────────────── */
@@ -200,7 +189,7 @@ const _LEG_COL = Object.freeze({
 
 function _drawLegendHeaders(doc, y) {
     doc.setFont(_PDF_BODY_FONT, 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setTextColor(40, 30, 20);
     doc.text('Symbol',  _LEG_COL.SYM, y, { align: 'center' });
     doc.text('Number',  _LEG_COL.NUM, y);
@@ -385,13 +374,22 @@ async function generatePatternPDF(patternName, patternData, opts) {
     }
 
     /* ── Embed Cormorant Garamond for body text ─────────────── */
-    if (typeof PDF_GARAMOND_REGULAR !== 'undefined') {
-        doc.addFileToVFS(_PDF_BODY_FONT + '-Regular.ttf', PDF_GARAMOND_REGULAR);
-        doc.addFont(_PDF_BODY_FONT + '-Regular.ttf', _PDF_BODY_FONT, 'normal');
-    }
-    if (typeof PDF_GARAMOND_SEMIBOLD !== 'undefined') {
-        doc.addFileToVFS(_PDF_BODY_FONT + '-SemiBold.ttf', PDF_GARAMOND_SEMIBOLD);
-        doc.addFont(_PDF_BODY_FONT + '-SemiBold.ttf', _PDF_BODY_FONT, 'bold');
+    try {
+        if (typeof PDF_GARAMOND_REGULAR !== 'undefined' &&
+            typeof PDF_GARAMOND_SEMIBOLD !== 'undefined') {
+            const gName = 'CormorantGaramond';
+            doc.addFileToVFS(gName + '-Regular.ttf', PDF_GARAMOND_REGULAR);
+            doc.addFont(gName + '-Regular.ttf', gName, 'normal');
+            doc.addFileToVFS(gName + '-SemiBold.ttf', PDF_GARAMOND_SEMIBOLD);
+            doc.addFont(gName + '-SemiBold.ttf', gName, 'bold');
+            /* Smoke-test: try getting text width to verify metrics loaded */
+            doc.setFont(gName, 'normal');
+            doc.getTextWidth('test');
+            _PDF_BODY_FONT = gName;
+        }
+    } catch (e) {
+        console.warn('Garamond font failed, using helvetica:', e.message);
+        _PDF_BODY_FONT = 'helvetica';
     }
 
     let pageNum = 0;
@@ -443,7 +441,7 @@ async function generatePatternPDF(patternName, patternData, opts) {
 
     /* Title line on first legend page */
     doc.setFont(_PDF_BODY_FONT, 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setTextColor(40, 30, 20);
     doc.text('Thread Legend',
         _PDF.PW / 2, 22, { align: 'center' });
@@ -463,27 +461,33 @@ async function generatePatternPDF(patternName, patternData, opts) {
         const e = legendEntries[i];
         const info = lookup[e.dmc] || { r: 136, g: 136, b: 136, tr: 0, tg: 0, tb: 0, symbol: '?' };
 
-        /* Color swatch (vector filled rectangle) */
-        doc.setFillColor(info.r, info.g, info.b);
-        doc.rect(_LEG_COL.SYM - 6, yL - 4.5, 5, 5, 'F');
-        /* Swatch border */
-        doc.setDrawColor(160, 160, 160);
-        doc.setLineWidth(0.15);
-        doc.rect(_LEG_COL.SYM - 6, yL - 4.5, 5, 5, 'S');
-
-        /* Symbol as selectable text (DejaVu Sans) — always dark on white paper */
+        /* Plain symbol (black on white) */
         doc.setTextColor(40, 30, 20);
         doc.setFont(PDF_FONT_NAME);
+        doc.setFontSize(10);
+        doc.text(info.symbol, _LEG_COL.SYM - 3, yL - 1.1, { align: 'center' });
+
+        /* Color swatch with symbol overlay */
+        const swX = _LEG_COL.SYM + 2;
+        doc.setFillColor(info.r, info.g, info.b);
+        doc.rect(swX, yL - 4.5, 5, 5, 'F');
+        doc.setDrawColor(160, 160, 160);
+        doc.setLineWidth(0.15);
+        doc.rect(swX, yL - 4.5, 5, 5, 'S');
+
+        /* Symbol on swatch (contrast color) */
+        doc.setTextColor(info.tr, info.tg, info.tb);
+        doc.setFont(PDF_FONT_NAME);
         doc.setFontSize(9);
-        doc.text(info.symbol, _LEG_COL.SYM + 2, yL, { align: 'center' });
+        doc.text(info.symbol, swX + 2.5, yL - 1.1, { align: 'center' });
 
         /* Number, Name, Count */
         doc.setFont(_PDF_BODY_FONT, 'normal');
-        doc.setFontSize(8);
+        doc.setFontSize(9);
         doc.setTextColor(40, 30, 20);
-        doc.text(String(e.dmc || '\u2014'), _LEG_COL.NUM, yL);
-        doc.text((e.name || '\u2014').slice(0, 40), _LEG_COL.NAME, yL);
-        doc.text(fmtStitches(e.stitches || 0), _LEG_COL.COUNT, yL, { align: 'right' });
+        doc.text(String(e.dmc || '\u2014'), _LEG_COL.NUM, yL - 1.1);
+        doc.text((e.name || '\u2014').slice(0, 40), _LEG_COL.NAME, yL - 1.1);
+        doc.text(fmtStitches(e.stitches || 0), _LEG_COL.COUNT, yL - 1.1, { align: 'right' });
 
         yL += _PDF.LEG_ROW_H;
     }
