@@ -95,6 +95,7 @@ let panX = 0, panY = 0;   // CSS transform translate (px)
 let highlightDmc = null;  // currently highlighted DMC number, or null
 let completedDmcs  = new Set();   // DMC numbers (as strings) marked complete
 let _progressTimer = null;        // debounce handle for auto-save
+let _progressDirty = false;       // true if unsaved progress exists
 let _patternNotes = '';           // current notes text
 let _notesSaveTimer = null;       // debounce for notes save
 
@@ -531,22 +532,35 @@ function _saveProgressToLocal() {
 
 function _scheduleProgressSave() {
     clearTimeout(_progressTimer);
-    _progressTimer = setTimeout(() => {
-        const payload = _buildProgressPayload();
-        _saveProgressToLocal();
-        fetch('/api/saved-patterns/' + PATTERN_SLUG, {
-            method: 'PATCH', headers: {'Content-Type':'application/json'},
-            body: payload
-        }).catch(() => {
+    _progressDirty = true;
+    _progressTimer = setTimeout(() => _flushProgress(), 800);
+}
+
+function _flushProgress(keepalive) {
+    if (!_progressDirty || !PATTERN_SLUG) return;
+    _progressDirty = false;
+    const payload = _buildProgressPayload();
+    _saveProgressToLocal();
+    const opts = { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: payload };
+    if (keepalive) opts.keepalive = true;
+    fetch('/api/saved-patterns/' + PATTERN_SLUG, opts)
+        .then(resp => {
+            if (!resp.ok) {
+                _progressDirty = true;
+                console.warn('[progress] save failed:', resp.status);
+            }
+        })
+        .catch(() => {
+            _progressDirty = true;
             // Retry once after 3s on failure (e.g. server restart)
             setTimeout(() => {
                 fetch('/api/saved-patterns/' + PATTERN_SLUG, {
                     method: 'PATCH', headers: {'Content-Type':'application/json'},
                     body: _buildProgressPayload()
-                }).catch(() => {});
+                }).then(r => { if (!r.ok) { _progressDirty = true; console.warn('[progress] retry failed:', r.status); } })
+                  .catch(() => { _progressDirty = true; });
             }, 3000);
         });
-    }, 800);
 }
 
 /* ——— CELL-LEVEL PROGRESS TRACKING ——— */
@@ -773,21 +787,26 @@ function _updateLegendTotals() {
 }
 
 function _timerFlush() {
-    if (!_timerDirty || !PATTERN_SLUG) return;
+    if ((!_timerDirty && !_progressDirty) || !PATTERN_SLUG) return;
     _timerDirty = false;
+    _progressDirty = false;
+    clearTimeout(_progressTimer);
     _saveProgressToLocal();
     fetch('/api/saved-patterns/' + PATTERN_SLUG, {
         method: 'PATCH', headers: {'Content-Type':'application/json'},
         keepalive: true,
         body: _buildProgressPayload()
+    }).then(resp => {
+        if (!resp.ok) { _timerDirty = true; _progressDirty = true; console.warn('[progress] timer flush failed:', resp.status); }
     }).catch(() => {
         _timerDirty = true;
+        _progressDirty = true;
         // Retry once after 3s
         setTimeout(() => {
             fetch('/api/saved-patterns/' + PATTERN_SLUG, {
                 method: 'PATCH', headers: {'Content-Type':'application/json'},
                 body: _buildProgressPayload()
-            }).catch(() => { _timerDirty = true; });
+            }).catch(() => { _timerDirty = true; _progressDirty = true; });
         }, 3000);
     });
 }
@@ -1694,6 +1713,7 @@ document.addEventListener('keyup', function(e) {
 document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'hidden') {
         _timerPause();
+        if (_progressDirty) _timerDirty = true;
         _timerFlush();
     } else {
         _timerStart();
@@ -1703,6 +1723,8 @@ document.addEventListener('visibilitychange', function() {
 
 window.addEventListener('beforeunload', function() {
     _timerPause();
+    // Flush both timer and any pending progress (cell marks, etc.)
+    if (_progressDirty) _timerDirty = true;
     _timerFlush();
 });
 
