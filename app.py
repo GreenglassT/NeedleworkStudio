@@ -5054,6 +5054,129 @@ def api_sync_pattern_download(slug):
     return jsonify(result)
 
 
+@app.route('/api/sync/progress', methods=['GET'])
+@csrf.exempt
+@api_token_required
+def api_sync_progress_changes():
+    """Lightweight delta: return only progress_data and thread statuses changed since timestamp."""
+    since = request.args.get('since', '1970-01-01T00:00:00')
+    try:
+        datetime.fromisoformat(since)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid since timestamp'}), 400
+    uid = current_user.id
+    conn = get_db()
+    server_time = conn.execute("SELECT datetime('now')").fetchone()[0]
+
+    # Only progress_data and project_status for patterns updated since
+    pattern_rows = conn.execute(
+        """SELECT slug, progress_data, project_status, updated_at
+           FROM saved_patterns WHERE user_id = ? AND updated_at > ?
+           ORDER BY updated_at""",
+        (uid, since)).fetchall()
+    patterns = []
+    for r in pattern_rows:
+        pd = r['progress_data']
+        try:
+            pd = json.loads(pd) if pd else None
+        except (json.JSONDecodeError, TypeError):
+            pd = None
+        patterns.append({
+            'slug': r['slug'],
+            'progress_data': pd,
+            'project_status': r['project_status'],
+            'updated_at': r['updated_at'],
+        })
+
+    # Thread statuses (same as full sync — these are always small)
+    thread_rows = conn.execute(
+        """SELECT t.brand, t.number, u.status, u.notes, u.skein_qty, u.updated_at
+           FROM user_thread_status u
+           JOIN threads t ON t.id = u.thread_id
+           WHERE u.user_id = ? AND u.updated_at > ?
+           ORDER BY u.updated_at""",
+        (uid, since)).fetchall()
+    threads_upserted = [dict(r) for r in thread_rows]
+
+    return jsonify({
+        'server_time': server_time,
+        'patterns': patterns,
+        'thread_statuses': threads_upserted,
+    })
+
+
+@app.route('/api/sync/progress', methods=['POST'])
+@csrf.exempt
+@api_token_required
+def api_sync_progress_push():
+    """Lightweight push: accept only progress_data and thread status updates."""
+    data = request.get_json(silent=True) or {}
+    uid = current_user.id
+    conn = get_db()
+    cursor = conn.cursor()
+    stats = {'patterns_updated': 0, 'patterns_skipped': 0,
+             'threads_updated': 0, 'threads_skipped': 0, 'threads_created': 0}
+
+    for p in data.get('patterns', []):
+        slug = p.get('slug')
+        pushed_at = p.get('updated_at', '')
+        if not slug or not pushed_at:
+            continue
+        existing = cursor.execute(
+            "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
+            (slug, uid)).fetchone()
+        if not existing:
+            continue  # progress-only sync doesn't create new patterns
+        if pushed_at <= (existing['updated_at'] or ''):
+            stats['patterns_skipped'] += 1
+            continue
+        progress_data = p.get('progress_data')
+        progress_json = json.dumps(progress_data) if isinstance(progress_data, dict) else progress_data
+        project_status = p.get('project_status', 'not_started')
+        if project_status not in ('not_started', 'in_progress', 'completed'):
+            project_status = 'not_started'
+        cursor.execute(
+            "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
+            (progress_json, project_status, pushed_at, existing['id'], uid))
+        stats['patterns_updated'] += 1
+
+    # Thread statuses (same handling as full push)
+    for ts in data.get('thread_statuses', []):
+        brand = ts.get('brand', 'DMC')
+        number = ts.get('number', '')
+        if not number:
+            continue
+        pushed_at = ts.get('updated_at', '')
+        thread_row = cursor.execute(
+            "SELECT id FROM threads WHERE brand = ? AND number = ?",
+            (brand, number)).fetchone()
+        if not thread_row:
+            continue
+        tid = thread_row['id']
+        existing = cursor.execute(
+            "SELECT updated_at FROM user_thread_status WHERE user_id = ? AND thread_id = ?",
+            (uid, tid)).fetchone()
+        if existing:
+            if pushed_at > (existing['updated_at'] or ''):
+                cursor.execute(
+                    "UPDATE user_thread_status SET status=?, notes=?, skein_qty=?, updated_at=? WHERE user_id=? AND thread_id=?",
+                    (ts.get('status', 'dont_own'), ts.get('notes', ''), ts.get('skein_qty', 0),
+                     pushed_at, uid, tid))
+                stats['threads_updated'] += 1
+            else:
+                stats['threads_skipped'] += 1
+        else:
+            cursor.execute(
+                "INSERT INTO user_thread_status (user_id, thread_id, status, notes, skein_qty, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (uid, tid, ts.get('status', 'dont_own'), ts.get('notes', ''), ts.get('skein_qty', 0), pushed_at))
+            stats['threads_created'] += 1
+
+    conn.commit()
+    server_time = conn.execute("SELECT datetime('now')").fetchone()[0]
+    stats['server_time'] = server_time
+    return jsonify(stats)
+
+
 @app.route('/api/sync/push', methods=['POST'])
 @csrf.exempt
 @api_token_required
@@ -5334,6 +5457,29 @@ def api_sync_config_trigger():
 
     # Update last_sync_at
     cfg['last_sync_at'] = result.get('server_time', '')
+    _write_sync_config(cfg)
+    return jsonify(result)
+
+
+@app.route('/api/sync-config/sync-progress', methods=['POST'])
+@login_required
+def api_sync_config_trigger_progress():
+    """Trigger a lightweight progress-only sync (desktop mode only)."""
+    if not DESKTOP_MODE:
+        return jsonify({'error': 'Only available in desktop mode'}), 403
+    cfg = _read_sync_config()
+    if not cfg.get('token') or not cfg.get('server_url'):
+        return jsonify({'error': 'Not paired with a server'}), 400
+
+    from sync_engine import SyncEngine
+    engine = SyncEngine(cfg['server_url'], cfg['token'], DB_PATH)
+    result = engine.sync_progress(cfg.get('last_progress_sync_at', cfg.get('last_sync_at', '')), current_user.id)
+
+    if result.get('error'):
+        return jsonify({'error': result['error']}), 502
+
+    # Track progress sync time separately so full sync still picks up everything
+    cfg['last_progress_sync_at'] = result.get('server_time', '')
     _write_sync_config(cfg)
     return jsonify(result)
 

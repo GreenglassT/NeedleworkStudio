@@ -70,6 +70,140 @@ class SyncEngine:
         except Exception as e:
             return {'error': 'Sync failed unexpectedly'}
 
+    def sync_progress(self, last_sync_at, user_id):
+        """Lightweight sync: only progress_data + thread statuses."""
+        since = last_sync_at or '1970-01-01T00:00:00'
+        try:
+            pull = self._pull_progress(since, user_id)
+            if pull.get('error'):
+                return pull
+            push = self._push_progress(since, user_id)
+            if push.get('error'):
+                return push
+            server_time = push.get('server_time') or pull.get('server_time', '')
+            return {'server_time': server_time, 'pull': pull, 'push': push}
+        except requests.ConnectionError:
+            return {'error': 'Could not connect to remote server'}
+        except requests.Timeout:
+            return {'error': 'Connection timed out'}
+        except Exception:
+            return {'error': 'Progress sync failed unexpectedly'}
+
+    def _pull_progress(self, since, user_id):
+        """Pull only progress_data and thread statuses from server."""
+        resp = requests.get(
+            f"{self.server_url}/api/sync/progress",
+            params={'since': since},
+            headers=self.headers,
+            timeout=15)
+        if resp.status_code != 200:
+            return {'error': f'Server returned status {resp.status_code}'}
+
+        data = resp.json()
+        server_time = data.get('server_time', '')
+        conn = self._get_db()
+        cursor = conn.cursor()
+        stats = {'patterns_updated': 0, 'threads_updated': 0}
+
+        for p in data.get('patterns', []):
+            slug = p.get('slug')
+            if not slug:
+                continue
+            server_updated = _clamp_timestamp(p.get('updated_at', ''), server_time)
+            local = cursor.execute(
+                "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
+                (slug, user_id)).fetchone()
+            if not local or server_updated <= (local['updated_at'] or ''):
+                continue
+            progress_data = p.get('progress_data')
+            progress_json = json.dumps(progress_data) if isinstance(progress_data, dict) else progress_data
+            project_status = p.get('project_status', 'not_started')
+            if project_status not in _VALID_PROJECT_STATUSES:
+                project_status = 'not_started'
+            cursor.execute(
+                "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
+                (progress_json, project_status, server_updated, local['id'], user_id))
+            stats['patterns_updated'] += 1
+
+        # Thread statuses (reuse same logic as full pull)
+        for ts in data.get('thread_statuses', []):
+            brand = ts.get('brand', 'DMC')
+            if brand not in _VALID_BRANDS:
+                continue
+            number = ts.get('number', '')
+            if not number or not isinstance(number, str) or len(number) > 10:
+                continue
+            server_updated = _clamp_timestamp(ts.get('updated_at', ''), server_time)
+            status = ts.get('status', 'dont_own')
+            if status not in _VALID_STATUSES:
+                status = 'dont_own'
+            notes = str(ts.get('notes', ''))[:1000]
+            skein_qty = ts.get('skein_qty', 0)
+            if not isinstance(skein_qty, (int, float)) or skein_qty < 0 or skein_qty > 9999:
+                skein_qty = 0
+            thread_row = cursor.execute(
+                "SELECT id FROM threads WHERE brand = ? AND number = ?",
+                (brand, number)).fetchone()
+            if not thread_row:
+                continue
+            tid = thread_row['id']
+            local = cursor.execute(
+                "SELECT updated_at FROM user_thread_status WHERE user_id = ? AND thread_id = ?",
+                (user_id, tid)).fetchone()
+            if local and server_updated <= (local['updated_at'] or ''):
+                continue
+            if local:
+                cursor.execute(
+                    "UPDATE user_thread_status SET status=?, notes=?, skein_qty=?, updated_at=? WHERE user_id=? AND thread_id=?",
+                    (status, notes, skein_qty, server_updated, user_id, tid))
+            else:
+                cursor.execute(
+                    "INSERT INTO user_thread_status (user_id, thread_id, status, notes, skein_qty, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (user_id, tid, status, notes, skein_qty, server_updated))
+            stats['threads_updated'] += 1
+
+        conn.commit()
+        conn.close()
+        stats['server_time'] = server_time
+        return stats
+
+    def _push_progress(self, since, user_id):
+        """Push only progress_data and thread statuses to server."""
+        conn = self._get_db()
+        cursor = conn.cursor()
+
+        pattern_rows = cursor.execute(
+            """SELECT slug, progress_data, project_status, updated_at
+               FROM saved_patterns WHERE user_id = ? AND updated_at > ?""",
+            (user_id, since)).fetchall()
+        patterns = []
+        for row in pattern_rows:
+            p = dict(row)
+            if p.get('progress_data'):
+                try:
+                    p['progress_data'] = json.loads(p['progress_data'])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            patterns.append(p)
+
+        thread_rows = cursor.execute(
+            """SELECT t.brand, t.number, u.status, u.notes, u.skein_qty, u.updated_at
+               FROM user_thread_status u
+               JOIN threads t ON t.id = u.thread_id
+               WHERE u.user_id = ? AND u.updated_at > ?""",
+            (user_id, since)).fetchall()
+        threads = [dict(r) for r in thread_rows]
+        conn.close()
+
+        resp = requests.post(
+            f"{self.server_url}/api/sync/progress",
+            json={'patterns': patterns, 'thread_statuses': threads},
+            headers=self.headers,
+            timeout=15)
+        if resp.status_code != 200:
+            return {'error': f'Progress push failed with status {resp.status_code}'}
+        return resp.json()
+
     def _pull(self, since, user_id):
         """Pull changes from server and apply locally."""
         resp = requests.get(

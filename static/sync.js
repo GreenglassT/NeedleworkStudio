@@ -1,9 +1,12 @@
 /**
  * Sync UI — desktop mode only.
- * Handles: sync settings modal, pairing, manual sync, auto-sync on launch.
+ * Handles: sync settings modal, pairing, manual sync, auto-sync on launch,
+ *          and periodic lightweight progress sync.
  */
 (function () {
     'use strict';
+
+    var PROGRESS_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
     // ── State ───────────────────────────────────────────────────────
     let syncState = {
@@ -13,6 +16,8 @@
         lastSyncAt: '',
         syncing: false,
     };
+    let _progressSyncTimer = null;
+    let _progressSyncing = false;
 
     // ── DOM refs (set on init) ──────────────────────────────────────
     let btnSync, overlay, modalBody, errorEl;
@@ -35,6 +40,7 @@
             // Auto-sync on launch if paired
             if (syncState.paired) {
                 triggerSync(true);
+                _startProgressSync();
             }
         });
     }
@@ -151,6 +157,7 @@
             syncState.lastSyncAt = '';
             updateDot();
             renderModal();
+            _startProgressSync();
             if (typeof Notify !== 'undefined') Notify.toast('Paired with server', 'success');
         } catch (e) {
             showError('Network error: ' + e.message);
@@ -170,6 +177,7 @@
         } catch (e) {
             // best-effort
         }
+        _stopProgressSync();
         syncState.paired = false;
         syncState.serverUrl = '';
         syncState.username = '';
@@ -248,6 +256,35 @@
 
         if (lines.length === 0) lines.push('Everything is in sync');
         el.innerHTML = lines.join('<br>');
+    }
+
+    // ── Periodic progress sync ────────────────────────────────────
+    function _startProgressSync() {
+        _stopProgressSync();
+        _progressSyncTimer = setInterval(_doProgressSync, PROGRESS_SYNC_INTERVAL);
+    }
+
+    function _stopProgressSync() {
+        if (_progressSyncTimer) {
+            clearInterval(_progressSyncTimer);
+            _progressSyncTimer = null;
+        }
+    }
+
+    async function _doProgressSync() {
+        if (_progressSyncing || syncState.syncing || !syncState.paired) return;
+        _progressSyncing = true;
+        try {
+            const resp = await fetch('/api/sync-config/sync-progress', { method: 'POST' });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.server_time) syncState.lastSyncAt = data.server_time;
+            }
+        } catch (e) {
+            // Silent — periodic sync shouldn't bother the user on transient failures
+        } finally {
+            _progressSyncing = false;
+        }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
