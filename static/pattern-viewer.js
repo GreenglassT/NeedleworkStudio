@@ -39,7 +39,7 @@ function toggleCalcMenu(e) {
 
 function toggleZenMenu(e) {
     e.stopPropagation();
-    _toggleDropdown('zen-menu', 'zen-menu-btn', 'left', () => clearTimeout(_zenMoveTimer));
+    _toggleDropdown('zen-menu', 'zen-menu-btn', 'left');
 }
 
 function zenMenuAction(action) {
@@ -1462,7 +1462,6 @@ document.getElementById('zoom-out-btn').addEventListener('click', () => _zoomByF
 
 /* ——— ZEN / FULLSCREEN MODE ——— */
 let zenMode = false;
-let _zenMoveTimer = null;
 
 function toggleZenMode() {
     if (zenMode) exitZenMode();
@@ -1471,7 +1470,7 @@ function toggleZenMode() {
 
 function enterZenMode() {
     zenMode = true;
-    clearTimeout(_zenMoveTimer);
+
     _closeDropdown('calc-menu', 'calc-toggle');
     _closeDropdown('zen-menu', 'zen-menu-btn');
     document.body.classList.add('zen-mode');
@@ -1504,9 +1503,6 @@ function _updateZenUI() {
         btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : '<i class="ti ti-maximize"></i> Zen Mode';
         btn.title = zenMode ? 'Exit Zen (F)' : 'Zen Mode (F)';
     }
-    // Drive zen bar visibility
-    const bar = document.getElementById('zen-bar');
-    if (bar) bar.classList.toggle('visible', zenMode);
     if (!zenMode) _closeDropdown('zen-menu', 'zen-menu-btn');
 }
 
@@ -1530,19 +1526,6 @@ function _onFullscreenChange() {
 document.addEventListener('fullscreenchange', _onFullscreenChange);
 document.addEventListener('webkitfullscreenchange', _onFullscreenChange);
 
-// Show zen toolbar on mouse movement, auto-hide after 2s idle
-document.addEventListener('mousemove', function() {
-    if (!zenMode) return;
-    const bar = document.getElementById('zen-bar');
-    if (bar) bar.classList.add('visible');
-    clearTimeout(_zenMoveTimer);
-    _zenMoveTimer = setTimeout(function() {
-        if (!zenMode) return;
-        // Don't hide while menu is open
-        if (document.getElementById('zen-menu').classList.contains('open')) return;
-        if (bar) bar.classList.remove('visible');
-    }, 2000);
-});
 
 /* ——— PATTERN NOTES ——— */
 function toggleNotesPanel() {
