@@ -179,6 +179,18 @@ function createWindow(port) {
     mainWindow.webContents.openDevTools();
   }
 
+  // Notify renderer of native fullscreen changes
+  mainWindow.on('enter-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('fullscreen-changed', true);
+    }
+  });
+  mainWindow.on('leave-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('fullscreen-changed', false);
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

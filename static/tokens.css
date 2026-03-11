@@ -106,6 +106,10 @@ body {
 [data-desktop="win32"] .site-header { padding-top: 32px; }
 [data-desktop="win32"] .desktop-drag-bar { height: 32px; }
 
+/* Desktop fullscreen: collapse title-bar padding, hide drag bar */
+body.desktop-fullscreen .site-header { padding-top: 0; }
+body.desktop-fullscreen .desktop-drag-bar { display: none; }
+
 .header-inner {
     max-width: 1640px;
     margin: 0 auto;

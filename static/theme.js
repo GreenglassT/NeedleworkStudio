@@ -7,6 +7,11 @@
     // Desktop app: set platform attribute for title bar CSS (before render)
     if (window.electronAPI && window.electronAPI.isDesktop) {
         document.documentElement.dataset.desktop = window.electronAPI.platform;
+        if (window.electronAPI.onFullscreenChanged) {
+            window.electronAPI.onFullscreenChanged(function(fs) {
+                document.body.classList.toggle('desktop-fullscreen', fs);
+            });
+        }
     }
 })();
 
