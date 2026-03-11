@@ -1909,6 +1909,53 @@ def _parse_progress_data(pd_json):
         return {'completed_count': 0, 'stitched_cell_count': 0, 'accumulated_seconds': 0}
 
 
+def _merge_progress_data(existing_json, incoming):
+    """Merge two progress_data dicts by taking the union of sets and max of counters.
+
+    existing_json: JSON string (from DB) or None
+    incoming: dict or JSON string (from sync payload)
+    Returns: JSON string of merged progress_data.
+    """
+    try:
+        existing = json.loads(existing_json) if existing_json else {}
+    except (json.JSONDecodeError, TypeError):
+        existing = {}
+    if isinstance(incoming, str):
+        try:
+            incoming = json.loads(incoming)
+        except (json.JSONDecodeError, TypeError):
+            incoming = {}
+    if not isinstance(incoming, dict):
+        incoming = {}
+
+    # Union of completed DMCs (string sets)
+    e_dmcs = set(existing.get('completed_dmcs', []))
+    i_dmcs = set(incoming.get('completed_dmcs', []))
+    merged_dmcs = sorted(e_dmcs | i_dmcs)
+
+    # Union of stitched cells (int sets)
+    e_cells = set(existing.get('stitched_cells', []))
+    i_cells = set(incoming.get('stitched_cells', []))
+    merged_cells = sorted(e_cells | i_cells)
+
+    # Union of place markers (string sets)
+    e_markers = set(existing.get('place_markers', []))
+    i_markers = set(incoming.get('place_markers', []))
+    merged_markers = sorted(e_markers | i_markers)
+
+    # Max of accumulated seconds
+    e_secs = existing.get('accumulated_seconds', 0) or 0
+    i_secs = incoming.get('accumulated_seconds', 0) or 0
+
+    merged = {
+        'completed_dmcs': merged_dmcs,
+        'stitched_cells': merged_cells,
+        'place_markers': merged_markers,
+        'accumulated_seconds': max(e_secs, i_secs),
+    }
+    return json.dumps(merged)
+
+
 def _import_pdf_pattern(pdf_bytes):
     """
     Main orchestrator. Returns:
@@ -5120,24 +5167,22 @@ def api_sync_progress_push():
     for p in data.get('patterns', []):
         slug = p.get('slug')
         pushed_at = p.get('updated_at', '')
-        if not slug or not pushed_at:
+        if not slug:
             continue
         existing = cursor.execute(
-            "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
+            "SELECT id, updated_at, progress_data FROM saved_patterns WHERE slug = ? AND user_id = ?",
             (slug, uid)).fetchone()
         if not existing:
             continue  # progress-only sync doesn't create new patterns
-        if pushed_at <= (existing['updated_at'] or ''):
-            stats['patterns_skipped'] += 1
-            continue
-        progress_data = p.get('progress_data')
-        progress_json = json.dumps(progress_data) if isinstance(progress_data, dict) else progress_data
+        # Merge progress data (union of sets) instead of last-write-wins
+        progress_json = _merge_progress_data(existing['progress_data'], p.get('progress_data'))
         project_status = p.get('project_status', 'not_started')
         if project_status not in ('not_started', 'in_progress', 'completed'):
             project_status = 'not_started'
+        new_ts = max(pushed_at, existing['updated_at'] or '')
         cursor.execute(
             "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
-            (progress_json, project_status, pushed_at, existing['id'], uid))
+            (progress_json, project_status, new_ts, existing['id'], uid))
         stats['patterns_updated'] += 1
 
     # Thread statuses (same handling as full push)
@@ -5197,15 +5242,15 @@ def api_sync_push():
             continue
         pushed_at = p.get('updated_at', '')
         existing = cursor.execute(
-            "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
+            "SELECT id, updated_at, progress_data FROM saved_patterns WHERE slug = ? AND user_id = ?",
             (slug, uid)).fetchone()
         if existing:
-            # Last-write-wins: only update if pushed version is newer
+            # Last-write-wins for pattern data, but merge progress
             if pushed_at > (existing['updated_at'] or ''):
                 grid_json = json.dumps(p['grid_data']) if isinstance(p.get('grid_data'), list) else p.get('grid_data', '[]')
                 legend_json = json.dumps(p['legend_data']) if isinstance(p.get('legend_data'), list) else p.get('legend_data', '[]')
                 ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
-                progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
+                progress_json = _merge_progress_data(existing['progress_data'], p.get('progress_data'))
                 notes_val = str(p.get('notes', '') or '')[:2000]
                 cursor.execute(
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,

@@ -35,6 +35,29 @@ def _valid_grid_dims(w, h):
             1 <= w <= _MAX_GRID_DIM and 1 <= h <= _MAX_GRID_DIM)
 
 
+def _merge_progress_data(existing_json, incoming):
+    """Merge two progress_data by taking union of sets and max of counters."""
+    try:
+        existing = json.loads(existing_json) if existing_json else {}
+    except (json.JSONDecodeError, TypeError):
+        existing = {}
+    if isinstance(incoming, str):
+        try:
+            incoming = json.loads(incoming)
+        except (json.JSONDecodeError, TypeError):
+            incoming = {}
+    if not isinstance(incoming, dict):
+        incoming = {}
+
+    merged = {
+        'completed_dmcs': sorted(set(existing.get('completed_dmcs', [])) | set(incoming.get('completed_dmcs', []))),
+        'stitched_cells': sorted(set(existing.get('stitched_cells', [])) | set(incoming.get('stitched_cells', []))),
+        'place_markers': sorted(set(existing.get('place_markers', [])) | set(incoming.get('place_markers', []))),
+        'accumulated_seconds': max(existing.get('accumulated_seconds', 0) or 0, incoming.get('accumulated_seconds', 0) or 0),
+    }
+    return json.dumps(merged)
+
+
 class SyncEngine:
     def __init__(self, server_url, token, db_path):
         self.server_url = server_url.rstrip('/')
@@ -111,18 +134,19 @@ class SyncEngine:
                 continue
             server_updated = _clamp_timestamp(p.get('updated_at', ''), server_time)
             local = cursor.execute(
-                "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
+                "SELECT id, updated_at, progress_data FROM saved_patterns WHERE slug = ? AND user_id = ?",
                 (slug, user_id)).fetchone()
-            if not local or server_updated <= (local['updated_at'] or ''):
+            if not local:
                 continue
-            progress_data = p.get('progress_data')
-            progress_json = json.dumps(progress_data) if isinstance(progress_data, dict) else progress_data
+            # Merge progress data (union of sets) instead of last-write-wins
+            progress_json = _merge_progress_data(local['progress_data'], p.get('progress_data'))
             project_status = p.get('project_status', 'not_started')
             if project_status not in _VALID_PROJECT_STATUSES:
                 project_status = 'not_started'
+            new_ts = max(server_updated, local['updated_at'] or '')
             cursor.execute(
                 "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
-                (progress_json, project_status, server_updated, local['id'], user_id))
+                (progress_json, project_status, new_ts, local['id'], user_id))
             stats['patterns_updated'] += 1
 
         # Thread statuses (reuse same logic as full pull)
@@ -228,7 +252,7 @@ class SyncEngine:
                 continue
             server_updated = _clamp_timestamp(p_meta.get('updated_at', ''), server_time)
             local = cursor.execute(
-                "SELECT id, updated_at FROM saved_patterns WHERE slug = ? AND user_id = ?",
+                "SELECT id, updated_at, progress_data FROM saved_patterns WHERE slug = ? AND user_id = ?",
                 (slug, user_id)).fetchone()
             if local and server_updated <= (local['updated_at'] or ''):
                 continue  # Local is newer or same — skip
@@ -277,7 +301,10 @@ class SyncEngine:
             kn_json = json.dumps(kn) if isinstance(kn, list) and len(kn) <= _MAX_STITCH_ITEMS else '[]'
             bd_json = json.dumps(bd) if isinstance(bd, list) and len(bd) <= _MAX_STITCH_ITEMS else '[]'
 
-            progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
+            if local:
+                progress_json = _merge_progress_data(local['progress_data'], p.get('progress_data'))
+            else:
+                progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
 
             # Validate thumbnail size
             thumbnail = p.get('thumbnail')
