@@ -105,17 +105,21 @@ const _redoStack = [];
 const _UNDO_MAX = 50;
 
 function _pushProgressUndo() {
-    _undoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs) });
+    _undoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs),
+                      clearedC: new Set(clearedCells), clearedM: new Set(clearedMarkers) });
     if (_undoStack.length > _UNDO_MAX) _undoStack.shift();
     _redoStack.length = 0;
 }
 
 function undoProgress() {
     if (!_undoStack.length) return;
-    _redoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs) });
+    _redoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs),
+                       clearedC: new Set(clearedCells), clearedM: new Set(clearedMarkers) });
     const snap = _undoStack.pop();
     stitchedCells = snap.stitched;
     completedDmcs = snap.completed;
+    clearedCells = snap.clearedC;
+    clearedMarkers = snap.clearedM;
     _syncColorsFromCells();
     renderMain();
     renderLegend();
@@ -125,10 +129,13 @@ function undoProgress() {
 
 function redoProgress() {
     if (!_redoStack.length) return;
-    _undoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs) });
+    _undoStack.push({ stitched: new Set(stitchedCells), completed: new Set(completedDmcs),
+                       clearedC: new Set(clearedCells), clearedM: new Set(clearedMarkers) });
     const snap = _redoStack.pop();
     stitchedCells = snap.stitched;
     completedDmcs = snap.completed;
+    clearedCells = snap.clearedC;
+    clearedMarkers = snap.clearedM;
     _syncColorsFromCells();
     renderMain();
     renderLegend();
@@ -138,6 +145,7 @@ function redoProgress() {
 
 /* ——— CELL-LEVEL PROGRESS ——— */
 let stitchedCells    = new Set();   // Set<number> of flat cell indices (row*grid_w+col)
+let clearedCells     = new Set();   // Set<number> of intentionally unstitched indices (for sync)
 let _cellMarkMode    = false;       // true when stitch-marking mode is active
 let _cellDragActive  = false;       // true while mouse button held in mark mode
 let _cellDragToggle  = null;        // bool: true=marking, false=unmarking
@@ -146,6 +154,7 @@ let _cellDragEnd     = null;        // {col, row} for rectangle end
 
 /* ——— PLACE MARKERS ——— */
 let markedCells      = new Set();   // Set<string> of "col,row" keys
+let clearedMarkers   = new Set();   // Set<string> of intentionally removed markers (for sync)
 let _markerMode      = false;       // true when place-marker mode is active
 
 /* ——— AUTOSAVE ——— */
@@ -501,8 +510,8 @@ function toggleColorComplete(dmc) {
     const { grid } = patternData;
     for (let i = 0; i < grid.length; i++) {
         if (String(grid[i]) === dmc) {
-            if (wasComplete) stitchedCells.delete(i);
-            else stitchedCells.add(i);
+            if (wasComplete) { stitchedCells.delete(i); clearedCells.add(i); }
+            else { stitchedCells.add(i); clearedCells.delete(i); }
         }
     }
     renderMain();
@@ -515,7 +524,9 @@ function _buildProgressPayload() {
     return JSON.stringify({ progress_data: {
         completed_dmcs: [...completedDmcs],
         stitched_cells: [...stitchedCells].sort((a, b) => a - b),
+        cleared_cells: [...clearedCells].sort((a, b) => a - b),
         place_markers: [...markedCells],
+        cleared_markers: [...clearedMarkers],
         accumulated_seconds: _timerCurrentSeconds()
     }});
 }
@@ -525,7 +536,9 @@ function _saveProgressToLocal() {
         localStorage.setItem('ns-progress-' + PATTERN_SLUG, JSON.stringify({
             completed_dmcs: [...completedDmcs],
             stitched_cells: [...stitchedCells].sort((a, b) => a - b),
-            place_markers: [...markedCells]
+            cleared_cells: [...clearedCells].sort((a, b) => a - b),
+            place_markers: [...markedCells],
+            cleared_markers: [...clearedMarkers]
         }));
     } catch (_) {}
 }
@@ -594,8 +607,8 @@ function _handleMarkerClick(e) {
     const cell = _canvasEventToCell(e);
     if (!cell) return;
     const key = cell.col + ',' + cell.row;
-    if (markedCells.has(key)) markedCells.delete(key);
-    else markedCells.add(key);
+    if (markedCells.has(key)) { markedCells.delete(key); clearedMarkers.add(key); }
+    else { markedCells.add(key); clearedMarkers.delete(key); }
     renderMain();
     _scheduleProgressSave();
 }
@@ -647,8 +660,8 @@ function _applyCellDragRect() {
         for (let c = minC; c <= maxC; c++) {
             const idx = r * w + c;
             if (grid[idx] === 'BG') continue;
-            if (_cellDragToggle) stitchedCells.add(idx);
-            else stitchedCells.delete(idx);
+            if (_cellDragToggle) { stitchedCells.add(idx); clearedCells.delete(idx); }
+            else { stitchedCells.delete(idx); clearedCells.add(idx); }
         }
     }
 }
@@ -1859,25 +1872,41 @@ async function init() {
         // Load saved progress — merge server data with localStorage backup
         let serverDmcs = data.completed_dmcs || [];
         let serverCells = data.stitched_cells || [];
+        let serverClearedCells = data.cleared_cells || [];
         let serverMarkers = data.place_markers || [];
+        let serverClearedMarkers = data.cleared_markers || [];
         try {
             const local = JSON.parse(localStorage.getItem('ns-progress-' + PATTERN_SLUG) || 'null');
             if (local) {
                 const localCells = local.stitched_cells || [];
                 const localDmcs = local.completed_dmcs || [];
+                const localClearedCells = local.cleared_cells || [];
                 const localMarkers = local.place_markers || [];
+                const localClearedMarkers = local.cleared_markers || [];
                 if (localCells.length > serverCells.length) serverCells = localCells;
                 if (localDmcs.length > serverDmcs.length) serverDmcs = localDmcs;
+                if (localClearedCells.length > serverClearedCells.length) serverClearedCells = localClearedCells;
                 if (localMarkers.length > serverMarkers.length) serverMarkers = localMarkers;
+                if (localClearedMarkers.length > serverClearedMarkers.length) serverClearedMarkers = localClearedMarkers;
             }
         } catch (_) {}
+        // Populate cleared sets first
+        for (const idx of serverClearedCells) {
+            if (typeof idx === 'number') clearedCells.add(idx);
+        }
+        for (const key of serverClearedMarkers) {
+            if (typeof key === 'string' && /^\d+,\d+$/.test(key)) clearedMarkers.add(key);
+        }
+        // Populate positive sets, subtracting cleared items
         for (const dmc of serverDmcs) completedDmcs.add(String(dmc));
         for (const idx of serverCells) {
-            if (typeof idx === 'number' && patternData.grid[idx] !== 'BG') stitchedCells.add(idx);
+            if (typeof idx === 'number' && patternData.grid[idx] !== 'BG' && !clearedCells.has(idx)) stitchedCells.add(idx);
         }
         for (const key of serverMarkers) {
-            if (typeof key === 'string' && /^\d+,\d+$/.test(key)) markedCells.add(key);
+            if (typeof key === 'string' && /^\d+,\d+$/.test(key) && !clearedMarkers.has(key)) markedCells.add(key);
         }
+        // Reconcile completedDmcs with effective stitched cells
+        _syncColorsFromCells();
 
         // Update header
         document.getElementById('pattern-title').textContent = data.name;

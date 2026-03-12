@@ -49,10 +49,21 @@ def _merge_progress_data(existing_json, incoming):
     if not isinstance(incoming, dict):
         incoming = {}
 
+    merged_cells = set(existing.get('stitched_cells', [])) | set(incoming.get('stitched_cells', []))
+    merged_cleared_cells = set(existing.get('cleared_cells', [])) | set(incoming.get('cleared_cells', []))
+    merged_markers = set(existing.get('place_markers', [])) | set(incoming.get('place_markers', []))
+    merged_cleared_markers = set(existing.get('cleared_markers', [])) | set(incoming.get('cleared_markers', []))
+
+    # Post-merge cleanup: re-mark wins over clear
+    merged_cleared_cells -= merged_cells
+    merged_cleared_markers -= merged_markers
+
     merged = {
         'completed_dmcs': sorted(set(existing.get('completed_dmcs', [])) | set(incoming.get('completed_dmcs', []))),
-        'stitched_cells': sorted(set(existing.get('stitched_cells', [])) | set(incoming.get('stitched_cells', []))),
-        'place_markers': sorted(set(existing.get('place_markers', [])) | set(incoming.get('place_markers', []))),
+        'stitched_cells': sorted(merged_cells),
+        'cleared_cells': sorted(merged_cleared_cells),
+        'place_markers': sorted(merged_markers),
+        'cleared_markers': sorted(merged_cleared_markers),
         'accumulated_seconds': max(existing.get('accumulated_seconds', 0) or 0, incoming.get('accumulated_seconds', 0) or 0),
     }
     return json.dumps(merged)

@@ -1900,9 +1900,11 @@ def _parse_progress_data(pd_json):
     """Parse progress_data JSON string, return safe dict with counts."""
     try:
         pd = json.loads(pd_json) if pd_json else {}
+        stitched = set(pd.get('stitched_cells', []))
+        cleared = set(pd.get('cleared_cells', []))
         return {
             'completed_count': len(pd.get('completed_dmcs', [])),
-            'stitched_cell_count': len(pd.get('stitched_cells', [])),
+            'stitched_cell_count': len(stitched - cleared),
             'accumulated_seconds': pd.get('accumulated_seconds', 0),
         }
     except (json.JSONDecodeError, KeyError, TypeError):
@@ -1931,26 +1933,42 @@ def _merge_progress_data(existing_json, incoming):
     # Union of completed DMCs (string sets)
     e_dmcs = set(existing.get('completed_dmcs', []))
     i_dmcs = set(incoming.get('completed_dmcs', []))
-    merged_dmcs = sorted(e_dmcs | i_dmcs)
+    merged_dmcs = e_dmcs | i_dmcs
 
     # Union of stitched cells (int sets)
     e_cells = set(existing.get('stitched_cells', []))
     i_cells = set(incoming.get('stitched_cells', []))
-    merged_cells = sorted(e_cells | i_cells)
+    merged_cells = e_cells | i_cells
+
+    # Union of cleared cells (int sets) — tracks intentional unmarks
+    e_cc = set(existing.get('cleared_cells', []))
+    i_cc = set(incoming.get('cleared_cells', []))
+    merged_cleared_cells = e_cc | i_cc
 
     # Union of place markers (string sets)
     e_markers = set(existing.get('place_markers', []))
     i_markers = set(incoming.get('place_markers', []))
-    merged_markers = sorted(e_markers | i_markers)
+    merged_markers = e_markers | i_markers
+
+    # Union of cleared markers (string sets) — tracks intentional unmarks
+    e_cm = set(existing.get('cleared_markers', []))
+    i_cm = set(incoming.get('cleared_markers', []))
+    merged_cleared_markers = e_cm | i_cm
+
+    # Post-merge cleanup: re-mark wins over clear
+    merged_cleared_cells -= merged_cells
+    merged_cleared_markers -= merged_markers
 
     # Max of accumulated seconds
     e_secs = existing.get('accumulated_seconds', 0) or 0
     i_secs = incoming.get('accumulated_seconds', 0) or 0
 
     merged = {
-        'completed_dmcs': merged_dmcs,
-        'stitched_cells': merged_cells,
-        'place_markers': merged_markers,
+        'completed_dmcs': sorted(merged_dmcs),
+        'stitched_cells': sorted(merged_cells),
+        'cleared_cells': sorted(merged_cleared_cells),
+        'place_markers': sorted(merged_markers),
+        'cleared_markers': sorted(merged_cleared_markers),
         'accumulated_seconds': max(e_secs, i_secs),
     }
     return json.dumps(merged)
@@ -4403,13 +4421,17 @@ def api_get_saved_pattern(pattern_slug):
         pd_parsed = json.loads(pd) if pd else {}
         result['completed_dmcs'] = pd_parsed.get('completed_dmcs', [])
         result['stitched_cells'] = pd_parsed.get('stitched_cells', [])
+        result['cleared_cells'] = pd_parsed.get('cleared_cells', [])
         result['place_markers'] = pd_parsed.get('place_markers', [])
+        result['cleared_markers'] = pd_parsed.get('cleared_markers', [])
         result['accumulated_seconds'] = pd_parsed.get('accumulated_seconds', 0)
     except (json.JSONDecodeError, KeyError, TypeError):
         result['generation_settings'] = None
         result['completed_dmcs'] = []
         result['stitched_cells'] = []
+        result['cleared_cells'] = []
         result['place_markers'] = []
+        result['cleared_markers'] = []
         result['accumulated_seconds'] = 0
     # Fetch tags for this pattern
     tag_rows = conn.execute(
@@ -4562,6 +4584,12 @@ def api_update_saved_pattern(pattern_slug):
             return jsonify({'error': 'stitched_cells must be an array'}), 400
         if sc and not all(isinstance(i, int) and not isinstance(i, bool) and i >= 0 for i in sc):
             return jsonify({'error': 'stitched_cells must contain non-negative integers'}), 400
+        # Validate cleared_cells if present
+        cc = pd.get('cleared_cells', [])
+        if not isinstance(cc, list):
+            return jsonify({'error': 'cleared_cells must be an array'}), 400
+        if cc and not all(isinstance(i, int) and not isinstance(i, bool) and i >= 0 for i in cc):
+            return jsonify({'error': 'cleared_cells must contain non-negative integers'}), 400
         # Validate place_markers if present
         pm = pd.get('place_markers', [])
         if not isinstance(pm, list):
@@ -4569,6 +4597,12 @@ def api_update_saved_pattern(pattern_slug):
         _marker_re = re.compile(r'^\d{1,6},\d{1,6}$')
         if pm and not all(isinstance(m, str) and _marker_re.match(m) for m in pm):
             return jsonify({'error': 'place_markers must contain "col,row" strings'}), 400
+        # Validate cleared_markers if present
+        cm = pd.get('cleared_markers', [])
+        if not isinstance(cm, list):
+            return jsonify({'error': 'cleared_markers must be an array'}), 400
+        if cm and not all(isinstance(m, str) and _marker_re.match(m) for m in cm):
+            return jsonify({'error': 'cleared_markers must contain "col,row" strings'}), 400
         # Validate accumulated_seconds if present
         acc = pd.get('accumulated_seconds')
         if acc is not None:
