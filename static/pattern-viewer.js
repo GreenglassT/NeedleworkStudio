@@ -1883,11 +1883,19 @@ async function init() {
                 const localClearedCells = local.cleared_cells || [];
                 const localMarkers = local.place_markers || [];
                 const localClearedMarkers = local.cleared_markers || [];
-                if (localCells.length > serverCells.length) serverCells = localCells;
-                if (localDmcs.length > serverDmcs.length) serverDmcs = localDmcs;
-                if (localClearedCells.length > serverClearedCells.length) serverClearedCells = localClearedCells;
-                if (localMarkers.length > serverMarkers.length) serverMarkers = localMarkers;
-                if (localClearedMarkers.length > serverClearedMarkers.length) serverClearedMarkers = localClearedMarkers;
+                // Union merge (mirrors server-side _merge_progress_data)
+                serverCells = [...new Set([...serverCells, ...localCells])];
+                serverDmcs = [...new Set([...serverDmcs, ...localDmcs])];
+                serverMarkers = [...new Set([...serverMarkers, ...localMarkers])];
+                const mCC = new Set([...serverClearedCells, ...localClearedCells]);
+                const mCM = new Set([...serverClearedMarkers, ...localClearedMarkers]);
+                // Local device's intent wins: active local stitches override stale clears
+                const localCCSet = new Set(localClearedCells);
+                const localCMSet = new Set(localClearedMarkers);
+                for (const c of localCells) { if (!localCCSet.has(c)) mCC.delete(c); }
+                for (const m of localMarkers) { if (!localCMSet.has(m)) mCM.delete(m); }
+                serverClearedCells = [...mCC];
+                serverClearedMarkers = [...mCM];
             }
         } catch (_) {}
         // Populate cleared sets first
