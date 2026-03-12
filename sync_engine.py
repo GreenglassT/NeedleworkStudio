@@ -54,9 +54,13 @@ def _merge_progress_data(existing_json, incoming):
     merged_markers = set(existing.get('place_markers', [])) | set(incoming.get('place_markers', []))
     merged_cleared_markers = set(existing.get('cleared_markers', [])) | set(incoming.get('cleared_markers', []))
 
-    # Post-merge cleanup: re-mark wins over clear
-    merged_cleared_cells -= merged_cells
-    merged_cleared_markers -= merged_markers
+    # Conflict resolution: incoming device's intent wins
+    i_cells = set(incoming.get('stitched_cells', []))
+    i_cc = set(incoming.get('cleared_cells', []))
+    i_markers = set(incoming.get('place_markers', []))
+    i_cm = set(incoming.get('cleared_markers', []))
+    merged_cleared_cells -= (i_cells - i_cc)
+    merged_cleared_markers -= (i_markers - i_cm)
 
     merged = {
         'completed_dmcs': sorted(set(existing.get('completed_dmcs', [])) | set(incoming.get('completed_dmcs', []))),

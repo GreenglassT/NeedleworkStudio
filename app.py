@@ -1955,9 +1955,10 @@ def _merge_progress_data(existing_json, incoming):
     i_cm = set(incoming.get('cleared_markers', []))
     merged_cleared_markers = e_cm | i_cm
 
-    # Post-merge cleanup: re-mark wins over clear
-    merged_cleared_cells -= merged_cells
-    merged_cleared_markers -= merged_markers
+    # Conflict resolution: incoming device's intent wins
+    # If incoming has a cell actively stitched (not cleared), remove stale clears
+    merged_cleared_cells -= (i_cells - i_cc)
+    merged_cleared_markers -= (i_markers - i_cm)
 
     # Max of accumulated seconds
     e_secs = existing.get('accumulated_seconds', 0) or 0
