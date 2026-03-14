@@ -249,9 +249,11 @@
         var DEBOUNCE_MS = 200;
         var MIN_QUERY = 2;
 
-        var isWikiPage = window.location.pathname.indexOf('/wiki/') !== -1;
-        var indexUrl = isWikiPage ? '../search-index.json' : 'search-index.json';
-        var linkPrefix = isWikiPage ? '' : 'wiki/';
+        var pathDepth = (window.location.pathname.match(/\//g) || []).length;
+        var isWikiSubpage = pathDepth >= 3 && window.location.pathname.indexOf('/wiki/') !== -1;
+        var isWikiIndex = !isWikiSubpage && window.location.pathname.indexOf('/wiki/') !== -1;
+        var indexUrl = isWikiSubpage ? '../../search-index.json' : isWikiIndex ? '../search-index.json' : 'search-index.json';
+        var linkPrefix = isWikiSubpage ? '../' : isWikiIndex ? '' : 'wiki/';
 
         function loadIndex(cb) {
             if (index) { cb(); return; }

@@ -5,27 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Desktop Sync - Needlework Studio Wiki</title>
     <meta name="description" content="Set up bidirectional sync between the Needlework Studio desktop app and your self-hosted server. Keep patterns and thread data in sync across devices.">
-    <link rel="canonical" href="https://needlework-studio.com/wiki/desktop-sync.html">
+    <link rel="canonical" href="https://needlework-studio.com/wiki/desktop-sync/">
     <meta property="og:type" content="article">
     <meta property="og:title" content="Desktop Sync - Needlework Studio Wiki">
     <meta property="og:description" content="Set up bidirectional sync between the Needlework Studio desktop app and your self-hosted server. Keep patterns and thread data in sync across devices.">
-    <meta property="og:url" content="https://needlework-studio.com/wiki/desktop-sync.html">
+    <meta property="og:url" content="https://needlework-studio.com/wiki/desktop-sync/">
     <meta property="og:image" content="https://needlework-studio.com/img/pattern-viewer-light.jpg">
     <meta property="og:site_name" content="Needlework Studio">
-    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="../css/style.css?v=4">
-    <script src="../js/main.js?v=4" defer></script>
+    <link rel="stylesheet" href="../../css/style.css?v=4">
+    <script src="../../js/main.js?v=4" defer></script>
 </head>
 <body>
 
 <!-- Header -->
 <header class="site-header">
     <div class="header-inner">
-        <a href="../" class="brand">
+        <a href="../../" class="brand">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="36">
                 <g transform="translate(8, 8) scale(2)">
                     <rect x="8" y="4" width="16" height="24" rx="3" fill="#c8913a"/>
@@ -43,8 +43,8 @@
         </a>
         <button class="hamburger" aria-label="Menu">&#9776;</button>
         <nav class="nav">
-            <a href="../" class="nav-link">Home</a>
-            <a href="./" class="nav-link active">Wiki</a>
+            <a href="../../" class="nav-link">Home</a>
+            <a href="../" class="nav-link active">Wiki</a>
             <a href="https://github.com/GreenglassT/NeedleworkStudio" class="nav-link">GitHub</a>
             <a href="https://github.com/GreenglassT/NeedleworkStudio/releases" class="nav-link">Releases</a>
             <button class="theme-toggle" aria-label="Toggle theme"></button>
@@ -66,29 +66,29 @@
 
         <div class="sidebar-section">
             <div class="sidebar-label">User Guide</div>
-            <a href="getting-started.html" class="sidebar-link">Getting Started</a>
-            <a href="thread-inventory.html" class="sidebar-link">Thread Inventory</a>
-            <a href="pattern-design.html" class="sidebar-link">Pattern Design</a>
-            <a href="pattern-viewer.html" class="sidebar-link">Pattern Viewer</a>
-            <a href="import-export.html" class="sidebar-link">Import &amp; Export</a>
-            <a href="project-management.html" class="sidebar-link">Project Management</a>
-            <a href="desktop-sync.html" class="sidebar-link active">Desktop Sync</a>
+            <a href="../getting-started/" class="sidebar-link">Getting Started</a>
+            <a href="../thread-inventory/" class="sidebar-link">Thread Inventory</a>
+            <a href="../pattern-design/" class="sidebar-link">Pattern Design</a>
+            <a href="../pattern-viewer/" class="sidebar-link">Pattern Viewer</a>
+            <a href="../import-export/" class="sidebar-link">Import &amp; Export</a>
+            <a href="../project-management/" class="sidebar-link">Project Management</a>
+            <a href="../desktop-sync/" class="sidebar-link active">Desktop Sync</a>
         </div>
         <div class="sidebar-section">
             <div class="sidebar-label">Setup &amp; Deployment</div>
-            <a href="installation.html" class="sidebar-link">Installation</a>
-            <a href="administration.html" class="sidebar-link">Administration</a>
-            <a href="deployment.html" class="sidebar-link">Deployment</a>
+            <a href="../installation/" class="sidebar-link">Installation</a>
+            <a href="../administration/" class="sidebar-link">Administration</a>
+            <a href="../deployment/" class="sidebar-link">Deployment</a>
         </div>
         <div class="sidebar-section">
             <div class="sidebar-label">Reference</div>
-            <a href="faq.html" class="sidebar-link">FAQ &amp; Troubleshooting</a>
+            <a href="../faq/" class="sidebar-link">FAQ &amp; Troubleshooting</a>
         </div>
     </aside>
 
     <!-- Content -->
     <main class="wiki-content">
-        <nav class="wiki-breadcrumb"><a href="./">Wiki</a><span class="breadcrumb-sep">/</span>Desktop Sync</nav>
+        <nav class="wiki-breadcrumb"><a href="../">Wiki</a><span class="breadcrumb-sep">/</span>Desktop Sync</nav>
         <h1>Desktop Sync</h1>
         <p class="page-sub">Synchronize your patterns and thread inventory between the desktop app and a self-hosted Needlework Studio server.</p>
 
@@ -109,7 +109,7 @@
         <p>Your username and password are <strong>not stored</strong> on the desktop after pairing. They are sent to the server once to obtain an API token, and then discarded. Only the API token is retained. The token provides the desktop app with the ability to read and write your data on the server without needing to store your credentials. If you are concerned about token security, you can revoke it at any time by unpairing (see below).</p>
 
         <h3>Server Requirements</h3>
-        <p>To use sync, you need a running Needlework Studio server that is accessible from the machine running the desktop app. The server can be on your local network (accessible by IP address) or exposed to the internet with a domain name. If you have not set up a server yet, see the <a href="installation.html">Installation</a> and <a href="deployment.html">Deployment</a> guides.</p>
+        <p>To use sync, you need a running Needlework Studio server that is accessible from the machine running the desktop app. The server can be on your local network (accessible by IP address) or exposed to the internet with a domain name. If you have not set up a server yet, see the <a href="../installation/">Installation</a> and <a href="../deployment/">Deployment</a> guides.</p>
 
         <h2>How Sync Works</h2>
         <p>Synchronization transfers data between the desktop app and the server to keep both copies up to date.</p>
@@ -150,7 +150,7 @@
         <h2>Conflict Resolution</h2>
         <p>In cases where the same piece of data has been modified on both the desktop and the server since the last sync, a conflict occurs. Needlework Studio uses a <strong>last-write-wins</strong> strategy based on modification timestamps to resolve conflicts.</p>
         <p>When two versions of the same pattern or thread record have different modification times, the version with the more recent timestamp is kept, and the older version is overwritten. This approach is simple and predictable: the most recent change always takes precedence.</p>
-        <p>In practice, conflicts are rare if you follow a natural workflow of making changes on one device at a time and syncing regularly. If you are concerned about accidental data loss, you can <a href="project-management.html">duplicate a pattern</a> before making major changes, which creates an independent backup copy that will not be affected by sync conflicts on the original.</p>
+        <p>In practice, conflicts are rare if you follow a natural workflow of making changes on one device at a time and syncing regularly. If you are concerned about accidental data loss, you can <a href="../project-management/">duplicate a pattern</a> before making major changes, which creates an independent backup copy that will not be affected by sync conflicts on the original.</p>
 
         <h2>Status Indicator</h2>
         <p>The sync status is communicated visually through the cloud icon in the desktop app's navigation bar. The icon changes color and animation to reflect the current state:</p>
@@ -184,7 +184,7 @@
         <span class="footer-copy">Needlework Studio - Open source, self-hosted</span>
         <div class="footer-links">
             <a href="https://github.com/GreenglassT/NeedleworkStudio">GitHub</a>
-            <a href="./">Wiki</a>
+            <a href="../">Wiki</a>
             <a href="https://github.com/GreenglassT/NeedleworkStudio/releases">Releases</a>
             <a href="https://ko-fi.com/greenglasst">Ko-fi</a>
         </div>
