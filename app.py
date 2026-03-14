@@ -68,6 +68,8 @@ app = Flask(__name__,
 
 # Desktop mode — set DESKTOP_MODE=1 to auto-login without credentials
 DESKTOP_MODE = os.environ.get('DESKTOP_MODE', '').lower() in ('1', 'true')
+# Demo mode — set DEMO_MODE=1 to disable PWA install prompts
+DEMO_MODE = os.environ.get('DEMO_MODE', '').lower() in ('1', 'true')
 
 # Admin bootstrap — set ADMIN_USERNAME to grant admin on startup
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', '').strip()
@@ -365,6 +367,11 @@ def _desktop_auto_login():
 @app.context_processor
 def _inject_desktop_mode():
     return dict(desktop_mode=DESKTOP_MODE)
+
+
+@app.context_processor
+def _inject_demo_mode():
+    return dict(demo_mode=DEMO_MODE)
 
 
 @app.context_processor
