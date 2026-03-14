@@ -1003,18 +1003,34 @@ function createPatternEditor(config) {
         if (!rect) return;
         const pd = getPatternData();
         const { c1, r1, c2, r2 } = rect;
+        // Clear grid cells — only wand-mask cells if wand is active
         for (let r = r1; r <= r2; r++)
-            for (let c = c1; c <= c2; c++)
-                pd.grid[r * pd.grid_w + c] = 'BG';
+            for (let c = c1; c <= c2; c++) {
+                const gi = r * pd.grid_w + c;
+                if (!_wandMask || _wandMask.has(gi))
+                    pd.grid[gi] = 'BG';
+            }
+        // Helper: check if a cell-coord stitch is in wand mask
+        const inWand = _wandMask
+            ? (x, y) => _wandMask.has(y * pd.grid_w + x)
+            : () => true;
+        // Helper: intersection-coord → containing cell check
+        const intInWand = _wandMask
+            ? (x, y) => {
+                const cx = Math.min(Math.floor(x), c2), cy = Math.min(Math.floor(y), r2);
+                return _wandMask.has(cy * pd.grid_w + cx);
+            }
+            : () => true;
         if (pd.part_stitches) pd.part_stitches = pd.part_stitches.filter(s =>
-            !_cellInRect(s.x, s.y, c1, r1, c2, r2));
+            !(_cellInRect(s.x, s.y, c1, r1, c2, r2) && inWand(s.x, s.y)));
         if (pd.backstitches) pd.backstitches = pd.backstitches.filter(bs =>
             !(_intersectionInRect(bs.x1, bs.y1, c1, r1, c2, r2) &&
-              _intersectionInRect(bs.x2, bs.y2, c1, r1, c2, r2)));
+              _intersectionInRect(bs.x2, bs.y2, c1, r1, c2, r2) &&
+              intInWand(bs.x1, bs.y1) && intInWand(bs.x2, bs.y2)));
         if (pd.knots) pd.knots = pd.knots.filter(k =>
-            !_intersectionInRect(k.x, k.y, c1, r1, c2, r2));
+            !(_intersectionInRect(k.x, k.y, c1, r1, c2, r2) && intInWand(k.x, k.y)));
         if (pd.beads) pd.beads = pd.beads.filter(b =>
-            !_cellInRect(b.x, b.y, c1, r1, c2, r2));
+            !(_cellInRect(b.x, b.y, c1, r1, c2, r2) && inWand(b.x, b.y)));
     }
 
     /* Write buffer stitches at a destination offset */
