@@ -872,6 +872,22 @@ function createPatternEditor(config) {
                row >= _selRect.r1 + dr && row <= _selRect.r2 + dr;
     }
 
+    function _updateSelectBarState() {
+        if (!_selectBar) return;
+        const hasSelection = !!_selRect;
+        _selectBar.querySelector('.select-flip-h').disabled = !hasSelection;
+        _selectBar.querySelector('.select-flip-v').disabled = !hasSelection;
+        _selectBar.querySelector('.select-rotate').disabled = !hasSelection;
+        const dims = _selectBar.querySelector('.select-dims');
+        if (hasSelection) {
+            const w = (_selBuffer ? _selBuffer.w : _selRect.c2 - _selRect.c1 + 1);
+            const h = (_selBuffer ? _selBuffer.h : _selRect.r2 - _selRect.r1 + 1);
+            dims.textContent = w + ' \u00d7 ' + h;
+        } else {
+            dims.textContent = '';
+        }
+    }
+
     function _captureSelectionBuffer(isCut) {
         if (!_selRect) return;
         const pd = getPatternData();
@@ -2128,6 +2144,18 @@ function createPatternEditor(config) {
             if (_confettiBar) _confettiBar.style.display = 'none';
         }
         if (tool !== 'text') _hideTextPanel();
+        if (tool === 'select') {
+            _selectBar.style.display = 'flex';
+            _selectBar.style.top = _subTop;
+            // Sync mode toggle to current _selectMode
+            _selectBar.querySelectorAll('.confetti-scope-btn').forEach(b =>
+                b.classList.toggle('active', b.dataset.mode === _selectMode));
+            _updateSelectBarState();
+        } else {
+            // Switching away from select: commit pending move, hide bar
+            if (activeTool === 'select') _commitMovedSelection();
+            if (_selectBar) _selectBar.style.display = 'none';
+        }
         if (!isStitch) { _bsStart = null; _bsPreviewEnd = null; }
         _hideEyedropTip();
         // Dim brush size group for tools that don't use it
