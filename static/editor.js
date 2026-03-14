@@ -2968,24 +2968,60 @@ function createPatternEditor(config) {
             }
             case 'select':
                 if (_pasteMode) {
-                    // Click to place paste
                     if (_pasteLoc) _commitPaste(_pasteLoc.col, _pasteLoc.row);
                     return;
                 }
+                if (_selectMode === 'wand') {
+                    // If clicking inside existing selection, start move (same as rect mode)
+                    if (_selRect && _isInsideSelection(col, row)) {
+                        _selMoving = true;
+                        _selMoveOrigin = { col, row };
+                        if (!_selBuffer) _captureSelectionBuffer();
+                        break;
+                    }
+                    // Wand click: BFS from clicked cell
+                    const pd = getPatternData();
+                    const idx = row * pd.grid_w + col;
+                    const color = pd.grid[idx];
+                    if (color === 'BG') {
+                        _commitMovedSelection();
+                        _selRect = null; _selBuffer = null; _wandMask = null;
+                        _stopMarchingAnts();
+                        _updateSelectBarState();
+                        _redrawOverlay();
+                        break;
+                    }
+                    _commitMovedSelection();
+                    _wandMask = null;
+                    const region = _bfsRegion(pd.grid, pd.grid_w, pd.grid_h, idx, color);
+                    let minC = Infinity, maxC = -1, minR = Infinity, maxR = -1;
+                    for (const i of region) {
+                        const c = i % pd.grid_w, r = (i - c) / pd.grid_w;
+                        if (c < minC) minC = c; if (c > maxC) maxC = c;
+                        if (r < minR) minR = r; if (r > maxR) maxR = r;
+                    }
+                    _selRect = { c1: minC, r1: minR, c2: maxC, r2: maxR };
+                    _wandMask = region;
+                    _captureSelectionBuffer();
+                    _startMarchingAnts();
+                    _updateSelectBarState();
+                    _redrawOverlay();
+                    break;
+                }
+                // Rect mode (existing behavior)
                 if (_selRect && _isInsideSelection(col, row)) {
-                    // Start moving selection
                     _selMoving = true;
                     _selMoveOrigin = { col, row };
                     if (!_selBuffer) {
                         _captureSelectionBuffer();
                     }
                 } else {
-                    // Commit any pending move, start new selection
                     _commitMovedSelection();
                     _selStart = { col, row };
                     _selDragging = true;
                     _selRect = null;
                     _selBuffer = null;
+                    _wandMask = null;
                     _selOffset = { dc: 0, dr: 0 };
                     _stopMarchingAnts();
                 }
