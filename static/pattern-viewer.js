@@ -626,6 +626,23 @@ function _updateCellProgressBar() {
         `${pct}% \u00b7 ${done.toLocaleString()} / ${total.toLocaleString()} stitches`;
     _updateETA();
     _updateLegendTotals();
+    _autoSyncProjectStatus(done, total);
+}
+
+let _lastAutoStatus = null; // track to avoid redundant PATCHes
+function _autoSyncProjectStatus(done, total) {
+    if (!PATTERN_SLUG || total === 0) return;
+    let newStatus;
+    if (done >= total) newStatus = 'completed';
+    else if (done > 0) newStatus = 'in_progress';
+    else newStatus = 'not_started';
+    if (newStatus === _lastAutoStatus) return;
+    _lastAutoStatus = newStatus;
+    fetch('/api/saved-patterns/' + PATTERN_SLUG, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_status: newStatus })
+    }).catch(() => {});
 }
 
 function _syncColorsFromCells() {
@@ -1915,6 +1932,8 @@ async function init() {
         }
         // Reconcile completedDmcs with effective stitched cells
         _syncColorsFromCells();
+        // Initialize auto-status tracking from server state
+        _lastAutoStatus = data.project_status || 'not_started';
 
         // Update header
         document.getElementById('pattern-title').textContent = data.name;

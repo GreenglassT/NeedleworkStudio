@@ -1213,7 +1213,14 @@
         function setProjectStatus(slug, selectEl) {
             const newStatus = selectEl.value;
             const p = allPatterns.find(x => x.slug === slug);
-            if (p) p.project_status = newStatus;
+            if (p) {
+                p.project_status = newStatus;
+                // When marking completed, update stitched_cell_count to total so
+                // progress stays correct if user later changes status back
+                if (newStatus === 'completed') {
+                    p.stitched_cell_count = (p.grid_w || 0) * (p.grid_h || 0);
+                }
+            }
 
             const card = selectEl.closest('.pattern-card');
             if (card) {
@@ -1796,7 +1803,12 @@
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 // Update local data
                 for (const p of allPatterns) {
-                    if (selectedIds.has(p.slug)) p.project_status = status;
+                    if (selectedIds.has(p.slug)) {
+                        p.project_status = status;
+                        if (status === 'completed') {
+                            p.stitched_cell_count = (p.grid_w || 0) * (p.grid_h || 0);
+                        }
+                    }
                 }
                 selectedIds.clear();
                 _updateSelectionUI();
