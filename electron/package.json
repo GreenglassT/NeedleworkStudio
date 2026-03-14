@@ -1,6 +1,6 @@
 {
   "name": "needlework-studio",
-  "version": "0.4.22",
+  "version": "0.4.23",
   "description": "Needlework Studio — cross-stitch pattern management and design tool",
   "main": "main.js",
   "scripts": {
