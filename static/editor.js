@@ -90,6 +90,9 @@ function createPatternEditor(config) {
     let _marchRAF      = null;
     let _pasteMode     = false;  // true when floating paste preview is active
     let _pasteLoc      = null;   // { col, row } cursor position for paste placement
+    let _selectMode    = 'rect';       // 'rect' or 'wand'
+    let _wandMask      = null;         // Set<index> for wand selections, null for rect
+    let _selectBar     = null;         // floating selection bar DOM element
     let _eyedropTip    = null;
 
     /* Stitch tool state */
@@ -3557,6 +3560,44 @@ function createPatternEditor(config) {
         });
         _confettiBar.addEventListener('mousedown', (e) => e.stopPropagation());
         _confettiBar.addEventListener('click', (e) => e.stopPropagation());
+
+        /* ── Selection bar (Rect/Wand toggle + transforms + dimensions) ── */
+        _selectBar = document.createElement('div');
+        _selectBar.className = 'ed-select-bar';
+        _selectBar.style.display = 'none';
+        _selectBar.innerHTML = `
+            <span class="confetti-scope"><button class="confetti-scope-btn active" data-mode="rect">Rect</button><button class="confetti-scope-btn" data-mode="wand">Wand</button></span>
+            <span style="width:1px;height:16px;background:var(--border-2)"></span>
+            <button class="select-flip-h" disabled>Flip Horizontal</button>
+            <button class="select-flip-v" disabled>Flip Vertical</button>
+            <button class="select-rotate" disabled>Rotate</button>
+            <span style="width:1px;height:16px;background:var(--border-2)"></span>
+            <span class="select-dims"></span>
+        `;
+        container.appendChild(_selectBar);
+
+        _selectBar.querySelectorAll('.confetti-scope-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _selectMode = btn.dataset.mode;
+                _selectBar.querySelectorAll('.confetti-scope-btn').forEach(b => b.classList.toggle('active', b === btn));
+            });
+        });
+
+        _selectBar.querySelector('.select-flip-h').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (_selRect) { _flipBufferH(); _updateSelectBarState(); }
+        });
+        _selectBar.querySelector('.select-flip-v').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (_selRect) { _flipBufferV(); _updateSelectBarState(); }
+        });
+        _selectBar.querySelector('.select-rotate').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (_selRect) { _rotateBufferCW(); _updateSelectBarState(); }
+        });
+        _selectBar.addEventListener('mousedown', (e) => e.stopPropagation());
+        _selectBar.addEventListener('click', (e) => e.stopPropagation());
 
         // Cache DOM refs
         _dirToggle = _toolbar.querySelector('.stitch-dir-toggle');
