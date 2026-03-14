@@ -5728,19 +5728,26 @@ def _migrate_patterns_brand():
 
 
 def _migrate_total_stitches():
-    """Add total_stitches column and backfill from legend_data."""
+    """Add total_stitches column and backfill from grid_data."""
     conn = _get_db_direct()
     cols = [r[1] for r in conn.execute("PRAGMA table_info(saved_patterns)").fetchall()]
     if 'total_stitches' not in cols:
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN total_stitches INTEGER NOT NULL DEFAULT 0")
-        cursor = conn.execute("SELECT id, grid_data FROM saved_patterns WHERE grid_data IS NOT NULL")
-        for row in cursor:
-            try:
-                grid = json.loads(row['grid_data'])
+    # Always backfill rows that still have total_stitches=0
+    cursor = conn.execute(
+        "SELECT id, grid_data FROM saved_patterns WHERE grid_data IS NOT NULL AND total_stitches = 0")
+    updated = 0
+    for row in cursor:
+        try:
+            grid = json.loads(row['grid_data'])
+            count = _count_stitchable_cells(grid)
+            if count > 0:
                 conn.execute("UPDATE saved_patterns SET total_stitches = ? WHERE id = ?",
-                             (_count_stitchable_cells(grid), row['id']))
-            except (json.JSONDecodeError, TypeError):
-                pass
+                             (count, row['id']))
+                updated += 1
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if updated:
         conn.commit()
     conn.close()
 

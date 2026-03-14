@@ -1136,7 +1136,7 @@
         }
 
         function _calcProgress(p, status) {
-            const total = p.total_stitches ?? (p.grid_w || 0) * (p.grid_h || 0);
+            const total = p.total_stitches || (p.grid_w || 0) * (p.grid_h || 0);
             const done = status === 'completed' ? total : (p.stitched_cell_count || 0);
             const pct = total ? Math.round(done / total * 100) : 0;
             const fillClass = done === 0 ? 'pf-zero' : (done >= total ? 'pf-done' : 'pf-partial');
