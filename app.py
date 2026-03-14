@@ -48,7 +48,7 @@ from argon2.exceptions import VerifyMismatchError
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
-from PIL import Image, ImageEnhance, ImageDraw
+from PIL import Image, ImageChops, ImageEnhance, ImageDraw
 Image.MAX_IMAGE_PIXELS = 50_000_000  # 50 MP cap — prevents decompression bombs
 
 # ── Upload / payload size limits ──────────────────────────────
@@ -2689,7 +2689,12 @@ def _get_user_prefs(user_id):
 
 def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither, contrast, brightness, palette_filter='standard', pixel_art=False, crop=None, crop_shape='rect', palette_brand='DMC'):
     """Convert image bytes to a cross-stitch pattern dict."""
-    img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+    img = Image.open(io.BytesIO(img_bytes))
+    # Extract alpha channel as a transparency mask before converting to RGB
+    alpha_mask = None
+    if img.mode in ('RGBA', 'LA', 'PA'):
+        alpha_mask = img.split()[-1]  # last channel is alpha (0=transparent, 255=opaque)
+    img = img.convert('RGB')
 
     if crop:
         cw, ch = img.size
@@ -2705,6 +2710,21 @@ def _generate_cross_stitch_pattern(img_bytes, grid_w, grid_h, num_colors, dither
         shape_mask = Image.new('L', img.size, 0)
         draw = ImageDraw.Draw(shape_mask)
         draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
+        white_bg = Image.new('RGB', img.size, (255, 255, 255))
+        white_bg.paste(img, mask=shape_mask)
+        img.close()
+        img = white_bg
+
+    if alpha_mask is not None:
+        # Resize alpha mask to match (crop may have changed img size)
+        if alpha_mask.size != img.size:
+            alpha_mask = alpha_mask.resize(img.size, Image.LANCZOS)
+        if shape_mask is None:
+            shape_mask = alpha_mask
+        else:
+            # Combine: pixel is inside only if both masks say so (AND)
+            shape_mask = ImageChops.multiply(shape_mask, alpha_mask)
+        # Fill transparent areas with white so they don't affect quantization
         white_bg = Image.new('RGB', img.size, (255, 255, 255))
         white_bg.paste(img, mask=shape_mask)
         img.close()
