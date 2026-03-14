@@ -520,6 +520,8 @@ def _ensure_saved_patterns_table():
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN fabric_color TEXT DEFAULT '#F5F0E8'")
     if 'notes' not in existing:
         conn.execute("ALTER TABLE saved_patterns ADD COLUMN notes TEXT DEFAULT ''")
+    if 'total_stitches' not in existing:
+        conn.execute("ALTER TABLE saved_patterns ADD COLUMN total_stitches INTEGER NOT NULL DEFAULT 0")
     # --- Pattern tags ---
     conn.execute("""CREATE TABLE IF NOT EXISTS pattern_tags (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1873,19 +1875,28 @@ def _insert_pattern_with_slug(cursor, **kwargs):
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, source_image_path, generation_settings,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, fabric_color,
+                        total_stitches)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, kwargs['user_id'], kwargs['name'], kwargs['grid_w'], kwargs['grid_h'],
                  kwargs['color_count'], kwargs['grid_json'], kwargs['legend_json'],
                  kwargs.get('thumbnail'), kwargs.get('source_image_path'),
                  kwargs.get('gen_settings_json'),
                  kwargs['ps_json'], kwargs['bs_json'], kwargs['kn_json'], kwargs['bd_json'],
-                 kwargs.get('brand', 'DMC'), kwargs.get('fabric_color', '#F5F0E8'))
+                 kwargs.get('brand', 'DMC'), kwargs.get('fabric_color', '#F5F0E8'),
+                 kwargs.get('total_stitches', 0))
             )
             return slug
         except sqlite3.IntegrityError:
             continue
     return None
+
+
+def _count_stitchable_cells(grid_data):
+    """Count non-BG cells in a grid list — matches pattern-viewer's _totalStitchableCount."""
+    if not isinstance(grid_data, list):
+        return 0
+    return sum(1 for c in grid_data if c != 'BG')
 
 
 def _serialize_stitch_layers(data):
@@ -4064,6 +4075,7 @@ def api_save_pattern():
         return jsonify({'error': 'Server storage is full. Please contact the administrator.'}), 507
 
     color_count = len(legend_data)
+    total_stitches = _count_stitchable_cells(grid_data)
 
     # Resolve source image path
     source_image_path = None
@@ -4103,7 +4115,7 @@ def api_save_pattern():
         thumbnail=thumbnail, source_image_path=source_image_path,
         gen_settings_json=gen_settings_json,
         ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand,
-        fabric_color=fabric_color)
+        fabric_color=fabric_color, total_stitches=total_stitches)
     if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
@@ -4158,6 +4170,7 @@ def api_import_pattern():
         return jsonify({'error': 'Server storage is full. Please contact the administrator.'}), 507
 
     color_count = len(legend_data)
+    total_stitches = _count_stitchable_cells(grid_data)
     thumbnail = data.get('thumbnail') if isinstance(data.get('thumbnail'), str) else None
     if thumbnail and not thumbnail.startswith('data:image/'):
         thumbnail = None  # silently drop non-image thumbnails
@@ -4182,7 +4195,7 @@ def api_import_pattern():
         color_count=color_count, grid_json=grid_json, legend_json=legend_json,
         thumbnail=thumbnail,
         ps_json=ps_json, bs_json=bs_json, kn_json=kn_json, bd_json=bd_json, brand=brand,
-        fabric_color=fabric_color)
+        fabric_color=fabric_color, total_stitches=total_stitches)
     if not slug:
         return jsonify({'error': 'Could not save pattern. Please try again.'}), 500
     conn.commit()
@@ -4199,7 +4212,7 @@ def api_list_saved_patterns():
     cursor = conn.cursor()
     cursor.execute(
         """SELECT slug, name, grid_w, grid_h, color_count, thumbnail, created_at, updated_at,
-                  project_status, progress_data, brand, notes
+                  project_status, progress_data, brand, notes, total_stitches
              FROM saved_patterns
             WHERE user_id = ?
             ORDER BY updated_at DESC""",
@@ -4540,14 +4553,15 @@ def api_update_saved_pattern(pattern_slug):
         if total_size > MAX_PATTERN_FULL:
             return jsonify({'error': 'Pattern data too large (max 4 MB)'}), 400
         color_count = len(legend_data)
+        total_stitches = _count_stitchable_cells(grid_data)
         thumbnail = data.get('thumbnail')
         if thumbnail and (not isinstance(thumbnail, str) or not thumbnail.startswith('data:image/')):
             thumbnail = None  # silently drop invalid thumbnails
 
         # Build dynamic UPDATE
         fields = ['grid_data=?', 'legend_data=?', 'color_count=?', 'grid_w=?', 'grid_h=?',
-                  'updated_at=CURRENT_TIMESTAMP']
-        params = [grid_json, legend_json, color_count, new_grid_w, new_grid_h]
+                  'total_stitches=?', 'updated_at=CURRENT_TIMESTAMP']
+        params = [grid_json, legend_json, color_count, new_grid_w, new_grid_h, total_stitches]
         if thumbnail:
             fields.append('thumbnail=?')
             params.append(thumbnail)
@@ -5244,7 +5258,7 @@ def api_sync_progress_changes():
 
     # Only progress_data and project_status for patterns updated since
     pattern_rows = conn.execute(
-        """SELECT slug, progress_data, project_status, updated_at
+        """SELECT slug, progress_data, project_status, updated_at, total_stitches
            FROM saved_patterns WHERE user_id = ? AND updated_at > ?
            ORDER BY updated_at""",
         (uid, since)).fetchall()
@@ -5260,6 +5274,7 @@ def api_sync_progress_changes():
             'progress_data': pd,
             'project_status': r['project_status'],
             'updated_at': r['updated_at'],
+            'total_stitches': r['total_stitches'],
         })
 
     # Thread statuses (same as full sync — these are always small)
@@ -5307,9 +5322,16 @@ def api_sync_progress_push():
         if project_status not in ('not_started', 'in_progress', 'completed'):
             project_status = 'not_started'
         new_ts = max(pushed_at, existing['updated_at'] or '')
-        cursor.execute(
-            "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
-            (progress_json, project_status, new_ts, existing['id'], uid))
+        # Accept total_stitches if pushed (desktop may have recomputed it)
+        total_stitches = p.get('total_stitches')
+        if isinstance(total_stitches, int) and total_stitches > 0:
+            cursor.execute(
+                "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=?, total_stitches=? WHERE id=? AND user_id=?",
+                (progress_json, project_status, new_ts, total_stitches, existing['id'], uid))
+        else:
+            cursor.execute(
+                "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
+                (progress_json, project_status, new_ts, existing['id'], uid))
         stats['patterns_updated'] += 1
 
     # Thread statuses (same handling as full push)
@@ -5379,17 +5401,19 @@ def api_sync_push():
                 ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
                 progress_json = _merge_progress_data(existing['progress_data'], p.get('progress_data'))
                 notes_val = str(p.get('notes', '') or '')[:2000]
+                total_stitches = _count_stitchable_cells(p.get('grid_data', []))
                 cursor.execute(
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,
                               grid_data=?, legend_data=?, thumbnail=?, updated_at=?,
                               progress_data=?, project_status=?,
-                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?, notes=?
+                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?, notes=?,
+                              total_stitches=?
                        WHERE id=? AND user_id=?""",
                     (p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'), p.get('color_count', 0),
                      grid_json, legend_json, p.get('thumbnail'),
                      pushed_at, progress_json, p.get('project_status', 'not_started'),
                      ps_json, bs_json, kn_json, bd_json, p.get('brand', 'DMC'), notes_val,
-                     existing['id'], uid))
+                     total_stitches, existing['id'], uid))
                 stats['patterns_updated'] += 1
             else:
                 stats['patterns_skipped'] += 1
@@ -5400,17 +5424,19 @@ def api_sync_push():
             ps_json, bs_json, kn_json, bd_json = _serialize_stitch_layers(p)
             progress_json = json.dumps(p['progress_data']) if isinstance(p.get('progress_data'), dict) else p.get('progress_data')
             notes_val = str(p.get('notes', '') or '')[:2000]
+            total_stitches = _count_stitchable_cells(p.get('grid_data', []))
             cursor.execute(
                 """INSERT INTO saved_patterns
                        (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                         thumbnail, created_at, updated_at, progress_data, project_status,
-                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes,
+                        total_stitches)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (slug, uid, p.get('name', 'Untitled'), p.get('grid_w'), p.get('grid_h'),
                  p.get('color_count', 0), grid_json, legend_json, p.get('thumbnail'),
                  p.get('created_at', pushed_at), pushed_at, progress_json,
                  p.get('project_status', 'not_started'), ps_json, bs_json, kn_json, bd_json,
-                 p.get('brand', 'DMC'), notes_val))
+                 p.get('brand', 'DMC'), notes_val, total_stitches))
             stats['patterns_created'] += 1
 
     # --- Pattern deletes ---
@@ -5701,6 +5727,24 @@ def _migrate_patterns_brand():
     conn.close()
 
 
+def _migrate_total_stitches():
+    """Add total_stitches column and backfill from legend_data."""
+    conn = _get_db_direct()
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(saved_patterns)").fetchall()]
+    if 'total_stitches' not in cols:
+        conn.execute("ALTER TABLE saved_patterns ADD COLUMN total_stitches INTEGER NOT NULL DEFAULT 0")
+        cursor = conn.execute("SELECT id, grid_data FROM saved_patterns WHERE grid_data IS NOT NULL")
+        for row in cursor:
+            try:
+                grid = json.loads(row['grid_data'])
+                conn.execute("UPDATE saved_patterns SET total_stitches = ? WHERE id = ?",
+                             (_count_stitchable_cells(grid), row['id']))
+            except (json.JSONDecodeError, TypeError):
+                pass
+        conn.commit()
+    conn.close()
+
+
 def _migrate_user_thread_status():
     """Create user_thread_status table for per-user inventory isolation.
 
@@ -5810,6 +5854,7 @@ if os.path.exists(DB_PATH):
         _ensure_threads_columns()
         _cleanup_orphaned_images()
         _migrate_patterns_brand()
+        _migrate_total_stitches()
         _migrate_user_thread_status()
         _migrate_sync_tables()
         _migrate_pattern_symbols()

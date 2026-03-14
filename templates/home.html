@@ -499,7 +499,7 @@
                         : `<span class="pattern-thumb-empty"><i class="ti ti-needle"></i></span>`;
                     const meta = `${p.grid_w} × ${p.grid_h} · ${p.color_count} color${p.color_count === 1 ? '' : 's'}`;
                     const st = p.project_status || 'not_started';
-                    const total = (p.grid_w || 0) * (p.grid_h || 0);
+                    const total = p.total_stitches ?? (p.grid_w || 0) * (p.grid_h || 0);
                     const done = st === 'completed' ? total : (p.stitched_cell_count || 0);
                     const pct = total ? Math.round(done / total * 100) : 0;
                     const fillCls = done === 0 ? 'ppf-zero' : (done >= total ? 'ppf-done' : 'ppf-partial');

@@ -13,6 +13,15 @@ from datetime import datetime, timezone
 
 
 _VALID_BRANDS = ('DMC', 'Anchor')
+
+
+def _count_stitchable_cells(grid_data):
+    """Count non-BG cells in a grid list — matches pattern-viewer's _totalStitchableCount."""
+    if not isinstance(grid_data, list):
+        return 0
+    return sum(1 for c in grid_data if c != 'BG')
+
+
 _VALID_STATUSES = ('dont_own', 'own', 'need')
 _VALID_PROJECT_STATUSES = ('not_started', 'in_progress', 'completed')
 _MAX_NAME_LEN = 120
@@ -159,9 +168,16 @@ class SyncEngine:
             if project_status not in _VALID_PROJECT_STATUSES:
                 project_status = 'not_started'
             new_ts = max(server_updated, local['updated_at'] or '')
-            cursor.execute(
-                "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
-                (progress_json, project_status, new_ts, local['id'], user_id))
+            # Update total_stitches if server provides it
+            total_stitches = p.get('total_stitches')
+            if isinstance(total_stitches, int) and total_stitches > 0:
+                cursor.execute(
+                    "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=?, total_stitches=? WHERE id=? AND user_id=?",
+                    (progress_json, project_status, new_ts, total_stitches, local['id'], user_id))
+            else:
+                cursor.execute(
+                    "UPDATE saved_patterns SET progress_data=?, project_status=?, updated_at=? WHERE id=? AND user_id=?",
+                    (progress_json, project_status, new_ts, local['id'], user_id))
             stats['patterns_updated'] += 1
 
         # Thread statuses (reuse same logic as full pull)
@@ -212,7 +228,7 @@ class SyncEngine:
         cursor = conn.cursor()
 
         pattern_rows = cursor.execute(
-            """SELECT slug, progress_data, project_status, updated_at
+            """SELECT slug, progress_data, project_status, updated_at, total_stitches
                FROM saved_patterns WHERE user_id = ? AND updated_at > ?""",
             (user_id, since)).fetchall()
         patterns = []
@@ -327,31 +343,35 @@ class SyncEngine:
                 thumbnail = None
 
             notes = str(p.get('notes', '') or '')[:2000]
+            total_stitches = _count_stitchable_cells(grid_data)
 
             if local:
                 cursor.execute(
                     """UPDATE saved_patterns SET name=?, grid_w=?, grid_h=?, color_count=?,
                               grid_data=?, legend_data=?, thumbnail=?, updated_at=?,
                               progress_data=?, project_status=?,
-                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?, notes=?
+                              part_stitches_data=?, backstitches_data=?, knots_data=?, beads_data=?, brand=?, notes=?,
+                              total_stitches=?
                        WHERE id=? AND user_id=?""",
                     (name, grid_w, grid_h, color_count,
                      grid_json, legend_json, thumbnail,
                      server_updated, progress_json, project_status,
                      ps_json, bs_json, kn_json, bd_json, brand, notes,
-                     local['id'], user_id))
+                     total_stitches, local['id'], user_id))
             else:
                 cursor.execute(
                     """INSERT INTO saved_patterns
                            (slug, user_id, name, grid_w, grid_h, color_count, grid_data, legend_data,
                             thumbnail, created_at, updated_at, progress_data, project_status,
-                            part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            part_stitches_data, backstitches_data, knots_data, beads_data, brand, notes,
+                            total_stitches)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (slug, user_id, name, grid_w, grid_h,
                      color_count, grid_json, legend_json, thumbnail,
                      _clamp_timestamp(p.get('created_at', server_updated), server_time),
                      server_updated, progress_json,
-                     project_status, ps_json, bs_json, kn_json, bd_json, brand, notes))
+                     project_status, ps_json, bs_json, kn_json, bd_json, brand, notes,
+                     total_stitches))
             stats['patterns_pulled'] += 1
 
         # --- Pull pattern deletes ---
