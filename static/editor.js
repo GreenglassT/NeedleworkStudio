@@ -63,6 +63,7 @@ function createPatternEditor(config) {
 
     /* Confetti cleanup state */
     let _confettiThreshold = 3;        // cluster size threshold (1-10)
+    let _confettiScope     = 'all';    // 'all' or 'selection'
     let _confettiMap       = null;     // Map<cellIndex, replacementColor> or null
     let _confettiBar       = null;     // floating options bar DOM element
     let _confettiDebounce  = null;     // debounce timer ID
@@ -171,13 +172,17 @@ function createPatternEditor(config) {
 .replace-target-row .rtr-badge{font-size:8px;color:var(--gold);white-space:nowrap}
 .ed-replace-apply-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border-2);background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--t)}
 .ed-replace-apply-btn:hover{background:var(--surface-2);color:var(--text)}
-.ed-confetti-bar{position:absolute;left:50%;transform:translateX(-50%);z-index:16;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:6px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,.4);white-space:nowrap;font-size:13px}
-.ed-confetti-bar label{display:flex;align-items:center;gap:6px;color:var(--text-muted)}
-.ed-confetti-bar input[type=range]{width:100px;accent-color:var(--gold)}
-.ed-confetti-bar .confetti-count{color:var(--text);font-weight:600;min-width:60px}
-.ed-confetti-bar button{padding:4px 12px;border:1px solid var(--border-2);border-radius:var(--r);cursor:pointer;font-size:13px}
+.ed-confetti-bar{position:absolute;left:50%;transform:translateX(-50%);z-index:16;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:6px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(0,0,0,.4);white-space:nowrap;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted)}
+.ed-confetti-bar label{display:flex;align-items:center;gap:6px}
+.ed-confetti-bar input[type=range]{width:80px;accent-color:var(--gold)}
+.ed-confetti-bar .confetti-count{color:var(--text);font-weight:600;min-width:40px}
+.ed-confetti-bar button{padding:4px 10px;border:1px solid var(--border-2);border-radius:var(--r);cursor:pointer;font-size:10px;font-family:inherit}
 .ed-confetti-bar .confetti-apply{background:var(--gold);color:#1a1208;border-color:var(--gold)}
 .ed-confetti-bar .confetti-cancel{background:var(--surface-2);color:var(--text)}
+.confetti-scope{display:flex;border:1px solid var(--border-2);border-radius:var(--r);overflow:hidden}
+.confetti-scope-btn{padding:3px 8px;border:none;border-right:1px solid var(--border-2);background:var(--surface-2);color:var(--text-muted);cursor:pointer;font-size:10px;font-family:inherit}
+.confetti-scope-btn:last-child{border-right:none}
+.confetti-scope-btn.active{background:var(--gold);color:#1a1208}
 .fabric-color-wrapper{position:relative;display:inline-flex;flex-direction:column;align-items:center;padding:5px 3px 3px;gap:2px}
 .fabric-swatch-btn{width:24px;height:24px;border-radius:4px;border:2px solid var(--border-2);cursor:pointer;transition:border-color var(--t);flex-shrink:0}
 .fabric-swatch-btn:hover{border-color:var(--text-muted)}
@@ -388,18 +393,22 @@ function createPatternEditor(config) {
      * @param {number} w - grid width
      * @param {number} h - grid height
      * @param {number} threshold - max component size to flag as confetti (1-10)
+     * @param {Object} [bounds] - optional {c1,r1,c2,r2} to restrict to selection
      * @returns {Map<number, string>} map of cellIndex → replacement DMC code
      */
-    function _findConfetti(grid, w, h, threshold) {
+    function _findConfetti(grid, w, h, threshold, bounds) {
         const n = w * h;
         const visited = new Uint8Array(n);       // 0 = unvisited
         const isConfetti = new Uint8Array(n);     // 1 = confetti cell
+        const inBounds = bounds
+            ? (i) => { const c = i % w, r = (i - c) / w; return c >= bounds.c1 && c <= bounds.c2 && r >= bounds.r1 && r <= bounds.r2; }
+            : () => true;
         const components = [];                    // array of arrays of cell indices
 
         // Pass 1: find connected components via flood-fill, flag small ones as confetti
         const queue = [];
         for (let i = 0; i < n; i++) {
-            if (visited[i] || grid[i] === 'BG') continue;
+            if (visited[i] || grid[i] === 'BG' || !inBounds(i)) continue;
             const color = grid[i];
             const component = [];
             queue.push(i);
@@ -415,7 +424,7 @@ function createPatternEditor(config) {
                 if (cy < h - 1) neighbors.push(ci + w);
                 if (cx > 0)     neighbors.push(ci - 1);
                 for (const ni of neighbors) {
-                    if (!visited[ni] && grid[ni] === color) {
+                    if (!visited[ni] && grid[ni] === color && inBounds(ni)) {
                         visited[ni] = 1;
                         queue.push(ni);
                     }
@@ -2004,7 +2013,12 @@ function createPatternEditor(config) {
     const _STITCH_MODES = { 'stitch-half': 'half', 'stitch-quarter': 'quarter', 'stitch-threequarter': 'three_quarter', 'stitch-petite': 'petite', 'stitch-back': 'backstitch', 'stitch-knot': 'knot', 'stitch-bead': 'bead' };
     function _recomputeConfetti() {
         const pd = getPatternData();
-        _confettiMap = _findConfetti(pd.grid, pd.grid_w, pd.grid_h, _confettiThreshold);
+        const bounds = _confettiScope === 'selection' ? _selRect : undefined;
+        if (_confettiScope === 'selection' && !_selRect) {
+            _confettiMap = new Map();
+        } else {
+            _confettiMap = _findConfetti(pd.grid, pd.grid_w, pd.grid_h, _confettiThreshold, bounds);
+        }
         // Update count label
         const countLabel = _confettiBar ? _confettiBar.querySelector('.confetti-count') : null;
         if (countLabel) {
@@ -2024,12 +2038,14 @@ function createPatternEditor(config) {
             pd.grid[idx] = color;
         }
         _clearConfetti();
+        _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
         _setTool('pan');
         _commitEdit();
     }
 
     function _cancelConfetti() {
         _clearConfetti();
+        _selRect = null; _selBuffer = null; _selOffset = { dc: 0, dr: 0 };
         _setTool('pan');
     }
 
@@ -2085,7 +2101,7 @@ function createPatternEditor(config) {
             if (tool === 'confetti') {
                 _confettiBar.style.display = 'flex';
                 _confettiBar.style.top = _subTop;
-                // Initialize: set slider value, recompute
+                // Initialize: set slider value
                 const slider = _confettiBar.querySelector('.confetti-slider');
                 if (slider) slider.value = _confettiThreshold;
                 const label = _confettiBar.querySelector('.confetti-thresh-label');
@@ -2905,6 +2921,13 @@ function createPatternEditor(config) {
                 }
                 break;
             case 'confetti':
+                if (_confettiScope === 'selection') {
+                    _selStart = { col, row };
+                    _selDragging = true;
+                    _selRect = null;
+                    _selBuffer = null;
+                    _selOffset = { dc: 0, dr: 0 };
+                }
                 break;
         }
     }
@@ -2983,6 +3006,18 @@ function createPatternEditor(config) {
             return;
         }
 
+        // Confetti selection drag
+        if (activeTool === 'confetti' && _confettiScope === 'selection' && _selDragging && hoverStitch) {
+            _selRect = {
+                c1: Math.min(_selStart.col, hoverStitch.col),
+                r1: Math.min(_selStart.row, hoverStitch.row),
+                c2: Math.max(_selStart.col, hoverStitch.col),
+                r2: Math.max(_selStart.row, hoverStitch.row),
+            };
+            _redrawOverlay();
+            return;
+        }
+
         // Selection drag / move / paste preview
         if (activeTool === 'select') {
             if (_pasteMode && hoverStitch) {
@@ -3029,6 +3064,21 @@ function createPatternEditor(config) {
     }
 
     function _handleToolMouseUp() {
+        // Confetti selection drag end
+        if (activeTool === 'confetti' && _confettiScope === 'selection' && _selDragging) {
+            _selDragging = false;
+            if (_selRect && (_selRect.c1 !== _selRect.c2 || _selRect.r1 !== _selRect.r2)) {
+                _recomputeConfetti();
+            } else {
+                _selRect = null;
+                _confettiMap = new Map();
+                const countLabel = _confettiBar ? _confettiBar.querySelector('.confetti-count') : null;
+                if (countLabel) countLabel.textContent = '0 cells';
+            }
+            _redrawOverlay();
+            return;
+        }
+
         // Rectangle / Ellipse commit
         const _shapeCommit = activeTool === 'rect' ? { start: _rectStart, preview: _rectPreview, getCells: _getRectCells }
                            : activeTool === 'ellipse' ? { start: _ellipseStart, preview: _ellipsePreview, getCells: _getEllipseCells }
@@ -3100,6 +3150,8 @@ function createPatternEditor(config) {
         container.classList.remove('edit-mode', 'tool-eraser', 'tool-eyedropper', 'tool-pan', 'tool-select', 'space-pan');
         if (_toolbar) _toolbar.style.display = 'none';
         if (_replacePanel) _replacePanel.style.display = 'none';
+        if (_confettiBar) _confettiBar.style.display = 'none';
+        _clearConfetti();
         _closeAddColorDropdown();
         _closeReplaceDropdown();
         document.querySelectorAll('.legend-row.active, .key-row.active').forEach(r => r.classList.remove('active'));
@@ -3316,6 +3368,7 @@ function createPatternEditor(config) {
         _clearFillPreview();
         _clearConfetti();
         _confettiThreshold = 3;
+        _confettiScope = 'all';
         if (_confettiBar) _confettiBar.style.display = 'none';
         _bsStart = null;
         _bsPreviewEnd = null;
@@ -3457,6 +3510,7 @@ function createPatternEditor(config) {
         _confettiBar.className = 'ed-confetti-bar';
         _confettiBar.style.display = 'none';
         _confettiBar.innerHTML = `
+            <span class="confetti-scope"><button class="confetti-scope-btn active" data-scope="all">Whole Pattern</button><button class="confetti-scope-btn" data-scope="selection">Selection</button></span>
             <label>Max cluster: <input type="range" class="confetti-slider" min="1" max="10" value="3"><span class="confetti-thresh-label">3</span></label>
             <span class="confetti-count">0 cells</span>
             <button class="confetti-apply">Apply</button>
@@ -3479,6 +3533,15 @@ function createPatternEditor(config) {
             }, 100);
         });
         _confettiSlider.addEventListener('keydown', (e) => e.stopPropagation());
+
+        _confettiBar.querySelectorAll('.confetti-scope-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _confettiScope = btn.dataset.scope;
+                _confettiBar.querySelectorAll('.confetti-scope-btn').forEach(b => b.classList.toggle('active', b === btn));
+                _recomputeConfetti();
+            });
+        });
 
         _confettiBar.querySelector('.confetti-apply').addEventListener('click', (e) => {
             e.stopPropagation();
