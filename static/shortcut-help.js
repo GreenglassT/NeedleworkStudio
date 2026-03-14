@@ -30,6 +30,7 @@
         { key: 'X',          desc: 'Text tool' },
         { key: 'R',          desc: 'Color replace' },
         { key: 'S',          desc: 'Selection' },
+        { key: 'C',          desc: 'Confetti cleanup' },
         { key: 'W',          desc: 'Full stitch (alias for P)' },
         { key: 'M',          desc: 'Cycle mirror mode' },
         { key: 'Space',      desc: 'Temporary pan (hold)' },
