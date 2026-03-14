@@ -3258,6 +3258,7 @@ function createPatternEditor(config) {
         if (_toolbar) _toolbar.style.display = 'none';
         if (_replacePanel) _replacePanel.style.display = 'none';
         if (_confettiBar) _confettiBar.style.display = 'none';
+        if (_selectBar) _selectBar.style.display = 'none';
         _clearConfetti();
         _closeAddColorDropdown();
         _closeReplaceDropdown();
@@ -3479,6 +3480,9 @@ function createPatternEditor(config) {
         _confettiThreshold = 3;
         _confettiScope = 'all';
         if (_confettiBar) _confettiBar.style.display = 'none';
+        _selectMode = 'rect';
+        _wandMask = null;
+        if (_selectBar) _selectBar.style.display = 'none';
         _bsStart = null;
         _bsPreviewEnd = null;
         _hoverIntersection = null;
@@ -3809,6 +3813,7 @@ function createPatternEditor(config) {
         if (_eyedropTip)    { _eyedropTip.remove(); _eyedropTip = null; }
         if (_textPanel)     { _textPanel.remove(); _textPanel = null; _textInput = null; }
         if (_confettiBar)   { _confettiBar.remove(); _confettiBar = null; }
+        if (_selectBar) { _selectBar.remove(); _selectBar = null; }
         _uiInjected = false;
         _toolbar = _replacePanel = null;
         _dirToggle = null;
@@ -3868,6 +3873,6 @@ function createPatternEditor(config) {
         setBrand(b) { _brand = b; allDmcThreads = null; },
         injectUI,
         removeUI,
-        isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-confetti-bar,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls,.fabric-dropdown'),
+        isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-confetti-bar,.ed-select-bar,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls,.fabric-dropdown'),
     };
 }
