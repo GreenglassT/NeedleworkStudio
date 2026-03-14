@@ -673,11 +673,22 @@ function _applyCellDragRect() {
     const maxC = Math.max(_cellDragStart.col, _cellDragEnd.col);
     const w = patternData.grid_w;
     const grid = patternData.grid;
+    let toggle = _cellDragToggle;
+    // If drag started on a BG cell, decide direction from first non-BG cell
+    if (toggle === null) {
+        for (let r = minR; r <= maxR && toggle === null; r++) {
+            for (let c = minC; c <= maxC && toggle === null; c++) {
+                const idx = r * w + c;
+                if (grid[idx] !== 'BG') toggle = !stitchedCells.has(idx);
+            }
+        }
+        if (toggle === null) return; // entire selection is BG
+    }
     for (let r = minR; r <= maxR; r++) {
         for (let c = minC; c <= maxC; c++) {
             const idx = r * w + c;
             if (grid[idx] === 'BG') continue;
-            if (_cellDragToggle) { stitchedCells.add(idx); clearedCells.delete(idx); }
+            if (toggle) { stitchedCells.add(idx); clearedCells.delete(idx); }
             else { stitchedCells.delete(idx); clearedCells.add(idx); }
         }
     }
@@ -710,7 +721,8 @@ function _startCellMark(clientX, clientY) {
     if (!cell) return false;
     _cellDragActive = true;
     const idx = cell.row * patternData.grid_w + cell.col;
-    _cellDragToggle = !stitchedCells.has(idx);
+    // If starting on a BG cell, defer toggle direction to first non-BG cell in the rect
+    _cellDragToggle = patternData.grid[idx] === 'BG' ? null : !stitchedCells.has(idx);
     _cellDragStart = cell;
     _cellDragEnd = cell;
     // Don't apply here — _applyCellDragRect handles the write on mouseup
