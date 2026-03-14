@@ -93,6 +93,10 @@ function createPatternEditor(config) {
     let _selectMode    = 'rect';       // 'rect' or 'wand'
     let _wandMask      = null;         // Set<index> for wand selections, null for rect
     let _selectBar     = null;         // floating selection bar DOM element
+    let _selFlipHBtn   = null;         // cached DOM refs for select bar
+    let _selFlipVBtn   = null;
+    let _selRotateBtn  = null;
+    let _selDimsSpan   = null;
     let _eyedropTip    = null;
 
     /* Stitch tool state */
@@ -875,16 +879,15 @@ function createPatternEditor(config) {
     function _updateSelectBarState() {
         if (!_selectBar) return;
         const hasSelection = !!_selRect;
-        _selectBar.querySelector('.select-flip-h').disabled = !hasSelection;
-        _selectBar.querySelector('.select-flip-v').disabled = !hasSelection;
-        _selectBar.querySelector('.select-rotate').disabled = !hasSelection;
-        const dims = _selectBar.querySelector('.select-dims');
+        _selFlipHBtn.disabled = !hasSelection;
+        _selFlipVBtn.disabled = !hasSelection;
+        _selRotateBtn.disabled = !hasSelection;
         if (hasSelection) {
             const w = (_selBuffer ? _selBuffer.w : _selRect.c2 - _selRect.c1 + 1);
             const h = (_selBuffer ? _selBuffer.h : _selRect.r2 - _selRect.r1 + 1);
-            dims.textContent = w + ' \u00d7 ' + h;
+            _selDimsSpan.textContent = w + ' \u00d7 ' + h;
         } else {
-            dims.textContent = '';
+            _selDimsSpan.textContent = '';
         }
     }
 
@@ -3681,6 +3684,10 @@ function createPatternEditor(config) {
             <span class="select-dims"></span>
         `;
         container.appendChild(_selectBar);
+        _selFlipHBtn  = _selectBar.querySelector('.select-flip-h');
+        _selFlipVBtn  = _selectBar.querySelector('.select-flip-v');
+        _selRotateBtn = _selectBar.querySelector('.select-rotate');
+        _selDimsSpan  = _selectBar.querySelector('.select-dims');
 
         _selectBar.querySelectorAll('.confetti-scope-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -3690,15 +3697,15 @@ function createPatternEditor(config) {
             });
         });
 
-        _selectBar.querySelector('.select-flip-h').addEventListener('click', (e) => {
+        _selFlipHBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (_selRect) { _flipBufferH(); _updateSelectBarState(); }
         });
-        _selectBar.querySelector('.select-flip-v').addEventListener('click', (e) => {
+        _selFlipVBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (_selRect) { _flipBufferV(); _updateSelectBarState(); }
         });
-        _selectBar.querySelector('.select-rotate').addEventListener('click', (e) => {
+        _selRotateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (_selRect) { _rotateBufferCW(); _updateSelectBarState(); }
         });
