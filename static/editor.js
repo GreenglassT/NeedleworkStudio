@@ -1049,10 +1049,12 @@ function createPatternEditor(config) {
         _pasteBufferAt(pd, _selBuffer, _selRect.c1 + _selOffset.dc, _selRect.r1 + _selOffset.dr);
         _selBuffer = null;
         _selRect = null;
+        _wandMask = null;
         _selOffset = { dc: 0, dr: 0 };
         _commitEdit();
         _stopMarchingAnts();
         _redrawOverlay();
+        _updateSelectBarState();
     }
 
     /* ── Paste mode ── */
@@ -1061,7 +1063,7 @@ function createPatternEditor(config) {
         _pasteMode = true;
         _pasteLoc = null;
         // Clear selection rect so marching ants stop — buffer is preserved
-        _selRect = null;
+        _selRect = null; _wandMask = null;
         _selOffset = { dc: 0, dr: 0 };
         _stopMarchingAnts();
         _redrawOverlay();
@@ -3140,6 +3142,7 @@ function createPatternEditor(config) {
                     _selRect = null;
                 }
                 _redrawOverlay();
+                _updateSelectBarState();
             }
             if (_selMoving) {
                 _selMoving = false;
@@ -3284,10 +3287,11 @@ function createPatternEditor(config) {
             }
             if (activeTool === 'select' && _selRect) {
                 _commitMovedSelection();
-                _selRect = null;
+                _selRect = null; _wandMask = null;
                 _selOffset = { dc: 0, dr: 0 };
                 _stopMarchingAnts();
                 _redrawOverlay();
+                _updateSelectBarState();
                 return true;
             }
         }
@@ -3299,11 +3303,12 @@ function createPatternEditor(config) {
                 e.preventDefault();
                 pushUndo();
                 _clearSelectionSource();
-                _selRect = null; _selBuffer = null;
+                _selRect = null; _selBuffer = null; _wandMask = null;
                 _selOffset = { dc: 0, dr: 0 };
                 _stopMarchingAnts();
                 _commitEdit();
                 _redrawOverlay();
+                _updateSelectBarState();
                 return true;
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
@@ -3321,9 +3326,9 @@ function createPatternEditor(config) {
             // Rotate / flip selection (R/H/V) — only bare keys, not Ctrl combos
             if (!e.ctrlKey && !e.metaKey) {
                 const sk = e.key.toLowerCase();
-                if (sk === 'r') { e.preventDefault(); _rotateBufferCW(); return true; }
-                if (sk === 'h') { e.preventDefault(); _flipBufferH(); return true; }
-                if (sk === 'v') { e.preventDefault(); _flipBufferV(); return true; }
+                if (sk === 'r') { e.preventDefault(); _rotateBufferCW(); _updateSelectBarState(); return true; }
+                if (sk === 'h') { e.preventDefault(); _flipBufferH(); _updateSelectBarState(); return true; }
+                if (sk === 'v') { e.preventDefault(); _flipBufferV(); _updateSelectBarState(); return true; }
             }
         }
         if (e.key === ' ') {
