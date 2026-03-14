@@ -132,30 +132,120 @@ function _drawMatteFiber(ctx, x0, y0, x1, y1, hex, lw, cp) {
     }
 }
 
+/**
+ * Improved fiber renderer — matte asymmetric gradient with visible twist texture.
+ * Drop-in replacement for _drawMatteFiber with more realistic thread appearance.
+ * To revert: replace all _drawCylinderFiber calls with _drawMatteFiber and
+ * restore the diamond fabric gap in drawStitch.
+ */
+function _drawCylinderFiber(ctx, x0, y0, x1, y1, hex, lw, cp) {
+    if (cp < 8) {
+        ctx.strokeStyle = hex; ctx.lineWidth = lw; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        return;
+    }
+
+    var dx = x1 - x0, dy = y1 - y0;
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var tx = dx / len, ty = dy / len;
+    var nx = -dy / len, ny = dx / len;
+    var hw = lw * 0.5;
+    var mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    var lightDot = nx * (-0.707) + ny * (-0.707);
+
+    ctx.save();
+    ctx.lineCap = 'round';
+
+    // 1. Dark outline stroke
+    ctx.strokeStyle = darkenHex(hex, 0.50);
+    ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+
+    // 2. Main body — matte asymmetric gradient
+    var g = ctx.createLinearGradient(
+        mx + nx * hw, my + ny * hw,
+        mx - nx * hw, my - ny * hw
+    );
+    if (lightDot >= 0) {
+        g.addColorStop(0,    lightenHex(hex, 0.12));
+        g.addColorStop(0.15, lightenHex(hex, 0.04));
+        g.addColorStop(0.35, hex);
+        g.addColorStop(0.55, darkenHex(hex, 0.90));
+        g.addColorStop(0.75, darkenHex(hex, 0.75));
+        g.addColorStop(1,    darkenHex(hex, 0.60));
+    } else {
+        g.addColorStop(0,    darkenHex(hex, 0.60));
+        g.addColorStop(0.25, darkenHex(hex, 0.75));
+        g.addColorStop(0.45, darkenHex(hex, 0.90));
+        g.addColorStop(0.65, hex);
+        g.addColorStop(0.85, lightenHex(hex, 0.04));
+        g.addColorStop(1,    lightenHex(hex, 0.12));
+    }
+    ctx.strokeStyle = g;
+    ctx.lineWidth = lw * 0.90;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+
+    // 3. Fiber twist bands
+    var detail = Math.min(1, Math.max(0, (cp - 10) / 16));
+    if (detail > 0 && len > lw * 0.5) {
+        var bandPitch = Math.max(1.8, cp * 0.07);
+        var bandCount = Math.max(4, Math.floor(len / bandPitch));
+        var twistAngle = 0.32;
+        var bx = nx * Math.cos(twistAngle) + tx * Math.sin(twistAngle);
+        var by = ny * Math.cos(twistAngle) + ty * Math.sin(twistAngle);
+        var bandHW = hw * 0.80;
+
+        ctx.lineCap = 'butt';
+        for (var i = 0; i <= bandCount; i++) {
+            var t = i / bandCount;
+            var px = x0 + dx * t, py = y0 + dy * t;
+            var phase = i % 4;
+            var color, alpha;
+            if (phase === 0) {
+                color = '255,255,255'; alpha = detail * 0.14;
+            } else if (phase === 1) {
+                color = '0,0,0'; alpha = detail * 0.20;
+            } else if (phase === 2) {
+                color = '255,255,255'; alpha = detail * 0.06;
+            } else {
+                color = '0,0,0'; alpha = detail * 0.10;
+            }
+            ctx.strokeStyle = 'rgba(' + color + ',' + alpha + ')';
+            ctx.lineWidth = bandPitch * 0.35;
+            ctx.beginPath();
+            ctx.moveTo(px - bx * bandHW, py - by * bandHW);
+            ctx.lineTo(px + bx * bandHW, py + by * bandHW);
+            ctx.stroke();
+        }
+        ctx.lineCap = 'round';
+    }
+
+    ctx.restore();
+}
+
 function drawStitch(ctx, x, y, cp, hex, fabColor) {
-    const lw = cp * 0.50;
+    const lw = cp * 0.52;
     const inset = lw / 2;
     ctx.lineCap = 'round';
 
     // / thread (bottom-left to top-right, underneath)
-    _drawMatteFiber(ctx, x + inset, y + cp - inset, x + cp - inset, y + inset, hex, lw, cp);
+    _drawCylinderFiber(ctx, x + inset, y + cp - inset, x + cp - inset, y + inset, hex, lw, cp);
 
-    // Crossing gap — mask center of / with fabric (skip at tiny sizes)
-    if (cp >= 8) {
+    // Crossing shadow (replaces old diamond fabric gap)
+    if (cp >= 10) {
         const cx = x + cp / 2, cy = y + cp / 2;
-        const gap = lw * 0.45;
-        ctx.fillStyle = fabColor;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - gap);
-        ctx.lineTo(cx + gap, cy);
-        ctx.lineTo(cx, cy + gap);
-        ctx.lineTo(cx - gap, cy);
-        ctx.closePath();
-        ctx.fill();
+        const detail = Math.min(1, Math.max(0, (cp - 10) / 20));
+        const sr = lw * 0.38;
+        const sg = ctx.createRadialGradient(cx, cy, 0, cx, cy, sr);
+        sg.addColorStop(0, 'rgba(0,0,0,' + (0.25 + detail * 0.12) + ')');
+        sg.addColorStop(0.4, 'rgba(0,0,0,0.08)');
+        sg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = sg;
+        ctx.fillRect(cx - sr - 1, cy - sr - 1, sr * 2 + 2, sr * 2 + 2);
     }
 
     // \ thread (top-left to bottom-right, on top)
-    _drawMatteFiber(ctx, x + inset, y + inset, x + cp - inset, y + cp - inset, hex, lw, cp);
+    _drawCylinderFiber(ctx, x + inset, y + inset, x + cp - inset, y + cp - inset, hex, lw, cp);
 }
 
 function drawStitchFabric(ctx, W, H, cp, gridW, gridH, fabColor, ox, oy) {

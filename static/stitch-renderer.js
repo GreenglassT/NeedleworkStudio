@@ -65,7 +65,7 @@ function drawHalfStitch(ctx, x, y, cp, hex, direction) {
     ctx.save();
     ctx.lineCap = 'round';
     if (cp >= 6) {
-        _drawMatteFiber(ctx, x0, y0, x1, y1, hex, lw, cp);
+        _drawCylinderFiber(ctx, x0, y0, x1, y1, hex, lw, cp);
     } else {
         ctx.strokeStyle = hex;
         ctx.lineWidth = lw;
@@ -94,7 +94,7 @@ function drawQuarterStitch(ctx, x, y, cp, hex, corner) {
     ctx.save();
     ctx.lineCap = 'round';
     if (cp >= 6) {
-        _drawMatteFiber(ctx, p.x0, p.y0, mx, my, hex, lw, cp);
+        _drawCylinderFiber(ctx, p.x0, p.y0, mx, my, hex, lw, cp);
     } else {
         ctx.strokeStyle = hex;
         ctx.lineWidth = lw;
@@ -120,8 +120,8 @@ function drawPetiteStitch(ctx, x, y, cp, hex, corner) {
     ctx.save();
     ctx.lineCap = 'round';
     if (cp >= 12) {
-        _drawMatteFiber(ctx, x0, y1, x1, y0, hex, lw, cp); // fwd diagonal
-        _drawMatteFiber(ctx, x0, y0, x1, y1, hex, lw, cp); // bwd diagonal (on top)
+        _drawCylinderFiber(ctx, x0, y1, x1, y0, hex, lw, cp); // fwd diagonal
+        _drawCylinderFiber(ctx, x0, y0, x1, y1, hex, lw, cp); // bwd diagonal (on top)
     } else {
         ctx.strokeStyle = hex;
         ctx.lineWidth = lw;
@@ -165,7 +165,7 @@ function drawBackstitch(ctx, ix1, iy1, ix2, iy2, hex, cp) {
     ctx.save();
     ctx.lineCap = 'round';
     if (cp >= 6) {
-        _drawMatteFiber(ctx, ix1, iy1, ix2, iy2, hex, lw, cp);
+        _drawCylinderFiber(ctx, ix1, iy1, ix2, iy2, hex, lw, cp);
     } else {
         ctx.strokeStyle = hex;
         ctx.lineWidth = lw;
@@ -203,42 +203,24 @@ function drawChartBackstitch(ctx, ix1, iy1, ix2, iy2, hex, cp, dashIdx) {
  * @param {number} ix,iy — pixel coords of the intersection
  */
 function drawFrenchKnot(ctx, ix, iy, hex, cp) {
-    const r = Math.max(1.5, cp * 0.22);
+    const r = Math.max(1.5, cp * 0.24);
     ctx.save();
     if (cp >= 8) {
-        // Same t-based scaling as _drawMatteFiber for visual consistency
-        const t = Math.min(1, Math.max(0, (cp - 8) / 17));
-        const outlineDk = 0.72 - t * 0.22;
-        const edgeFactor = 0.82 - t * 0.14;
-
+        // Drop shadow
+        ctx.beginPath(); ctx.arc(ix + 0.5, iy + 0.5, r * 1.05, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fill();
         // Dark outline ring
-        ctx.beginPath();
-        ctx.arc(ix, iy, r, 0, Math.PI * 2);
-        ctx.fillStyle = darkenHex(hex, outlineDk);
-        ctx.fill();
-
-        // Matte radial gradient fill (slightly smaller to reveal outline)
-        const rg = ctx.createRadialGradient(ix, iy, 0, ix, iy, r * 0.85);
-        rg.addColorStop(0, hex);
-        rg.addColorStop(0.55, hex);
-        rg.addColorStop(1, darkenHex(hex, edgeFactor));
-        ctx.beginPath();
-        ctx.arc(ix, iy, r * 0.85, 0, Math.PI * 2);
-        ctx.fillStyle = rg;
-        ctx.fill();
-
-        // Twist texture: two thin arcs at larger sizes
-        if (cp >= 15) {
-            ctx.lineWidth = Math.max(0.5, cp * 0.025);
-            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-            ctx.beginPath();
-            ctx.arc(ix, iy, r * 0.55, -0.8, 0.8);
-            ctx.stroke();
-            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-            ctx.beginPath();
-            ctx.arc(ix, iy, r * 0.55, Math.PI - 0.8, Math.PI + 0.8);
-            ctx.stroke();
-        }
+        ctx.beginPath(); ctx.arc(ix, iy, r, 0, Math.PI * 2);
+        ctx.fillStyle = darkenHex(hex, 0.50); ctx.fill();
+        // Matte body with subtle off-center gradient — matches thread base color
+        const rg = ctx.createRadialGradient(ix - r * 0.25, iy - r * 0.25, 0, ix, iy, r);
+        rg.addColorStop(0, lightenHex(hex, 0.15));
+        rg.addColorStop(0.35, hex);
+        rg.addColorStop(0.75, darkenHex(hex, 0.82));
+        rg.addColorStop(1, darkenHex(hex, 0.65));
+        ctx.beginPath(); ctx.arc(ix, iy, r * 0.90, 0, Math.PI * 2);
+        ctx.fillStyle = rg; ctx.fill();
+        // No specular dot — matte finish
     } else {
         ctx.beginPath();
         ctx.arc(ix, iy, r, 0, Math.PI * 2);
@@ -288,22 +270,22 @@ function drawBead(ctx, cx, cy, hex, cp) {
         // Dark outline
         ctx.beginPath();
         ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2);
-        ctx.fillStyle = darkenHex(hex, 0.65);
+        ctx.fillStyle = darkenHex(hex, 0.50);
         ctx.fill();
-        // Glossy gradient fill
+        // Subtle gradient fill — reads as base color
         const rg = ctx.createRadialGradient(cx - rX * 0.2, cy - rY * 0.2, 0, cx, cy, rY);
-        rg.addColorStop(0, lightenHex(hex, 1.3));
-        rg.addColorStop(0.5, hex);
-        rg.addColorStop(1, darkenHex(hex, 0.7));
+        rg.addColorStop(0, lightenHex(hex, 0.18));
+        rg.addColorStop(0.40, hex);
+        rg.addColorStop(1, darkenHex(hex, 0.65));
         ctx.beginPath();
         ctx.ellipse(cx, cy, rX * 0.88, rY * 0.88, 0, 0, Math.PI * 2);
         ctx.fillStyle = rg;
         ctx.fill();
-        // Highlight spot
+        // Small highlight spot
         if (cp >= 15) {
             ctx.beginPath();
-            ctx.ellipse(cx - rX * 0.15, cy - rY * 0.25, rX * 0.25, rY * 0.15, -0.3, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.ellipse(cx - rX * 0.15, cy - rY * 0.25, rX * 0.20, rY * 0.12, -0.3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
             ctx.fill();
         }
     } else {
