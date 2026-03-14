@@ -893,29 +893,46 @@ function createPatternEditor(config) {
         const pd = getPatternData();
         const { c1, r1, c2, r2 } = _selRect;
         const w = c2 - c1 + 1, h = r2 - r1 + 1;
-        // Grid cells
+        // Grid cells — mask non-wand cells to 'BG'
         const data = new Array(w * h);
         for (let r = 0; r < h; r++)
-            for (let c = 0; c < w; c++)
-                data[r * w + c] = pd.grid[(r1 + r) * pd.grid_w + (c1 + c)];
-        // Part stitches (cell coords) — store relative to selection origin
+            for (let c = 0; c < w; c++) {
+                const gi = (r1 + r) * pd.grid_w + (c1 + c);
+                if (_wandMask && !_wandMask.has(gi)) {
+                    data[r * w + c] = 'BG';
+                } else {
+                    data[r * w + c] = pd.grid[gi];
+                }
+            }
+        // Helper: check if a cell-coord stitch is in wand mask
+        const _cellInWand = _wandMask
+            ? (x, y) => _wandMask.has((r1 + y) * pd.grid_w + (c1 + x))
+            : () => true;
+        // Helper: check if an intersection-coord stitch is in wand mask (use floor to get containing cell)
+        const _intInWand = _wandMask
+            ? (x, y) => {
+                const cx = Math.min(Math.floor(c1 + x), c2), cy = Math.min(Math.floor(r1 + y), r2);
+                return _wandMask.has(cy * pd.grid_w + cx);
+            }
+            : () => true;
+        // Part stitches (cell coords)
         const part_stitches = (pd.part_stitches || [])
-            .filter(s => _cellInRect(s.x, s.y, c1, r1, c2, r2))
+            .filter(s => _cellInRect(s.x, s.y, c1, r1, c2, r2) && _cellInWand(s.x - c1, s.y - r1))
             .map(s => ({ x: s.x - c1, y: s.y - r1, type: s.type, dmc: s.dmc, dir: s.dir }));
-        // Backstitches (intersection coords) — both ends must be inside
+        // Backstitches (intersection coords) — both ends must be inside and in wand
         const backstitches = (pd.backstitches || [])
             .filter(bs => _intersectionInRect(bs.x1, bs.y1, c1, r1, c2, r2) &&
-                          _intersectionInRect(bs.x2, bs.y2, c1, r1, c2, r2))
+                          _intersectionInRect(bs.x2, bs.y2, c1, r1, c2, r2) &&
+                          _intInWand(bs.x1 - c1, bs.y1 - r1) && _intInWand(bs.x2 - c1, bs.y2 - r1))
             .map(bs => ({ x1: bs.x1 - c1, y1: bs.y1 - r1, x2: bs.x2 - c1, y2: bs.y2 - r1, dmc: bs.dmc }));
         // Knots (intersection coords)
         const knots = (pd.knots || [])
-            .filter(k => _intersectionInRect(k.x, k.y, c1, r1, c2, r2))
+            .filter(k => _intersectionInRect(k.x, k.y, c1, r1, c2, r2) && _intInWand(k.x - c1, k.y - r1))
             .map(k => ({ x: k.x - c1, y: k.y - r1, dmc: k.dmc }));
         // Beads (cell coords)
         const beads = (pd.beads || [])
-            .filter(b => _cellInRect(b.x, b.y, c1, r1, c2, r2))
+            .filter(b => _cellInRect(b.x, b.y, c1, r1, c2, r2) && _cellInWand(b.x - c1, b.y - r1))
             .map(b => ({ x: b.x - c1, y: b.y - r1, dmc: b.dmc }));
-        // Store cut source bounds so _commitPaste can clear them after _selRect is nulled
         _selBuffer = { w, h, data, part_stitches, backstitches, knots, beads,
                        isCut: !!isCut, cutSource: isCut ? { c1, r1, c2, r2 } : null };
     }
