@@ -1213,47 +1213,48 @@
         function setProjectStatus(slug, selectEl) {
             const newStatus = selectEl.value;
             const p = allPatterns.find(x => x.slug === slug);
-            if (p) {
-                p.project_status = newStatus;
-                // When marking completed, update stitched_cell_count to total so
-                // progress stays correct if user later changes status back
-                if (newStatus === 'completed') {
-                    p.stitched_cell_count = (p.grid_w || 0) * (p.grid_h || 0);
-                }
-            }
+            if (p) p.project_status = newStatus;
 
             const card = selectEl.closest('.pattern-card');
-            if (card) {
-                card.dataset.status = newStatus;
-                selectEl.className = `status-select ps-${newStatus}`;
-
-                const badge = card.querySelector('.progress-badge');
-                if (badge && p) {
-                    const { done, pct, fillClass, textClass } = _calcProgress(p, newStatus);
-                    const fill = badge.querySelector('.progress-fill');
-                    fill.className = `progress-fill ${fillClass}`;
-                    fill.style.width = pct + '%';
-                    const txt = badge.querySelector('.progress-text');
-                    txt.className = `progress-text ${textClass}`;
-                    txt.textContent = `${pct}%`;
-                }
-
-                if (activeFilter && newStatus !== activeFilter) {
-                    card.style.opacity = '0';
-                    card.style.transition = 'opacity 200ms';
-                }
-            }
 
             fetch('/api/saved-patterns/' + slug, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ project_status: newStatus }),
             }).then(function(r) {
-                if (r.ok) {
-                    if (p) _bumpToTop(p);
+                if (!r.ok) return;
+                return r.json().then(function(body) {
+                    if (p) {
+                        // Server returns actual stitched_cell_count (restored from backup on un-complete)
+                        if (newStatus === 'completed') {
+                            const total = p.total_stitches || (p.grid_w || 0) * (p.grid_h || 0);
+                            p.stitched_cell_count = total;
+                        } else if (typeof body.stitched_cell_count === 'number') {
+                            p.stitched_cell_count = body.stitched_cell_count;
+                        }
+                        _bumpToTop(p);
+                    }
+                    if (card) {
+                        card.dataset.status = newStatus;
+                        selectEl.className = `status-select ps-${newStatus}`;
+                        const badge = card.querySelector('.progress-badge');
+                        if (badge && p) {
+                            const { pct, fillClass, textClass } = _calcProgress(p, newStatus);
+                            const fill = badge.querySelector('.progress-fill');
+                            fill.className = `progress-fill ${fillClass}`;
+                            fill.style.width = pct + '%';
+                            const txt = badge.querySelector('.progress-text');
+                            txt.className = `progress-text ${textClass}`;
+                            txt.textContent = `${pct}%`;
+                        }
+                        if (activeFilter && newStatus !== activeFilter) {
+                            card.style.opacity = '0';
+                            card.style.transition = 'opacity 200ms';
+                        }
+                    }
                     _applyFilter();
                     toast('Status updated.', { type: 'success' });
-                }
+                });
             });
         }
 
@@ -1801,13 +1802,16 @@
                     body: JSON.stringify({ action: 'status', slugs: Array.from(selectedIds), status }),
                 });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                // Update local data
+                // Update local data — un-completing restores previous progress
                 for (const p of allPatterns) {
                     if (selectedIds.has(p.slug)) {
-                        p.project_status = status;
                         if (status === 'completed') {
-                            p.stitched_cell_count = (p.grid_w || 0) * (p.grid_h || 0);
+                            const total = p.total_stitches || (p.grid_w || 0) * (p.grid_h || 0);
+                            p.stitched_cell_count = total;
+                        } else if (p.project_status === 'completed') {
+                            p.stitched_cell_count = 0; // will be corrected on next page load
                         }
+                        p.project_status = status;
                     }
                 }
                 selectedIds.clear();

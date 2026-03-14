@@ -268,8 +268,8 @@ function renderMain() {
                 if (!info) continue;
                 const x = gutX + col * cellPx, y = gutY + row * cellPx;
                 drawStitch(ctx, x, y, cellPx, info.hex, fabColor);
-                if (completedDmcs.has(String(dmc))) { ctx.fillStyle = 'rgba(255,255,255,0.58)'; ctx.fillRect(x, y, cellPx, cellPx); }
                 if (!editMode && stitchedCells.has(row * grid_w + col)) { ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.fillRect(x, y, cellPx, cellPx); }
+                else if (completedDmcs.has(String(dmc))) { ctx.fillStyle = 'rgba(255,255,255,0.58)'; ctx.fillRect(x, y, cellPx, cellPx); }
             }
         }
     } else {
@@ -291,8 +291,8 @@ function renderMain() {
                     ctx.fillStyle = contrastColor(info.hex);
                     ctx.fillText(info.symbol, x + cellPx / 2, y + cellPx / 2);
                 }
-                if (completedDmcs.has(String(dmc))) { ctx.fillStyle = 'rgba(255,255,255,0.58)'; ctx.fillRect(x, y, cellPx, cellPx); }
                 if (!editMode && stitchedCells.has(row * grid_w + col)) { ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.fillRect(x, y, cellPx, cellPx); }
+                else if (completedDmcs.has(String(dmc))) { ctx.fillStyle = 'rgba(255,255,255,0.58)'; ctx.fillRect(x, y, cellPx, cellPx); }
             }
         }
     }

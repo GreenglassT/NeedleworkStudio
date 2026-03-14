@@ -4606,6 +4606,7 @@ def api_update_saved_pattern(pattern_slug):
         new_status = data['project_status']
         if new_status not in ('not_started', 'in_progress', 'completed'):
             return jsonify({'error': 'Invalid project_status'}), 400
+        stitched_count = 0
         if new_status == 'completed':
             # Mark all non-BG cells as stitched and all colors as completed
             cursor.execute(
@@ -4627,6 +4628,12 @@ def api_update_saved_pattern(pattern_slug):
                 existing_pd = json.loads(pat['progress_data'] or '{}')
             except (json.JSONDecodeError, TypeError):
                 existing_pd = {}
+            # Save pre-completion progress so it can be restored if user un-completes
+            backup = {
+                'completed_dmcs': existing_pd.get('completed_dmcs', []),
+                'stitched_cells': existing_pd.get('stitched_cells', []),
+                'cleared_cells': existing_pd.get('cleared_cells', []),
+            }
             pd = {
                 'completed_dmcs': all_dmcs,
                 'stitched_cells': all_stitchable,
@@ -4634,6 +4641,7 @@ def api_update_saved_pattern(pattern_slug):
                 'place_markers': existing_pd.get('place_markers', []),
                 'cleared_markers': existing_pd.get('cleared_markers', []),
                 'accumulated_seconds': existing_pd.get('accumulated_seconds', 0),
+                '_pre_complete_backup': backup,
             }
             pd_json = json.dumps(pd)
             cursor.execute(
@@ -4641,15 +4649,48 @@ def api_update_saved_pattern(pattern_slug):
                 [new_status, pd_json, pattern_id, current_user.id]
             )
         else:
+            # Restore pre-completion progress if un-completing
             cursor.execute(
-                'UPDATE saved_patterns SET project_status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
-                [new_status, pattern_id, current_user.id]
-            )
+                'SELECT progress_data, project_status FROM saved_patterns WHERE id=? AND user_id=?',
+                [pattern_id, current_user.id])
+            pat = cursor.fetchone()
+            if pat and pat['project_status'] == 'completed':
+                try:
+                    existing_pd = json.loads(pat['progress_data'] or '{}')
+                except (json.JSONDecodeError, TypeError):
+                    existing_pd = {}
+                backup = existing_pd.pop('_pre_complete_backup', None)
+                if backup:
+                    existing_pd['completed_dmcs'] = backup.get('completed_dmcs', [])
+                    existing_pd['stitched_cells'] = backup.get('stitched_cells', [])
+                    existing_pd['cleared_cells'] = backup.get('cleared_cells', [])
+                    pd_json = json.dumps(existing_pd)
+                    cursor.execute(
+                        'UPDATE saved_patterns SET project_status=?, progress_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+                        [new_status, pd_json, pattern_id, current_user.id])
+                    # Count effective stitched cells for the response
+                    cleared = set(backup.get('cleared_cells', []))
+                    stitched_count = len([c for c in backup.get('stitched_cells', []) if c not in cleared])
+                else:
+                    cursor.execute(
+                        'UPDATE saved_patterns SET project_status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+                        [new_status, pattern_id, current_user.id])
+            else:
+                cursor.execute(
+                    'UPDATE saved_patterns SET project_status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+                    [new_status, pattern_id, current_user.id])
+                if pat:
+                    try:
+                        existing_pd = json.loads(pat['progress_data'] or '{}')
+                        cleared = set(existing_pd.get('cleared_cells', []))
+                        stitched_count = len([c for c in existing_pd.get('stitched_cells', []) if c not in cleared])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
         conn.commit()
         affected = cursor.rowcount
         if affected == 0:
             return jsonify({'error': 'Pattern not found'}), 404
-        return jsonify({'ok': True})
+        return jsonify({'ok': True, 'stitched_cell_count': stitched_count})
 
     if 'progress_data' in data:
         pd = data['progress_data']
@@ -4839,13 +4880,16 @@ def api_batch_saved_patterns():
         new_status = data.get('status')
         if new_status not in ('not_started', 'in_progress', 'completed'):
             return jsonify({'error': 'Invalid status'}), 400
-        if new_status == 'completed':
-            # Mark all non-BG cells as stitched for each pattern
-            placeholders = ','.join('?' * len(ids))
-            rows = cursor.execute(
-                f"SELECT id, grid_data, legend_data, progress_data FROM saved_patterns WHERE id IN ({placeholders}) AND user_id = ?",
-                ids + [current_user.id]).fetchall()
-            for row in rows:
+        placeholders = ','.join('?' * len(ids))
+        rows = cursor.execute(
+            f"SELECT id, grid_data, legend_data, progress_data, project_status FROM saved_patterns WHERE id IN ({placeholders}) AND user_id = ?",
+            ids + [current_user.id]).fetchall()
+        for row in rows:
+            try:
+                existing_pd = json.loads(row['progress_data'] or '{}')
+            except (json.JSONDecodeError, TypeError):
+                existing_pd = {}
+            if new_status == 'completed':
                 try:
                     grid = json.loads(row['grid_data'])
                     legend = json.loads(row['legend_data'])
@@ -4853,10 +4897,11 @@ def api_batch_saved_patterns():
                     grid, legend = [], []
                 all_stitchable = [i for i, dmc in enumerate(grid) if dmc != 'BG']
                 all_dmcs = [str(e.get('dmc', '')) for e in legend if e.get('dmc') and str(e['dmc']) != 'BG']
-                try:
-                    existing_pd = json.loads(row['progress_data'] or '{}')
-                except (json.JSONDecodeError, TypeError):
-                    existing_pd = {}
+                backup = {
+                    'completed_dmcs': existing_pd.get('completed_dmcs', []),
+                    'stitched_cells': existing_pd.get('stitched_cells', []),
+                    'cleared_cells': existing_pd.get('cleared_cells', []),
+                }
                 pd = {
                     'completed_dmcs': all_dmcs,
                     'stitched_cells': all_stitchable,
@@ -4864,15 +4909,29 @@ def api_batch_saved_patterns():
                     'place_markers': existing_pd.get('place_markers', []),
                     'cleared_markers': existing_pd.get('cleared_markers', []),
                     'accumulated_seconds': existing_pd.get('accumulated_seconds', 0),
+                    '_pre_complete_backup': backup,
                 }
                 cursor.execute(
                     'UPDATE saved_patterns SET project_status=?, progress_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
                     [new_status, json.dumps(pd), row['id'], current_user.id])
-        else:
-            placeholders = ','.join('?' * len(ids))
-            cursor.execute(
-                f"UPDATE saved_patterns SET project_status = ? WHERE id IN ({placeholders}) AND user_id = ?",
-                [new_status] + ids + [current_user.id])
+            elif row['project_status'] == 'completed':
+                # Un-completing: restore backed-up progress
+                backup = existing_pd.pop('_pre_complete_backup', None)
+                if backup:
+                    existing_pd['completed_dmcs'] = backup.get('completed_dmcs', [])
+                    existing_pd['stitched_cells'] = backup.get('stitched_cells', [])
+                    existing_pd['cleared_cells'] = backup.get('cleared_cells', [])
+                    cursor.execute(
+                        'UPDATE saved_patterns SET project_status=?, progress_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+                        [new_status, json.dumps(existing_pd), row['id'], current_user.id])
+                else:
+                    cursor.execute(
+                        'UPDATE saved_patterns SET project_status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+                        [new_status, row['id'], current_user.id])
+            else:
+                cursor.execute(
+                    'UPDATE saved_patterns SET project_status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?',
+                    [new_status, row['id'], current_user.id])
         conn.commit()
         updated = cursor.rowcount
         return jsonify({'updated': updated}), 200
