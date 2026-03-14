@@ -183,6 +183,10 @@ function createPatternEditor(config) {
 .confetti-scope-btn{padding:3px 8px;border:none;border-right:1px solid var(--border-2);background:var(--surface-2);color:var(--text-muted);cursor:pointer;font-size:10px;font-family:inherit}
 .confetti-scope-btn:last-child{border-right:none}
 .confetti-scope-btn.active{background:var(--gold);color:#1a1208}
+.ed-select-bar{position:absolute;left:50%;transform:translateX(-50%);z-index:16;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:6px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(0,0,0,.4);white-space:nowrap;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted)}
+.ed-select-bar button{padding:4px 10px;border:1px solid var(--border-2);border-radius:var(--r);cursor:pointer;font-size:10px;font-family:inherit;background:var(--surface-2);color:var(--text)}
+.ed-select-bar button:disabled{opacity:0.4;cursor:not-allowed}
+.ed-select-bar .select-dims{color:var(--text);font-weight:600;min-width:50px}
 .fabric-color-wrapper{position:relative;display:inline-flex;flex-direction:column;align-items:center;padding:5px 3px 3px;gap:2px}
 .fabric-swatch-btn{width:24px;height:24px;border-radius:4px;border:2px solid var(--border-2);cursor:pointer;transition:border-color var(--t);flex-shrink:0}
 .fabric-swatch-btn:hover{border-color:var(--text-muted)}
