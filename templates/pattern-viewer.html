@@ -487,6 +487,7 @@
 
         body.edit-mode-on #cell-mark-btn,
         body.edit-mode-on #marker-mode-btn,
+        body.edit-mode-on #pick-btn,
         body.edit-mode-on .cell-progress-wrap { display: none; }
 
         /* ——— ZEN / FULLSCREEN MODE ——— */
@@ -599,10 +600,25 @@
         body.zen-mode .zen-exit-btn { display: flex; }
 
         /* ——— MARKER MODE (toolbar) ——— */
-        #marker-mode-btn.active {
+        #marker-mode-btn.active,
+        #pick-btn.active {
             color: var(--gold);
             background: rgba(200,145,58,0.12);
             border-color: var(--gold-dim);
+        }
+
+        /* ——— PICK MODE TOOLTIP ——— */
+        .pick-tip {
+            position: absolute; z-index: 25; pointer-events: none; display: none;
+            background: var(--surface); border: 1px solid var(--border-2);
+            border-radius: var(--r); box-shadow: 0 2px 8px rgba(0,0,0,.4);
+            padding: 4px 8px; font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px; color: var(--text-muted); white-space: nowrap;
+            gap: 6px; align-items: center;
+        }
+        .pick-tip-sw {
+            width: 14px; height: 14px; border-radius: 2px;
+            border: 1px solid var(--border-2); flex-shrink: 0;
         }
 
         /* ——— PATTERN NOTES ——— */
@@ -716,6 +732,8 @@
                     title="Mark stitched cells (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i> Mark Complete</button>
             <button class="nav-link" id="marker-mode-btn" onclick="toggleMarkerMode()"
                     title="Place Marker (B)" aria-label="Place marker"><i class="ti ti-map-pin-2"></i> Place Marker</button>
+            <button class="nav-link" id="pick-btn" onclick="togglePickMode()"
+                    title="Pick thread color (K)" aria-label="Pick thread color"><i class="ti ti-color-picker"></i> Pick Color</button>
             <button class="nav-link" onclick="openGotoPanel()"
                     title="Jump to row/column (G)" aria-label="Go to row/column"><i class="ti ti-map-pin"></i> Go to</button>
             <button class="nav-link" id="notes-toggle" onclick="toggleNotesPanel()"
@@ -810,6 +828,10 @@
         <div class="zen-bar-sep"></div>
         <button class="zen-bar-btn" id="zen-marker-btn" onclick="zenMenuAction('place-marker')" title="Place marker (B)">
             <i class="ti ti-map-pin-2"></i> <span id="zen-marker-label">Marker</span>
+        </button>
+        <div class="zen-bar-sep"></div>
+        <button class="zen-bar-btn" id="zen-pick-btn" onclick="zenMenuAction('pick-color')" title="Pick thread color (K)">
+            <i class="ti ti-color-picker"></i> <span id="zen-pick-label">Pick</span>
         </button>
         <div class="zen-bar-sep"></div>
         <div class="zen-bar-more">

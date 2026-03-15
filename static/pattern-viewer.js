@@ -51,6 +51,9 @@ function zenMenuAction(action) {
     } else if (action === 'place-marker') {
         toggleMarkerMode();
         _syncZenMenuLabels();
+    } else if (action === 'pick-color') {
+        togglePickMode();
+        _syncZenMenuLabels();
     } else if (action === 'goto') {
         openGotoPanel();
     } else if (action === 'view-mode') {
@@ -76,6 +79,11 @@ function _syncZenMenuLabels() {
     const markerBtn   = document.getElementById('zen-marker-btn');
     if (markerLabel) markerLabel.textContent = _markerMode ? 'Placing' : 'Marker';
     if (markerBtn) markerBtn.classList.toggle('active', _markerMode);
+
+    const pickLabel = document.getElementById('zen-pick-label');
+    const pickBtn   = document.getElementById('zen-pick-btn');
+    if (pickLabel) pickLabel.textContent = _pickMode ? 'Picking' : 'Pick';
+    if (pickBtn) pickBtn.classList.toggle('active', _pickMode);
 
     const viewLabel = document.getElementById('zen-view-label');
     const viewIcon  = document.getElementById('zen-view-icon');
@@ -156,6 +164,7 @@ let _cellDragEnd     = null;        // {col, row} for rectangle end
 let markedCells      = new Set();   // Set<string> of "col,row" keys
 let clearedMarkers   = new Set();   // Set<string> of intentionally removed markers (for sync)
 let _markerMode      = false;       // true when place-marker mode is active
+let _pickMode        = false;       // true when pick-color mode is active
 
 /* ——— AUTOSAVE ——— */
 const _autosave = createAutosaver(
@@ -590,6 +599,7 @@ function _canvasEventToCell(e) {
 
 function toggleCellMarkMode() {
     _cellMarkMode = !_cellMarkMode;
+    if (_cellMarkMode && _pickMode) togglePickMode();
     const btn = document.getElementById('cell-mark-btn');
     if (btn) btn.classList.toggle('active', _cellMarkMode);
     const area = document.getElementById('canvas-area');
@@ -598,9 +608,54 @@ function toggleCellMarkMode() {
 
 function toggleMarkerMode() {
     _markerMode = !_markerMode;
+    if (_markerMode && _pickMode) togglePickMode();
     const btn = document.getElementById('marker-mode-btn');
     if (btn) btn.classList.toggle('active', _markerMode);
     document.getElementById('canvas-area').style.cursor = _markerMode ? 'crosshair' : '';
+}
+
+function togglePickMode() {
+    _pickMode = !_pickMode;
+    if (_pickMode) {
+        if (_cellMarkMode) toggleCellMarkMode();
+        if (_markerMode) toggleMarkerMode();
+    }
+    const btn = document.getElementById('pick-btn');
+    if (btn) btn.classList.toggle('active', _pickMode);
+    const zenBtn = document.getElementById('zen-pick-btn');
+    if (zenBtn) zenBtn.classList.toggle('active', _pickMode);
+    const zenLabel = document.getElementById('zen-pick-label');
+    if (zenLabel) zenLabel.textContent = _pickMode ? 'Picking' : 'Pick';
+    document.getElementById('canvas-area').style.cursor = _pickMode ? 'crosshair' : '';
+    if (!_pickMode) _hidePickTip();
+}
+
+/* ——— PICK MODE TOOLTIP ——— */
+let _pickTip = null;
+function _ensurePickTip() {
+    if (!_pickTip) {
+        _pickTip = document.createElement('div');
+        _pickTip.className = 'pick-tip';
+        document.getElementById('canvas-area').appendChild(_pickTip);
+    }
+    return _pickTip;
+}
+function _showPickTip(e) {
+    const cell = _canvasEventToCell(e);
+    if (!cell) { _hidePickTip(); return; }
+    const dmc = patternData.grid[cell.row * patternData.grid_w + cell.col];
+    if (!dmc || dmc === 'BG' || !lookup[dmc]) { _hidePickTip(); return; }
+    const info = lookup[dmc];
+    const tip = _ensurePickTip();
+    tip.innerHTML = '<span class="pick-tip-sw" style="background:' + escHtml(info.hex) + '"></span>' +
+        escHtml(patternBrand + ' ' + dmc) + ' — ' + escHtml(info.name || '');
+    const area = document.getElementById('canvas-area').getBoundingClientRect();
+    tip.style.left = (e.clientX - area.left + 14) + 'px';
+    tip.style.top = (e.clientY - area.top - 30) + 'px';
+    tip.style.display = 'flex';
+}
+function _hidePickTip() {
+    if (_pickTip) _pickTip.style.display = 'none';
 }
 
 function _handleMarkerClick(e) {
@@ -1173,6 +1228,7 @@ function toggleEditMode() {
         if (!isForked) { showForkDialog(); return; }
         if (_cellMarkMode) toggleCellMarkMode();
         if (_markerMode) toggleMarkerMode();
+        if (_pickMode) togglePickMode();
         _editSnapshot = {
             grid: patternData.grid.slice(),
             legend: JSON.parse(JSON.stringify(patternData.legend)),
@@ -1323,6 +1379,15 @@ document.getElementById('canvas-area').addEventListener('mousedown', function(e)
     if (e.target.id === 'mini-canvas') return;
     if (editor && editor.isUIElement(e.target)) return;
     e.preventDefault();
+    // Pick color mode — intercept before other modes
+    if (_pickMode && !editMode && e.button === 0) {
+        const cell = _canvasEventToCell(e);
+        if (cell) {
+            const dmc = patternData.grid[cell.row * patternData.grid_w + cell.col];
+            if (dmc && dmc !== 'BG') applyHighlight(dmc);
+        }
+        return;
+    }
     // Place marker mode — intercept before cell-mark and editor
     if (_markerMode && !editMode && e.button === 0) {
         _handleMarkerClick(e);
@@ -1343,6 +1408,10 @@ document.getElementById('canvas-area').addEventListener('mousedown', function(e)
     this.classList.add('dragging');
 });
 document.addEventListener('mousemove', function(e) {
+    // Pick mode tooltip
+    if (_pickMode && !editMode) _showPickTip(e);
+    else _hidePickTip();
+
     if (_cellDragActive && _cellMarkMode && !editMode) {
         _moveCellMark(e.clientX, e.clientY);
         return;
@@ -1686,6 +1755,14 @@ document.addEventListener('keydown', function(e) {
         if (!inInput && !editMode) {
             e.preventDefault();
             toggleMarkerMode();
+            return;
+        }
+    }
+    // K key — toggle pick color mode (viewer only)
+    if (e.key.toLowerCase() === 'k' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            togglePickMode();
             return;
         }
     }

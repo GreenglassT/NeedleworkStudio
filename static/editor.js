@@ -52,11 +52,12 @@ function createPatternEditor(config) {
     let _uiInjected  = false;
 
     /* Overlay state */
+    let _crosshairMode = _pref('dmc-ed-crosshair', '0') === '1';  // row/column crosshair highlighting
     let _hoverCell     = null;   // { col, row } or null
-    let _rectStart     = null;   // { col, row } rect drag start
-    let _rectPreview   = null;   // { c1, r1, c2, r2, outline } or null
-    let _ellipseStart  = null;   // { col, row } ellipse drag start
-    let _ellipsePreview = null;  // { c1, r1, c2, r2, outline } or null
+    let _shapeStart    = null;   // { col, row } shape drag start
+    let _shapePreview  = null;   // { c1, r1, c2, r2, outline } or null
+    let _shapeMode     = 'rect'; // 'rect' | 'ellipse' | 'triangle' | 'diamond' | 'star'
+    let _shapeBar      = null;   // floating shape sub-bar DOM element
     let _fillPreviewRegion = null;   // Set<number> of grid indices, or null
     let _fillPreviewCell   = null;   // { col, row } that generated the cached region
     function _clearFillPreview() { _fillPreviewRegion = null; _fillPreviewCell = null; }
@@ -97,10 +98,12 @@ function createPatternEditor(config) {
     let _selFlipVBtn   = null;
     let _selRotateBtn  = null;
     let _selDimsSpan   = null;
+    let _lassoPath     = null;         // Array<{gx, gy}> sub-cell polygon vertices
+    let _lassoDragging = false;        // true while drawing a lasso path
     let _eyedropTip    = null;
 
     /* Stitch tool state */
-    let activeStitchMode = 'half';   // 'half'|'quarter'|'three_quarter'|'backstitch'|'knot'
+    let activeStitchMode = 'full';   // 'full'|'half'|'quarter'|'three_quarter'|'petite'|'backstitch'|'knot'|'bead'
     let _halfDir         = 'fwd';    // 'fwd' (/) or 'bwd' (\) — for half & three-quarter
     let _bsStart         = null;     // { ix, iy } backstitch drag start intersection
     let _bsPreviewEnd   = null;     // { ix, iy } backstitch preview end
@@ -134,9 +137,12 @@ function createPatternEditor(config) {
 .tool-btn.active{background:var(--gold);color:#1a1208;border-color:var(--gold)}
 .tool-btn:disabled{opacity:.3;cursor:default}
 .tool-sep{width:1px;align-self:stretch;background:var(--border-2);margin:0 3px;flex-shrink:0}
-.active-color-ind{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 3px 3px}
-.active-sw{width:24px;height:24px;border-radius:3px;border:1px solid var(--border-2);flex-shrink:0}
-.active-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.02em;line-height:1;color:var(--text-muted);white-space:nowrap}
+.palette-group{display:flex;align-items:stretch;gap:1px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r);padding:2px 3px}
+.palette-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 6px 3px;cursor:pointer;border-radius:var(--r);border:none;background:transparent;transition:background var(--t);position:relative}
+.palette-btn:hover{background:var(--surface)}
+.palette-sw{width:24px;height:24px;border-radius:3px;border:1px solid var(--border-2);flex-shrink:0}
+.palette-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.02em;line-height:1;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:1px}
+.palette-lbl .ti{font-size:10px}
 .edit-mode{cursor:crosshair}
 .edit-mode.tool-eraser{cursor:cell}
 .edit-mode.tool-eyedropper{cursor:copy}
@@ -186,17 +192,16 @@ function createPatternEditor(config) {
 .ed-confetti-bar button{padding:4px 10px;border:1px solid var(--border-2);border-radius:var(--r);cursor:pointer;font-size:10px;font-family:inherit}
 .ed-confetti-bar .confetti-apply{background:var(--gold);color:#1a1208;border-color:var(--gold)}
 .ed-confetti-bar .confetti-cancel{background:var(--surface-2);color:var(--text)}
-.confetti-scope{display:flex;border:1px solid var(--border-2);border-radius:var(--r);overflow:hidden}
-.confetti-scope-btn{padding:3px 8px;border:none;border-right:1px solid var(--border-2);background:var(--surface-2);color:var(--text-muted);cursor:pointer;font-size:10px;font-family:inherit}
-.confetti-scope-btn:last-child{border-right:none}
-.confetti-scope-btn.active{background:var(--gold);color:#1a1208}
+.confetti-scope{display:flex;gap:2px}
+.confetti-scope-btn{padding:3px 8px;border:1px solid var(--border-2);border-radius:var(--r);background:var(--surface-2);color:var(--text-muted);cursor:pointer;font-size:10px;font-family:inherit}
+.confetti-scope-btn.active{background:var(--gold);color:#1a1208;border-color:var(--gold)}
 .ed-select-bar{position:absolute;left:50%;transform:translateX(-50%);z-index:16;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:6px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(0,0,0,.4);white-space:nowrap;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted)}
 .ed-select-bar button{padding:4px 10px;border:1px solid var(--border-2);border-radius:var(--r);cursor:pointer;font-size:10px;font-family:inherit;background:var(--surface-2);color:var(--text)}
 .ed-select-bar button:disabled{opacity:0.4;cursor:not-allowed}
-.ed-select-bar .select-dims{color:var(--text);font-weight:600;min-width:50px}
-.fabric-color-wrapper{position:relative;display:inline-flex;flex-direction:column;align-items:center;padding:5px 3px 3px;gap:2px}
-.fabric-swatch-btn{width:24px;height:24px;border-radius:4px;border:2px solid var(--border-2);cursor:pointer;transition:border-color var(--t);flex-shrink:0}
-.fabric-swatch-btn:hover{border-color:var(--text-muted)}
+.ed-select-bar .select-dims{color:var(--text);font-weight:600}
+.ed-select-bar .select-dims:empty{display:none}
+.ed-shape-bar{position:absolute;left:50%;transform:translateX(-50%);z-index:16;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);padding:4px 8px;display:flex;align-items:center;gap:2px;box-shadow:0 2px 12px rgba(0,0,0,.4);white-space:nowrap;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted)}
+.fabric-color-wrapper{position:relative}
 .fabric-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r);box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:20;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);min-width:160px}
 .fabric-dropdown.open{display:block}
 .fabric-preset{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:4px;cursor:pointer;transition:background var(--t)}
@@ -684,6 +689,34 @@ function createPatternEditor(config) {
         pd.beads.push({ x: col, y: row, dmc: activeDmc });
     }
 
+    /** Place a stitch using the current activeStitchMode.
+     *  Used by pencil, shape, line tools so stitch mode applies uniformly.
+     *  For quarter/petite, uses a default corner from _halfDir.
+     *  For three_quarter, uses _halfDir + a default short corner.
+     *  Backstitch/knot modes fall back to full stitch (intersection-based). */
+    function _placeStitchAt(col, row) {
+        switch (activeStitchMode) {
+            case 'half':
+                _placePartStitch(col, row, 'half', { direction: _halfDir });
+                break;
+            case 'quarter':
+            case 'petite':
+                _placePartStitch(col, row, activeStitchMode, { corner: _DIAG_CORNERS[_halfDir][0] });
+                break;
+            case 'three_quarter': {
+                const sc = _halfDir === 'fwd' ? 'TL' : 'TR';
+                _placePartStitch(col, row, 'three_quarter', { halfDir: _halfDir, shortCorner: sc });
+                break;
+            }
+            case 'bead':
+                _placeBead(col, row);
+                break;
+            default: // 'full', 'backstitch', 'knot'
+                pencilAt(col, row);
+                break;
+        }
+    }
+
     /** Erase a backstitch near an intersection point. */
     function _eraseBackstitchNear(ix, iy) {
         const pd = getPatternData();
@@ -876,6 +909,38 @@ function createPatternEditor(config) {
                row >= _selRect.r1 + dr && row <= _selRect.r2 + dr;
     }
 
+    /** Rasterize a lasso polygon to a Set of grid cell indices via ray-casting. */
+    function _rasterizeLasso(path, gridW, gridH) {
+        const result = new Set();
+        const n = path.length;
+        if (n < 3) return result;
+        let pMinC = Infinity, pMaxC = -Infinity, pMinR = Infinity, pMaxR = -Infinity;
+        for (const p of path) {
+            if (p.gx < pMinC) pMinC = p.gx; if (p.gx > pMaxC) pMaxC = p.gx;
+            if (p.gy < pMinR) pMinR = p.gy; if (p.gy > pMaxR) pMaxR = p.gy;
+        }
+        const startCol = Math.max(0, Math.floor(pMinC));
+        const endCol   = Math.min(gridW - 1, Math.floor(pMaxC));
+        const startRow = Math.max(0, Math.floor(pMinR));
+        const endRow   = Math.min(gridH - 1, Math.floor(pMaxR));
+        for (let row = startRow; row <= endRow; row++) {
+            const ty = row + 0.5;
+            for (let col = startCol; col <= endCol; col++) {
+                const tx = col + 0.5;
+                let inside = false;
+                for (let i = 0, j = n - 1; i < n; j = i++) {
+                    const yi = path[i].gy, yj = path[j].gy;
+                    if ((yi > ty) !== (yj > ty)) {
+                        if (tx < path[i].gx + (ty - yi) / (yj - yi) * (path[j].gx - path[i].gx))
+                            inside = !inside;
+                    }
+                }
+                if (inside) result.add(row * gridW + col);
+            }
+        }
+        return result;
+    }
+
     function _updateSelectBarState() {
         if (!_selectBar) return;
         const hasSelection = !!_selRect;
@@ -940,9 +1005,32 @@ function createPatternEditor(config) {
                        isCut: !!isCut, cutSource: isCut ? { c1, r1, c2, r2 } : null };
     }
 
+    /** After transforming the buffer, write it back to the grid so the result is visible. */
+    function _commitTransformInPlace(oldRect) {
+        if (!_selBuffer || !_selRect) return;
+        const pd = getPatternData();
+        pushUndo();
+        _clearSelectionSource(oldRect || _selRect);
+        _pasteBufferAt(pd, _selBuffer, _selRect.c1, _selRect.r1);
+        // Recompute wand mask from transformed buffer's non-BG cells
+        if (_wandMask) {
+            const newMask = new Set();
+            for (let r = 0; r < _selBuffer.h; r++)
+                for (let c = 0; c < _selBuffer.w; c++)
+                    if (_selBuffer.data[r * _selBuffer.w + c] !== 'BG')
+                        newMask.add((_selRect.r1 + r) * pd.grid_w + (_selRect.c1 + c));
+            _wandMask = newMask;
+        }
+        _selBuffer = null;    // will be re-captured on next transform/move
+        _commitEdit();
+        renderAll();
+        _redrawOverlay();
+    }
+
     function _rotateBufferCW() {
         if (!_selBuffer) _captureSelectionBuffer();
         if (!_selBuffer) return;
+        const oldRect = _selRect ? { c1: _selRect.c1, r1: _selRect.r1, c2: _selRect.c2, r2: _selRect.r2 } : null;
         const { w, h, data } = _selBuffer;
         const nW = h, nH = w;
         const nd = new Array(nW * nH);
@@ -956,7 +1044,7 @@ function createPatternEditor(config) {
         const rBeads = (_selBuffer.beads         || []).map(b => ({ ...b, x: h - 1 - b.y, y: b.x }));
         _selBuffer = { w: nW, h: nH, data: nd, part_stitches: rParts, backstitches: rBS, knots: rKnots, beads: rBeads, isCut: _selBuffer.isCut, cutSource: _selBuffer.cutSource };
         if (_selRect) { _selRect.c2 = _selRect.c1 + nW - 1; _selRect.r2 = _selRect.r1 + nH - 1; }
-        _redrawOverlay();
+        _commitTransformInPlace(oldRect);
     }
 
     function _flipBufferH() {
@@ -973,7 +1061,7 @@ function createPatternEditor(config) {
         const fKnots = (_selBuffer.knots         || []).map(k => ({ ...k, x: w - k.x }));
         const fBeads = (_selBuffer.beads         || []).map(b => ({ ...b, x: w - 1 - b.x }));
         _selBuffer = { w, h, data: nd, part_stitches: fParts, backstitches: fBS, knots: fKnots, beads: fBeads, isCut: _selBuffer.isCut, cutSource: _selBuffer.cutSource };
-        _redrawOverlay();
+        _commitTransformInPlace();
     }
 
     function _flipBufferV() {
@@ -990,7 +1078,7 @@ function createPatternEditor(config) {
         const fKnots = (_selBuffer.knots         || []).map(k => ({ ...k, y: h - k.y }));
         const fBeads = (_selBuffer.beads         || []).map(b => ({ ...b, y: h - 1 - b.y }));
         _selBuffer = { w, h, data: nd, part_stitches: fParts, backstitches: fBS, knots: fKnots, beads: fBeads, isCut: _selBuffer.isCut, cutSource: _selBuffer.cutSource };
-        _redrawOverlay();
+        _commitTransformInPlace();
     }
 
     /* Bounds helpers for cell coords (0..w-1) vs intersection coords (0..w) */
@@ -1125,22 +1213,38 @@ function createPatternEditor(config) {
         _commitEdit();
     }
 
+    function _toggleMirrorAxis(axis) {
+        // axis: 'horizontal' or 'vertical'
+        const hasH = _mirrorMode === 'horizontal' || _mirrorMode === 'both';
+        const hasV = _mirrorMode === 'vertical' || _mirrorMode === 'both';
+        let newH = axis === 'horizontal' ? !hasH : hasH;
+        let newV = axis === 'vertical' ? !hasV : hasV;
+        if (newH && newV) _mirrorMode = 'both';
+        else if (newH) _mirrorMode = 'horizontal';
+        else if (newV) _mirrorMode = 'vertical';
+        else _mirrorMode = 'off';
+        localStorage.setItem('dmc-ed-mirror', _mirrorMode);
+        _updateMirrorButton();
+
+        _redrawOverlay();
+    }
+
     function _cycleMirror() {
         const modes = ['off', 'horizontal', 'vertical', 'both'];
         const i = modes.indexOf(_mirrorMode);
         _mirrorMode = modes[(i + 1) % modes.length];
         localStorage.setItem('dmc-ed-mirror', _mirrorMode);
         _updateMirrorButton();
+
         _redrawOverlay();
     }
 
     function _updateMirrorButton() {
-        const btn = _toolbar ? _toolbar.querySelector('.ed-mirror-btn') : null;
-        if (!btn) return;
-        btn.classList.toggle('active', _mirrorMode !== 'off');
-        const icons = { off: 'ti-flip-horizontal', horizontal: 'ti-flip-horizontal', vertical: 'ti-flip-vertical', both: 'ti-arrows-maximize' };
-        btn.innerHTML = '<i class="ti ' + (icons[_mirrorMode] || 'ti-flip-horizontal') + '"></i><span class="tool-lbl">Mirror</span>';
-        btn.title = 'Mirror: ' + _mirrorMode + ' (M)';
+        if (!_toolbar) return;
+        const hBtn = _toolbar.querySelector('.ed-mirror-h-btn');
+        const vBtn = _toolbar.querySelector('.ed-mirror-v-btn');
+        if (hBtn) hBtn.classList.toggle('active', _mirrorMode === 'horizontal' || _mirrorMode === 'both');
+        if (vBtn) vBtn.classList.toggle('active', _mirrorMode === 'vertical' || _mirrorMode === 'both');
     }
 
     /* ── Brush size controls ── */
@@ -1245,6 +1349,58 @@ function createPatternEditor(config) {
         }
 
         _commitEdit();
+    }
+
+    /** Crop canvas to the bounding box of all content (grid + part_stitches + backstitches + knots + beads). */
+    function _cropToContent() {
+        const pd = getPatternData();
+        let minC = pd.grid_w, maxC = -1, minR = pd.grid_h, maxR = -1;
+        // Scan grid
+        for (let r = 0; r < pd.grid_h; r++) {
+            for (let c = 0; c < pd.grid_w; c++) {
+                if (pd.grid[r * pd.grid_w + c] !== 'BG') {
+                    if (c < minC) minC = c; if (c > maxC) maxC = c;
+                    if (r < minR) minR = r; if (r > maxR) maxR = r;
+                }
+            }
+        }
+        // Scan part_stitches
+        if (pd.part_stitches) for (const ps of pd.part_stitches) {
+            const x = ps.x !== undefined ? ps.x : ps.col;
+            const y = ps.y !== undefined ? ps.y : ps.row;
+            if (x < minC) minC = x; if (x > maxC) maxC = x;
+            if (y < minR) minR = y; if (y > maxR) maxR = y;
+        }
+        // Scan backstitches (intersection coords — expand to include adjacent cells)
+        if (pd.backstitches) for (const bs of pd.backstitches) {
+            const cLo = Math.max(0, Math.min(bs.x1, bs.x2) - 1);
+            const cHi = Math.min(pd.grid_w - 1, Math.max(bs.x1, bs.x2));
+            const rLo = Math.max(0, Math.min(bs.y1, bs.y2) - 1);
+            const rHi = Math.min(pd.grid_h - 1, Math.max(bs.y1, bs.y2));
+            if (cLo < minC) minC = cLo; if (cHi > maxC) maxC = cHi;
+            if (rLo < minR) minR = rLo; if (rHi > maxR) maxR = rHi;
+        }
+        // Scan knots (intersection coords — include adjacent cells)
+        if (pd.knots) for (const k of pd.knots) {
+            const cLo = Math.max(0, k.x - 1), cHi = Math.min(pd.grid_w - 1, k.x);
+            const rLo = Math.max(0, k.y - 1), rHi = Math.min(pd.grid_h - 1, k.y);
+            if (cLo < minC) minC = cLo; if (cHi > maxC) maxC = cHi;
+            if (rLo < minR) minR = rLo; if (rHi > maxR) maxR = rHi;
+        }
+        // Scan beads
+        if (pd.beads) for (const b of pd.beads) {
+            if (b.x < minC) minC = b.x; if (b.x > maxC) maxC = b.x;
+            if (b.y < minR) minR = b.y; if (b.y > maxR) maxR = b.y;
+        }
+        if (maxC < 0) return; // nothing to crop to
+        const newW = maxC - minC + 1, newH = maxR - minR + 1;
+        if (newW === pd.grid_w && newH === pd.grid_h) return; // already tight
+        // Use _resizeCanvas with anchor that produces offset = (-minC, -minR)
+        // offset = (newW - oldW) * anchorX = -minC → anchorX = minC / (oldW - newW)
+        const dw = pd.grid_w - newW, dh = pd.grid_h - newH;
+        const ax = dw > 0 ? minC / dw : 0;
+        const ay = dh > 0 ? minR / dh : 0;
+        _resizeCanvas(newW, newH, ax, ay);
     }
 
     /* ═══════════════════════════════════════════
@@ -2048,7 +2204,7 @@ function createPatternEditor(config) {
             const destC = _textInsertPos.col + col;
             const destR = _textInsertPos.row + row;
             if (destC >= 0 && destC < pd.grid_w && destR >= 0 && destR < pd.grid_h) {
-                _withMirror(destC, destR, pencilAt);
+                _withMirror(destC, destR, _placeStitchAt);
             }
         }
         _hideTextPanel();
@@ -2072,6 +2228,11 @@ function createPatternEditor(config) {
        ═══════════════════════════════════════════ */
 
     const _STITCH_MODES = { 'stitch-half': 'half', 'stitch-quarter': 'quarter', 'stitch-threequarter': 'three_quarter', 'stitch-petite': 'petite', 'stitch-back': 'backstitch', 'stitch-knot': 'knot', 'stitch-bead': 'bead' };
+    /** Reverse lookup: activeStitchMode → data-tool attribute value */
+    function _stitchModeToBtnTool(mode) {
+        for (const [btn, m] of Object.entries(_STITCH_MODES)) { if (m === mode) return btn; }
+        return null;
+    }
     function _recomputeConfetti() {
         const pd = getPatternData();
         const bounds = _confettiScope === 'selection' ? _selRect : undefined;
@@ -2129,24 +2290,34 @@ function createPatternEditor(config) {
             _selOffset = { dc: 0, dr: 0 };
             _stopMarchingAnts();
         }
-        // auto-outline is now a persistent tool mode (falls through to activeTool = tool)
         // Map stitch sub-tools to activeTool='stitch' + activeStitchMode
         const isStitch = _STITCH_TOOLS.has(tool);
+        // Drawing tools that use activeStitchMode for placement
+        const _STITCH_AWARE_TOOLS = new Set(['pencil', 'shape', 'line', 'text']);
         if (isStitch) {
             activeTool = 'stitch';
             activeStitchMode = _STITCH_MODES[tool];
             _bsStart = null; _bsPreviewEnd = null;
-            // Show/hide direction toggle for half/three-quarter
-            if (_dirToggle) {
-                _dirToggle.style.display = (activeStitchMode === 'half' || activeStitchMode === 'three_quarter') ? '' : 'none';
-                _dirToggle.querySelector('span:first-child').textContent = _halfDir === 'fwd' ? '/' : '\\';
-            }
         } else {
             activeTool = tool;
+            // Clicking Full Stitch (pencil) resets stitch mode to full
+            if (tool === 'pencil') activeStitchMode = 'full';
         }
+        // Show/hide direction toggle for half/three-quarter on any tool that uses stitch mode
+        if (_dirToggle) {
+            const showDir = (activeStitchMode === 'half' || activeStitchMode === 'three_quarter') &&
+                            (isStitch || _STITCH_AWARE_TOOLS.has(tool));
+            _dirToggle.style.display = showDir ? '' : 'none';
+            _dirToggle.querySelector('span:first-child').textContent = _halfDir === 'fwd' ? '/' : '\\';
+        }
+        // Highlight active tool button + keep stitch mode button highlighted on drawing tools
         if (_toolbar) {
+            const stitchModeBtn = activeStitchMode !== 'full' ? _stitchModeToBtnTool(activeStitchMode) : null;
+            const keepStitchHighlight = !isStitch && _STITCH_AWARE_TOOLS.has(tool) && stitchModeBtn;
             _toolbar.querySelectorAll('.tool-btn[data-tool]').forEach(b => {
-                b.classList.toggle('active', b.dataset.tool === tool);
+                const isTool = b.dataset.tool === tool;
+                const isStitchMode = keepStitchHighlight && b.dataset.tool === stitchModeBtn;
+                b.classList.toggle('active', isTool || isStitchMode);
             });
         }
         container.classList.remove('tool-eraser', 'tool-eyedropper', 'tool-pan', 'tool-select');
@@ -2172,16 +2343,25 @@ function createPatternEditor(config) {
                 _confettiBar.style.display = 'none';
             }
         }
-        // Clear line / rect / ellipse / text / stitch previews when switching away
+        // Clear line / shape / text / stitch previews when switching away
         if (tool !== 'line') { lineStart = null; _lineEnd = null; }
-        if (tool !== 'rect') { _rectStart = null; _rectPreview = null; }
-        if (tool !== 'ellipse') { _ellipseStart = null; _ellipsePreview = null; }
+        if (tool !== 'shape') { _shapeStart = null; _shapePreview = null; }
         if (tool !== 'fill') _clearFillPreview();
         if (tool !== 'confetti') {
             _clearConfetti();
             if (_confettiBar) _confettiBar.style.display = 'none';
         }
         if (tool !== 'text') _hideTextPanel();
+        if (_shapeBar) {
+            if (tool === 'shape') {
+                _shapeBar.style.display = 'flex';
+                _shapeBar.style.top = _subTop;
+                _shapeBar.querySelectorAll('.confetti-scope-btn').forEach(b =>
+                    b.classList.toggle('active', b.dataset.shape === _shapeMode));
+            } else {
+                _shapeBar.style.display = 'none';
+            }
+        }
         if (tool === 'select') {
             _selectBar.style.display = 'flex';
             _selectBar.style.top = _subTop;
@@ -2190,8 +2370,9 @@ function createPatternEditor(config) {
                 b.classList.toggle('active', b.dataset.mode === _selectMode));
             _updateSelectBarState();
         } else {
-            // Switching away from select: commit pending move, hide bar
+            // Switching away from select: commit pending move, hide bar, cancel lasso
             if (activeTool === 'select') _commitMovedSelection();
+            _lassoPath = null; _lassoDragging = false;
             if (_selectBar) _selectBar.style.display = 'none';
         }
         if (!isStitch) { _bsStart = null; _bsPreviewEnd = null; }
@@ -2241,12 +2422,13 @@ function createPatternEditor(config) {
 
     function _updateActiveIndicator() {
         if (!_activeSwatch || !_activeLabel) return;
+        const chevron = ' <i class="ti ti-chevron-down"></i>';
         if (activeDmc) {
             _activeSwatch.style.background = activeHex;
-            _activeLabel.textContent = _brand + ' ' + activeDmc;
+            _activeLabel.innerHTML = escHtml(_brand + ' ' + activeDmc) + chevron;
         } else {
             _activeSwatch.style.background = '#444';
-            _activeLabel.textContent = 'No color';
+            _activeLabel.innerHTML = 'Thread' + chevron;
         }
         if (_replaceSrcSwatch) _replaceSrcSwatch.style.background = activeDmc ? activeHex : '#444';
     }
@@ -2297,6 +2479,18 @@ function createPatternEditor(config) {
         // Mirror guide lines
         if (_mirrorMode !== 'off') _drawMirrorGuides(ctx, offset, cp);
 
+        // Crosshair row/column highlighting
+        if (_crosshairMode && _hoverCell) {
+            const pd = getPatternData();
+            ctx.save();
+            ctx.fillStyle = 'rgba(200, 145, 58, 0.10)';
+            // Full row band
+            ctx.fillRect(offset.x, offset.y + _hoverCell.row * cp, pd.grid_w * cp, cp);
+            // Full column band
+            ctx.fillRect(offset.x + _hoverCell.col * cp, offset.y, cp, pd.grid_h * cp);
+            ctx.restore();
+        }
+
         // Line preview
         if (activeTool === 'line' && lineStart && _lineEnd) {
             const cells = bresenhamLine(lineStart.col, lineStart.row, _lineEnd.col, _lineEnd.row);
@@ -2309,11 +2503,8 @@ function createPatternEditor(config) {
             _drawDimLabel(ctx, String(len), offset.x + (mid.col + 1) * cp + 4, offset.y + mid.row * cp + cp / 2);
         }
 
-        // Rectangle preview
-        if (_rectPreview) _drawShapePreview(ctx, offset, cp, _rectPreview, _getRectCells);
-
-        // Ellipse preview
-        if (_ellipsePreview) _drawShapePreview(ctx, offset, cp, _ellipsePreview, _getEllipseCells);
+        // Shape preview (rect, ellipse, triangle, diamond, star)
+        if (_shapePreview) _drawShapePreview(ctx, offset, cp, _shapePreview, _getShapeCellsFn());
 
         // Text preview
         if (activeTool === 'text') _drawTextPreview(ctx, offset, cp);
@@ -2355,6 +2546,28 @@ function createPatternEditor(config) {
 
         // Selection marching ants
         if (_selRect) _drawSelectionOutline(ctx, offset, cp);
+
+        // Lasso path preview while drawing
+        if (_lassoDragging && _lassoPath && _lassoPath.length >= 2) {
+            ctx.save();
+            ctx.strokeStyle = '#00bbff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(offset.x + _lassoPath[0].gx * cp, offset.y + _lassoPath[0].gy * cp);
+            for (let i = 1; i < _lassoPath.length; i++) {
+                ctx.lineTo(offset.x + _lassoPath[i].gx * cp, offset.y + _lassoPath[i].gy * cp);
+            }
+            // Closing line back to start
+            ctx.lineTo(offset.x + _lassoPath[0].gx * cp, offset.y + _lassoPath[0].gy * cp);
+            ctx.stroke();
+            // Start point indicator
+            ctx.fillStyle = '#00bbff';
+            ctx.beginPath();
+            ctx.arc(offset.x + _lassoPath[0].gx * cp, offset.y + _lassoPath[0].gy * cp, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         // Fill preview (under hover highlight)
         if (_fillPreviewRegion && activeTool === 'fill') {
@@ -2494,22 +2707,48 @@ function createPatternEditor(config) {
 
     function _drawSelectionOutline(ctx, offset, cp) {
         const dc = _selOffset.dc, dr = _selOffset.dr;
-        const x = offset.x + (_selRect.c1 + dc) * cp;
-        const y = offset.y + (_selRect.r1 + dr) * cp;
-        const w = (_selRect.c2 - _selRect.c1 + 1) * cp;
-        const h = (_selRect.r2 - _selRect.r1 + 1) * cp;
 
         ctx.save();
         ctx.setLineDash([4, 4]);
         ctx.lineWidth = 2;
-        // White stroke
-        ctx.lineDashOffset = -_marchPhase;
-        ctx.strokeStyle = '#ffffff';
-        ctx.strokeRect(x, y, w, h);
-        // Black stroke offset for contrast
-        ctx.lineDashOffset = -_marchPhase + 4;
-        ctx.strokeStyle = '#000000';
-        ctx.strokeRect(x, y, w, h);
+
+        if (_wandMask && _wandMask.size > 0) {
+            // Freeform outline: trace per-cell edges for wand/lasso selections
+            const pd = getPatternData();
+            const gw = pd.grid_w;
+            ctx.beginPath();
+            for (const idx of _wandMask) {
+                const col = idx % gw, row = (idx - col) / gw;
+                const cx = offset.x + (col + dc) * cp;
+                const cy = offset.y + (row + dr) * cp;
+                // Top edge
+                if (!_wandMask.has(idx - gw)) { ctx.moveTo(cx, cy); ctx.lineTo(cx + cp, cy); }
+                // Bottom edge
+                if (!_wandMask.has(idx + gw)) { ctx.moveTo(cx, cy + cp); ctx.lineTo(cx + cp, cy + cp); }
+                // Left edge
+                if (col === 0 || !_wandMask.has(idx - 1)) { ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + cp); }
+                // Right edge
+                if (col === gw - 1 || !_wandMask.has(idx + 1)) { ctx.moveTo(cx + cp, cy); ctx.lineTo(cx + cp, cy + cp); }
+            }
+            ctx.lineDashOffset = -_marchPhase;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+            ctx.lineDashOffset = -_marchPhase + 4;
+            ctx.strokeStyle = '#000000';
+            ctx.stroke();
+        } else {
+            // Rectangular outline
+            const x = offset.x + (_selRect.c1 + dc) * cp;
+            const y = offset.y + (_selRect.r1 + dr) * cp;
+            const w = (_selRect.c2 - _selRect.c1 + 1) * cp;
+            const h = (_selRect.r2 - _selRect.r1 + 1) * cp;
+            ctx.lineDashOffset = -_marchPhase;
+            ctx.strokeStyle = '#ffffff';
+            ctx.strokeRect(x, y, w, h);
+            ctx.lineDashOffset = -_marchPhase + 4;
+            ctx.strokeStyle = '#000000';
+            ctx.strokeRect(x, y, w, h);
+        }
         ctx.restore();
 
         // Draw buffer preview if moving
@@ -2617,6 +2856,156 @@ function createPatternEditor(config) {
             }
         }
         return cells;
+    }
+
+    function _getTriangleCells(c1, r1, c2, r2, filled) {
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const cells = [];
+        const w = maxC - minC, h = maxR - minR;
+        if (w === 0 && h === 0) { cells.push({ col: minC, row: minR }); return cells; }
+        // Orientation: vertical if taller/square, horizontal if wider
+        // Apex at drag-start side, base at drag-end side
+        if (h >= w) {
+            // Vertical triangle
+            const apexAtTop = r1 <= r2;
+            const cx = (minC + maxC) / 2;
+            for (let r = minR; r <= maxR; r++) {
+                const t = h === 0 ? 1 : (apexAtTop ? (r - minR) / h : (maxR - r) / h);
+                const halfW = t * w / 2;
+                const cLeft  = Math.max(minC, Math.round(cx - halfW));
+                const cRight = Math.min(maxC, Math.round(cx + halfW));
+                if (filled) {
+                    for (let c = cLeft; c <= cRight; c++) cells.push({ col: c, row: r });
+                } else {
+                    const isApex = apexAtTop ? r === minR : r === maxR;
+                    const isBase = apexAtTop ? r === maxR : r === minR;
+                    if (isApex || isBase) {
+                        for (let c = cLeft; c <= cRight; c++) cells.push({ col: c, row: r });
+                    } else {
+                        cells.push({ col: cLeft, row: r });
+                        if (cRight !== cLeft) cells.push({ col: cRight, row: r });
+                    }
+                }
+            }
+        } else {
+            // Horizontal triangle: apex at c1 side, base at c2 side
+            const apexAtLeft = c1 <= c2;
+            const cy = (minR + maxR) / 2;
+            for (let c = minC; c <= maxC; c++) {
+                const t = w === 0 ? 1 : (apexAtLeft ? (c - minC) / w : (maxC - c) / w);
+                const halfH = t * h / 2;
+                const rTop    = Math.max(minR, Math.round(cy - halfH));
+                const rBottom = Math.min(maxR, Math.round(cy + halfH));
+                if (filled) {
+                    for (let r = rTop; r <= rBottom; r++) cells.push({ col: c, row: r });
+                } else {
+                    const isApex = apexAtLeft ? c === minC : c === maxC;
+                    const isBase = apexAtLeft ? c === maxC : c === minC;
+                    if (isApex || isBase) {
+                        for (let r = rTop; r <= rBottom; r++) cells.push({ col: c, row: r });
+                    } else {
+                        cells.push({ col: c, row: rTop });
+                        if (rBottom !== rTop) cells.push({ col: c, row: rBottom });
+                    }
+                }
+            }
+        }
+        return cells;
+    }
+
+    function _getDiamondCells(c1, r1, c2, r2, filled) {
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const cells = [];
+        const w = maxC - minC, h = maxR - minR;
+        if (w === 0 && h === 0) { cells.push({ col: minC, row: minR }); return cells; }
+        const cx = (minC + maxC) / 2;
+        const cy = (minR + maxR) / 2;
+        for (let r = minR; r <= maxR; r++) {
+            const t = h === 0 ? 0 : Math.abs(r - cy) / (h / 2);
+            const halfW = (1 - t) * w / 2;
+            const cLeft  = Math.max(minC, Math.round(cx - halfW));
+            const cRight = Math.min(maxC, Math.round(cx + halfW));
+            if (filled) {
+                for (let c = cLeft; c <= cRight; c++) cells.push({ col: c, row: r });
+            } else {
+                cells.push({ col: cLeft, row: r });
+                if (cRight !== cLeft) cells.push({ col: cRight, row: r });
+            }
+        }
+        return cells;
+    }
+
+    function _getStarCells(c1, r1, c2, r2, filled) {
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const w = maxC - minC, h = maxR - minR;
+        if (w <= 1 && h <= 1) {
+            const cells = [];
+            for (let r = minR; r <= maxR; r++)
+                for (let c = minC; c <= maxC; c++)
+                    cells.push({ col: c, row: r });
+            return cells;
+        }
+        const cx = (minC + maxC) / 2, cy = (minR + maxR) / 2;
+        const rx = w / 2, ry = h / 2;
+        const innerRatio = 0.381966;
+        const verts = [];
+        for (let i = 0; i < 10; i++) {
+            const angle = -Math.PI / 2 + (i * Math.PI / 5);
+            const rad = i % 2 === 0 ? 1 : innerRatio;
+            verts.push({ x: cx + rad * rx * Math.cos(angle), y: cy + rad * ry * Math.sin(angle) });
+        }
+        const cells = [];
+        const set = new Set();
+        const addCell = (col, row) => {
+            const key = row * 100000 + col;
+            if (!set.has(key)) { set.add(key); cells.push({ col, row }); }
+        };
+        for (let row = minR; row <= maxR; row++) {
+            const intersections = [];
+            for (let i = 0; i < verts.length; i++) {
+                const a = verts[i], b = verts[(i + 1) % verts.length];
+                if ((a.y <= row + 0.5 && b.y > row + 0.5) || (b.y <= row + 0.5 && a.y > row + 0.5)) {
+                    const t = (row + 0.5 - a.y) / (b.y - a.y);
+                    intersections.push(a.x + t * (b.x - a.x));
+                }
+            }
+            intersections.sort((a, b) => a - b);
+            if (filled) {
+                for (let j = 0; j < intersections.length - 1; j += 2) {
+                    const left = Math.max(minC, Math.round(intersections[j]));
+                    const right = Math.min(maxC, Math.round(intersections[j + 1]));
+                    for (let c = left; c <= right; c++) addCell(c, row);
+                }
+            } else {
+                for (let j = 0; j < intersections.length; j++) {
+                    addCell(Math.max(minC, Math.min(maxC, Math.round(intersections[j]))), row);
+                }
+            }
+        }
+        if (!filled) {
+            for (let i = 0; i < verts.length; i++) {
+                const a = verts[i], b = verts[(i + 1) % verts.length];
+                const ac = Math.max(minC, Math.min(maxC, Math.round(a.x)));
+                const ar = Math.max(minR, Math.min(maxR, Math.round(a.y)));
+                const bc = Math.max(minC, Math.min(maxC, Math.round(b.x)));
+                const br = Math.max(minR, Math.min(maxR, Math.round(b.y)));
+                const steps = Math.max(Math.abs(bc - ac), Math.abs(br - ar));
+                for (let s = 0; s <= steps; s++) {
+                    const t = steps === 0 ? 0 : s / steps;
+                    const c = Math.round(ac + t * (bc - ac));
+                    const r = Math.round(ar + t * (br - ar));
+                    if (c >= minC && c <= maxC && r >= minR && r <= maxR) addCell(c, r);
+                }
+            }
+        }
+        return cells;
+    }
+
+    function _getShapeCellsFn() {
+        return { rect: _getRectCells, ellipse: _getEllipseCells, triangle: _getTriangleCells, diamond: _getDiamondCells, star: _getStarCells }[_shapeMode];
     }
 
     /* ═══════════════════════════════════════════
@@ -2811,7 +3200,7 @@ function createPatternEditor(config) {
                 pushUndo();
                 _painting = true;
                 _lastPaintCell = `${col},${row}`;
-                for (const bc of _getBrushCells(col, row)) _withMirror(bc.col, bc.row, pencilAt);
+                for (const bc of _getBrushCells(col, row)) _withMirror(bc.col, bc.row, _placeStitchAt);
                 break;
             case 'eraser':
                 pushUndo();
@@ -2852,18 +3241,15 @@ function createPatternEditor(config) {
                 } else {
                     pushUndo();
                     const cells = bresenhamLine(lineStart.col, lineStart.row, col, row);
-                    for (const c of cells) _withMirror(c.col, c.row, pencilAt);
+                    for (const c of cells) _withMirror(c.col, c.row, _placeStitchAt);
                     lineStart = null;
                     _lineEnd = null;
                     _commitEdit();
                     _redrawOverlay();
                 }
                 break;
-            case 'rect':
-                _rectStart = { col, row };
-                break;
-            case 'ellipse':
-                _ellipseStart = { col, row };
+            case 'shape':
+                _shapeStart = { col, row };
                 break;
             case 'text':
                 _showTextPanel(col, row);
@@ -2973,6 +3359,27 @@ function createPatternEditor(config) {
                 if (_pasteMode) {
                     if (_pasteLoc) _commitPaste(_pasteLoc.col, _pasteLoc.row);
                     return;
+                }
+                if (_selectMode === 'lasso') {
+                    // If clicking inside existing selection, start move
+                    if (_selRect && _isInsideSelection(col, row)) {
+                        _selMoving = true;
+                        _selMoveOrigin = { col, row };
+                        if (!_selBuffer) _captureSelectionBuffer();
+                        break;
+                    }
+                    // Start a new lasso
+                    _commitMovedSelection();
+                    _selRect = null; _selBuffer = null; _wandMask = null;
+                    _selOffset = { dc: 0, dr: 0 };
+                    _stopMarchingAnts();
+                    const sub = _getGridCoords(e);
+                    if (!sub) break;
+                    _lassoPath = [{ gx: sub.gx, gy: sub.gy }];
+                    _lassoDragging = true;
+                    _redrawOverlay();
+                    _updateSelectBarState();
+                    break;
                 }
                 if (_selectMode === 'wand') {
                     // If clicking inside existing selection, start move (same as rect mode)
@@ -3103,13 +3510,10 @@ function createPatternEditor(config) {
             return;
         }
 
-        // Rectangle preview
-        // Rect/ellipse preview
-        const _shapeStart = activeTool === 'rect' ? _rectStart : activeTool === 'ellipse' ? _ellipseStart : null;
-        if (_shapeStart) {
+        // Shape preview (rect, ellipse, triangle, diamond, star)
+        if (activeTool === 'shape' && _shapeStart) {
             if (hoverStitch) {
-                const preview = { c1: _shapeStart.col, r1: _shapeStart.row, c2: hoverStitch.col, r2: hoverStitch.row, outline: e.shiftKey };
-                if (activeTool === 'rect') _rectPreview = preview; else _ellipsePreview = preview;
+                _shapePreview = { c1: _shapeStart.col, r1: _shapeStart.row, c2: hoverStitch.col, r2: hoverStitch.row, outline: e.shiftKey };
             }
             _redrawOverlay();
             return;
@@ -3131,6 +3535,18 @@ function createPatternEditor(config) {
         if (activeTool === 'select') {
             if (_pasteMode && hoverStitch) {
                 _pasteLoc = { col: hoverStitch.col, row: hoverStitch.row };
+                _redrawOverlay();
+                return;
+            }
+            if (_lassoDragging && _lassoPath) {
+                const sub = _getGridCoords(e);
+                if (sub) {
+                    const last = _lassoPath[_lassoPath.length - 1];
+                    const dx = sub.gx - last.gx, dy = sub.gy - last.gy;
+                    if (dx * dx + dy * dy >= 0.04) {
+                        _lassoPath.push({ gx: sub.gx, gy: sub.gy });
+                    }
+                }
                 _redrawOverlay();
                 return;
             }
@@ -3165,7 +3581,7 @@ function createPatternEditor(config) {
         if (key === _lastPaintCell) return;
         _lastPaintCell = key;
         if (activeTool === 'pencil') {
-            for (const bc of _getBrushCells(stitch.col, stitch.row)) _withMirror(bc.col, bc.row, pencilAt);
+            for (const bc of _getBrushCells(stitch.col, stitch.row)) _withMirror(bc.col, bc.row, _placeStitchAt);
         } else if (activeTool === 'eraser') {
             for (const bc of _getBrushCells(stitch.col, stitch.row)) _withMirror(bc.col, bc.row, eraserAt);
         }
@@ -3188,17 +3604,13 @@ function createPatternEditor(config) {
             return;
         }
 
-        // Rectangle / Ellipse commit
-        const _shapeCommit = activeTool === 'rect' ? { start: _rectStart, preview: _rectPreview, getCells: _getRectCells }
-                           : activeTool === 'ellipse' ? { start: _ellipseStart, preview: _ellipsePreview, getCells: _getEllipseCells }
-                           : null;
-        if (_shapeCommit && _shapeCommit.start && _shapeCommit.preview) {
+        // Shape commit (rect, ellipse, triangle, diamond, star)
+        if (activeTool === 'shape' && _shapeStart && _shapePreview) {
             pushUndo();
-            const p = _shapeCommit.preview;
-            const cells = _shapeCommit.getCells(p.c1, p.r1, p.c2, p.r2, !p.outline);
-            for (const c of cells) _withMirror(c.col, c.row, pencilAt);
-            _rectStart = null; _rectPreview = null;
-            _ellipseStart = null; _ellipsePreview = null;
+            const p = _shapePreview;
+            const cells = _getShapeCellsFn()(p.c1, p.r1, p.c2, p.r2, !p.outline);
+            for (const c of cells) _withMirror(c.col, c.row, _placeStitchAt);
+            _shapeStart = null; _shapePreview = null;
             _commitEdit();
             _redrawOverlay();
             return;
@@ -3206,6 +3618,28 @@ function createPatternEditor(config) {
 
         // Selection drag end
         if (activeTool === 'select') {
+            if (_lassoDragging && _lassoPath) {
+                _lassoDragging = false;
+                if (_lassoPath.length >= 3) {
+                    const pd = getPatternData();
+                    const mask = _rasterizeLasso(_lassoPath, pd.grid_w, pd.grid_h);
+                    if (mask.size > 0) {
+                        let minC = Infinity, maxC = -1, minR = Infinity, maxR = -1;
+                        for (const i of mask) {
+                            const c = i % pd.grid_w, r = (i - c) / pd.grid_w;
+                            if (c < minC) minC = c; if (c > maxC) maxC = c;
+                            if (r < minR) minR = r; if (r > maxR) maxR = r;
+                        }
+                        _selRect = { c1: minC, r1: minR, c2: maxC, r2: maxR };
+                        _wandMask = mask;
+                        _startMarchingAnts();
+                    }
+                }
+                _lassoPath = null;
+                _redrawOverlay();
+                _updateSelectBarState();
+                return;
+            }
             if (_selDragging) {
                 _selDragging = false;
                 if (_selRect && (_selRect.c1 !== _selRect.c2 || _selRect.r1 !== _selRect.r2)) {
@@ -3262,6 +3696,7 @@ function createPatternEditor(config) {
         if (_replacePanel) _replacePanel.style.display = 'none';
         if (_confettiBar) _confettiBar.style.display = 'none';
         if (_selectBar) _selectBar.style.display = 'none';
+        _lassoPath = null; _lassoDragging = false;
         _clearConfetti();
         _closeAddColorDropdown();
         _closeReplaceDropdown();
@@ -3270,10 +3705,9 @@ function createPatternEditor(config) {
         lineStart = null;
         _lineEnd = null;
         _painting = false;
-        _rectStart = null;
-        _rectPreview = null;
-        _ellipseStart = null;
-        _ellipsePreview = null;
+        _shapeStart = null;
+        _shapePreview = null;
+        if (_shapeBar) _shapeBar.style.display = 'none';
         _clearFillPreview();
         _bsStart = null;
         _bsPreviewEnd = null;
@@ -3335,13 +3769,8 @@ function createPatternEditor(config) {
                 _redrawOverlay();
                 return true;
             }
-            if (_rectStart) {
-                _rectStart = null; _rectPreview = null;
-                _redrawOverlay();
-                return true;
-            }
-            if (_ellipseStart) {
-                _ellipseStart = null; _ellipsePreview = null;
+            if (_shapeStart) {
+                _shapeStart = null; _shapePreview = null;
                 _redrawOverlay();
                 return true;
             }
@@ -3356,6 +3785,12 @@ function createPatternEditor(config) {
             }
             if (_pasteMode) {
                 _exitPasteMode();
+                return true;
+            }
+            if (activeTool === 'select' && _lassoDragging) {
+                _lassoDragging = false;
+                _lassoPath = null;
+                _redrawOverlay();
                 return true;
             }
             if (activeTool === 'select' && _selRect) {
@@ -3417,16 +3852,30 @@ function createPatternEditor(config) {
             if (e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault(); _showResizeModal(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'I') { e.preventDefault(); _showRowColModal(); return true; }
             if (e.shiftKey && e.key.toUpperCase() === 'O') { e.preventDefault(); _setTool('auto-outline'); return true; }
+            if (e.shiftKey && e.key.toUpperCase() === 'C') { e.preventDefault(); _cropToContent(); return true; }
             return false;
         }
         const k = e.key.toLowerCase();
+        if (k === 'g') { _crosshairMode = !_crosshairMode; _pref('dmc-ed-crosshair', _crosshairMode ? '1' : '0'); _redrawOverlay(); return true; }
         if (k === 'p') { _setTool('pencil');     return true; }
         if (k === 'e') { _setTool('eraser');      return true; }
         if (k === 'f') { _setTool('fill');        return true; }
         if (k === 'i') { _setTool('eyedropper');  return true; }
         if (k === 'l') { _setTool('line');        return true; }
-        if (k === 't') { _setTool('rect');        return true; }
-        if (k === 'o') { _setTool('ellipse');    return true; }
+        if (k === 't') { _setTool('shape');        return true; }
+        if (k === 'o') {
+            if (activeTool === 'shape') {
+                const modes = ['rect', 'ellipse', 'triangle', 'diamond', 'star'];
+                _shapeMode = modes[(modes.indexOf(_shapeMode) + 1) % modes.length];
+                if (_shapeBar) _shapeBar.querySelectorAll('.confetti-scope-btn').forEach(b =>
+                    b.classList.toggle('active', b.dataset.shape === _shapeMode));
+                _shapeStart = null; _shapePreview = null;
+                _redrawOverlay();
+            } else {
+                _setTool('shape');
+            }
+            return true;
+        }
         if (k === 'x') { _setTool('text');       return true; }
         if (k === 'r') { _setTool('replace');     return true; }
         if (k === 's') { _setTool('select');      return true; }
@@ -3474,10 +3923,10 @@ function createPatternEditor(config) {
         activeDmc = null;
         activeHex = '#888888';
         activeTool = 'pan';
-        _rectStart = null;
-        _rectPreview = null;
-        _ellipseStart = null;
-        _ellipsePreview = null;
+        _shapeStart = null;
+        _shapePreview = null;
+        _shapeMode = 'rect';
+        if (_shapeBar) _shapeBar.style.display = 'none';
         _clearFillPreview();
         _clearConfetti();
         _confettiThreshold = 3;
@@ -3486,10 +3935,11 @@ function createPatternEditor(config) {
         _selectMode = 'rect';
         _wandMask = null;
         if (_selectBar) _selectBar.style.display = 'none';
+        _lassoPath = null; _lassoDragging = false;
         _bsStart = null;
         _bsPreviewEnd = null;
         _hoverIntersection = null;
-        activeStitchMode = 'half';
+        activeStitchMode = 'full';
         _halfDir = 'fwd';
         _hideTextPanel();
         _mirrorMode = _pref('dmc-ed-mirror', 'off');
@@ -3543,8 +3993,7 @@ function createPatternEditor(config) {
                 <div class="tool-sep"></div>
                 <div class="tool-group">
                     <button class="tool-btn" data-tool="line" title="Line (L)"><i class="ti ti-line"></i><span class="tool-lbl">Line</span></button>
-                    <button class="tool-btn" data-tool="rect" title="Rectangle (T)"><i class="ti ti-rectangle"></i><span class="tool-lbl">Rect</span></button>
-                    <button class="tool-btn" data-tool="ellipse" title="Ellipse (O)"><i class="ti ti-circle"></i><span class="tool-lbl">Oval</span></button>
+                    <button class="tool-btn" data-tool="shape" title="Shapes (T)"><i class="ti ti-polygon"></i><span class="tool-lbl">Shape</span></button>
                     <button class="tool-btn" data-tool="fill" title="Flood Fill (F)"><i class="ti ti-paint-filled"></i><span class="tool-lbl">Fill</span></button>
                 </div>
                 <div class="tool-sep"></div>
@@ -3568,29 +4017,34 @@ function createPatternEditor(config) {
                 <button class="tool-btn ed-undo-btn" title="Undo (Ctrl+Z)" disabled><i class="ti ti-arrow-back-up"></i><span class="tool-lbl">Undo</span></button>
                 <button class="tool-btn ed-redo-btn" title="Redo (Ctrl+Shift+Z / Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i><span class="tool-lbl">Redo</span></button>
                 <div class="tool-sep"></div>
-                <button class="tool-btn ed-mirror-btn" title="Mirror: off (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror</span></button>
+                <button class="tool-btn ed-mirror-h-btn" title="Mirror Horizontal (M)"><i class="ti ti-flip-horizontal"></i><span class="tool-lbl">Mirror H</span></button>
+                <button class="tool-btn ed-mirror-v-btn" title="Mirror Vertical (M)"><i class="ti ti-flip-vertical"></i><span class="tool-lbl">Mirror V</span></button>
                 <button class="tool-btn ed-resize-btn" title="Resize Canvas (Ctrl+Shift+R)"><i class="ti ti-dimensions"></i><span class="tool-lbl">Resize</span></button>
                 <button class="tool-btn ed-rowcol-btn" title="Insert/Delete Row/Column (Ctrl+Shift+I)"><i class="ti ti-row-insert-bottom"></i><span class="tool-lbl">Row/Col</span></button>
+                <button class="tool-btn ed-crop-btn" title="Crop to Content (Ctrl+Shift+C)"><i class="ti ti-crop"></i><span class="tool-lbl">Crop</span></button>
                 <div class="tool-sep"></div>
-                <div class="fabric-color-wrapper">
-                    <button class="fabric-swatch-btn ed-fabric-swatch" title="Fabric Color (Aida)" style="background:#F5F0E8"></button>
-                    <span class="tool-lbl">Fabric</span>
-                    <div class="fabric-dropdown">
-                        <div class="fabric-preset" data-color="#FFFFFF"><div class="fabric-preset-sw" style="background:#FFFFFF"></div>White</div>
-                        <div class="fabric-preset active" data-color="#F5F0E8"><div class="fabric-preset-sw" style="background:#F5F0E8"></div>Antique White</div>
-                        <div class="fabric-preset" data-color="#000000"><div class="fabric-preset-sw" style="background:#000000"></div>Black</div>
-                        <div class="fabric-custom"><input type="color" class="ed-fabric-custom" value="#F5F0E8"><span>Custom</span></div>
+                <div class="palette-group">
+                    <div class="fabric-color-wrapper">
+                        <button class="palette-btn ed-fabric-btn" title="Fabric Color (Aida)">
+                            <div class="palette-sw ed-fabric-swatch" style="background:#F5F0E8"></div>
+                            <span class="palette-lbl">Fabric <i class="ti ti-chevron-down"></i></span>
+                        </button>
+                        <div class="fabric-dropdown">
+                            <div class="fabric-preset" data-color="#FFFFFF"><div class="fabric-preset-sw" style="background:#FFFFFF"></div>White</div>
+                            <div class="fabric-preset active" data-color="#F5F0E8"><div class="fabric-preset-sw" style="background:#F5F0E8"></div>Antique White</div>
+                            <div class="fabric-preset" data-color="#000000"><div class="fabric-preset-sw" style="background:#000000"></div>Black</div>
+                            <div class="fabric-custom"><input type="color" class="ed-fabric-custom" value="#F5F0E8"><span>Custom</span></div>
+                        </div>
                     </div>
-                </div>
-                <div class="active-color-ind">
-                    <div class="active-sw ed-active-swatch"></div>
-                    <span class="active-lbl ed-active-label">No color</span>
-                </div>
-                <div class="add-color-wrapper">
-                    <button class="tool-btn ed-add-color-btn" title="Add ${_brand} Color (+)"><i class="ti ti-plus"></i><span class="tool-lbl">Add</span></button>
-                    <div class="add-color-dropdown">
-                        <input type="text" class="replace-target-search" placeholder="Search ${_brand} #/name…">
-                        <div class="replace-target-list"></div>
+                    <div class="add-color-wrapper">
+                        <button class="palette-btn ed-active-color-ind" title="Click to change thread color">
+                            <div class="palette-sw ed-active-swatch"></div>
+                            <span class="palette-lbl ed-active-label">Thread <i class="ti ti-chevron-down"></i></span>
+                        </button>
+                        <div class="add-color-dropdown">
+                            <input type="text" class="replace-target-search" placeholder="Search ${_brand} #/name…">
+                            <div class="replace-target-list"></div>
+                        </div>
                     </div>
                 </div>
                 <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><i class="ti ti-color-picker"></i><span class="tool-lbl">Pick</span></button>
@@ -3675,12 +4129,11 @@ function createPatternEditor(config) {
         _selectBar.className = 'ed-select-bar';
         _selectBar.style.display = 'none';
         _selectBar.innerHTML = `
-            <span class="confetti-scope"><button class="confetti-scope-btn active" data-mode="rect">Rect</button><button class="confetti-scope-btn" data-mode="wand">Wand</button></span>
+            <span class="confetti-scope"><button class="confetti-scope-btn active" data-mode="rect">Rect</button><button class="confetti-scope-btn" data-mode="wand">Wand</button><button class="confetti-scope-btn" data-mode="lasso">Lasso</button></span>
             <span style="width:1px;height:16px;background:var(--border-2)"></span>
             <button class="select-flip-h" disabled>Flip Horizontal</button>
             <button class="select-flip-v" disabled>Flip Vertical</button>
             <button class="select-rotate" disabled>Rotate</button>
-            <span style="width:1px;height:16px;background:var(--border-2)"></span>
             <span class="select-dims"></span>
         `;
         container.appendChild(_selectBar);
@@ -3712,6 +4165,27 @@ function createPatternEditor(config) {
         _selectBar.addEventListener('mousedown', (e) => e.stopPropagation());
         _selectBar.addEventListener('click', (e) => e.stopPropagation());
 
+        /* ── Shape sub-bar (Rect/Oval/Triangle/Diamond/Star) ── */
+        _shapeBar = document.createElement('div');
+        _shapeBar.className = 'ed-shape-bar';
+        _shapeBar.style.display = 'none';
+        _shapeBar.innerHTML = `
+            <span class="confetti-scope"><button class="confetti-scope-btn active" data-shape="rect" title="Rectangle"><i class="ti ti-rectangle"></i> Rect</button><button class="confetti-scope-btn" data-shape="ellipse" title="Ellipse"><i class="ti ti-circle"></i> Oval</button><button class="confetti-scope-btn" data-shape="triangle" title="Triangle"><i class="ti ti-triangle"></i> Tri</button><button class="confetti-scope-btn" data-shape="diamond" title="Diamond"><i class="ti ti-diamond"></i> Dia</button><button class="confetti-scope-btn" data-shape="star" title="Star"><i class="ti ti-star"></i> Star</button></span>
+        `;
+        container.appendChild(_shapeBar);
+
+        _shapeBar.querySelectorAll('.confetti-scope-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _shapeMode = btn.dataset.shape;
+                _shapeBar.querySelectorAll('.confetti-scope-btn').forEach(b => b.classList.toggle('active', b === btn));
+                _shapeStart = null; _shapePreview = null;
+                _redrawOverlay();
+            });
+        });
+        _shapeBar.addEventListener('mousedown', (e) => e.stopPropagation());
+        _shapeBar.addEventListener('click', (e) => e.stopPropagation());
+
         // Cache DOM refs
         _dirToggle = _toolbar.querySelector('.stitch-dir-toggle');
         _dirToggle.addEventListener('click', (e) => { e.stopPropagation(); _toggleHalfDir(); });
@@ -3737,7 +4211,7 @@ function createPatternEditor(config) {
         _fabricDropdown = _toolbar.querySelector('.fabric-dropdown');
         _fabricCustom  = _toolbar.querySelector('.ed-fabric-custom');
 
-        _fabricSwatch.addEventListener('click', (e) => {
+        _toolbar.querySelector('.ed-fabric-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             _fabricDropdown.classList.toggle('open');
         });
@@ -3758,13 +4232,15 @@ function createPatternEditor(config) {
         });
         _undoBtn.addEventListener('click', undo);
         _redoBtn.addEventListener('click', redo);
-        _toolbar.querySelector('.ed-add-color-btn').addEventListener('click', (e) => {
+        _toolbar.querySelector('.ed-active-color-ind').addEventListener('click', (e) => {
             e.stopPropagation();
             _toggleAddColorDropdown();
         });
-        _toolbar.querySelector('.ed-mirror-btn').addEventListener('click', _cycleMirror);
+        _toolbar.querySelector('.ed-mirror-h-btn').addEventListener('click', () => _toggleMirrorAxis('horizontal'));
+        _toolbar.querySelector('.ed-mirror-v-btn').addEventListener('click', () => _toggleMirrorAxis('vertical'));
         _toolbar.querySelector('.ed-resize-btn').addEventListener('click', _showResizeModal);
         _toolbar.querySelector('.ed-rowcol-btn').addEventListener('click', _showRowColModal);
+        _toolbar.querySelector('.ed-crop-btn').addEventListener('click', _cropToContent);
 
         // Brush size pills
         _brushBtns = _toolbar.querySelectorAll('.brush-pill[data-brush]');
@@ -3783,6 +4259,7 @@ function createPatternEditor(config) {
         });
         _replaceTargetSearch.addEventListener('input', _debounce(_filterReplaceTargets, 150));
         _replaceTargetSearch.addEventListener('click', (e) => e.stopPropagation());
+        _replaceTargetSearch.addEventListener('keydown', (e) => e.stopPropagation());
         _replaceTargetList.addEventListener('click', (e) => {
             const row = e.target.closest('.replace-target-row');
             if (row) _selectReplaceTarget(row.dataset.dmc);
@@ -3793,6 +4270,7 @@ function createPatternEditor(config) {
         // Event listeners — add color dropdown
         _addColorSearch.addEventListener('input', _debounce(_filterAddColorList, 150));
         _addColorSearch.addEventListener('click', (e) => e.stopPropagation());
+        _addColorSearch.addEventListener('keydown', (e) => e.stopPropagation());
         _addColorList.addEventListener('click', (e) => {
             const row = e.target.closest('.replace-target-row');
             if (row) _addDmcColor(row.dataset.dmc);
@@ -3821,6 +4299,7 @@ function createPatternEditor(config) {
         if (_textPanel)     { _textPanel.remove(); _textPanel = null; _textInput = null; }
         if (_confettiBar)   { _confettiBar.remove(); _confettiBar = null; }
         if (_selectBar) { _selectBar.remove(); _selectBar = null; }
+        if (_shapeBar) { _shapeBar.remove(); _shapeBar = null; }
         _uiInjected = false;
         _toolbar = _replacePanel = null;
         _dirToggle = null;
@@ -3880,6 +4359,6 @@ function createPatternEditor(config) {
         setBrand(b) { _brand = b; allDmcThreads = null; },
         injectUI,
         removeUI,
-        isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-confetti-bar,.ed-select-bar,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls,.fabric-dropdown'),
+        isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-confetti-bar,.ed-select-bar,.ed-shape-bar,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls,.fabric-dropdown'),
     };
 }
