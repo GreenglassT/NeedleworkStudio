@@ -94,7 +94,8 @@
         .view-toggle-btn {
             font-family: 'IBM Plex Mono', monospace;
             font-size: 10px;
-            padding: 4px 10px;
+            padding: 0 10px;
+            height: 28px;
             background: transparent;
             border: none;
             color: var(--text-dim);
@@ -479,17 +480,35 @@
         .canvas-area.cell-mark-mode { cursor: crosshair; }
         .canvas-area.cell-mark-mode.dragging { cursor: crosshair; }
 
-        #cell-mark-btn.active,
-        #crosshair-btn.active {
+        /* ——— COMPACT TOOL GROUP (icon-only toggles) ——— */
+        .vw-tools {
+            display: inline-flex;
+            gap: 2px;
+            align-self: center;
+        }
+        .vw-tools .vw-tbtn {
+            font-size: 15px;
+            padding: 0 9px;
+            height: 28px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background var(--t), color var(--t);
+            line-height: 1;
+        }
+        .vw-tools .vw-tbtn:hover:not(.active) {
+            background: var(--surface-2);
+            color: var(--text);
+        }
+        .vw-tools .vw-tbtn.active {
             color: var(--gold);
             background: rgba(200,145,58,0.12);
             border-color: var(--gold-dim);
         }
 
-        body.edit-mode-on #cell-mark-btn,
-        body.edit-mode-on #marker-mode-btn,
-        body.edit-mode-on #pick-btn,
-        body.edit-mode-on #crosshair-btn,
+        body.edit-mode-on .vw-tools,
         body.edit-mode-on .cell-progress-wrap { display: none; }
 
         /* ——— ZEN / FULLSCREEN MODE ——— */
@@ -509,11 +528,7 @@
         .zen-bar {
             display: flex;
             align-items: center;
-            gap: 0;
-            background: var(--surface);
-            border: 1px solid var(--border-2);
-            border-radius: var(--r-lg);
-            box-shadow: 0 2px 12px rgba(0,0,0,.3);
+            gap: 2px;
             pointer-events: auto;
             overflow: visible;
         }
@@ -521,34 +536,27 @@
         .zen-bar-btn {
             display: flex;
             align-items: center;
-            gap: 5px;
-            padding: 7px 12px;
-            background: none;
-            border: none;
+            justify-content: center;
+            padding: 0 9px;
+            height: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r);
             color: var(--text-muted);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 10px;
-            letter-spacing: .04em;
+            font-size: 15px;
             cursor: pointer;
             white-space: nowrap;
             transition: color var(--t), background var(--t);
+            box-shadow: 0 2px 8px rgba(0,0,0,.25);
         }
         .zen-bar-btn:hover { color: var(--text); background: var(--surface-2); }
-        .zen-bar-btn:first-child { border-radius: var(--r-lg) 0 0 var(--r-lg); }
-        .zen-bar-btn.active { color: var(--gold); background: rgba(200,145,58,0.1); }
-        .zen-bar-btn .ti { font-size: 14px; }
+        .zen-bar-btn.active { color: var(--gold); background: rgba(200,145,58,0.12); border-color: var(--gold-dim); }
 
-        .zen-bar-sep {
-            width: 1px;
-            height: 20px;
-            background: var(--border);
-            flex-shrink: 0;
-        }
+        .zen-bar-sep { display: none; }
 
         .zen-bar-more {
             position: relative;
         }
-        .zen-bar-more > .zen-bar-btn { border-radius: 0 var(--r-lg) var(--r-lg) 0; }
 
         #zen-menu {
             min-width: 200px;
@@ -626,7 +634,7 @@
         /* ——— PATTERN NOTES ——— */
         #notes-toggle.has-notes { color: var(--gold); }
         .notes-bar {
-            padding: 4px 16px 6px; background: var(--bg-card);
+            padding: 4px 16px 6px; background: var(--surface);
             border-bottom: 1px solid var(--border);
         }
         .notes-input {
@@ -641,7 +649,7 @@
         .goto-panel {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             z-index: 50; display: flex; align-items: center; gap: 6px;
-            background: var(--bg-card); border: 1px solid var(--border);
+            background: var(--surface); border: 1px solid var(--border);
             border-radius: 8px; padding: 6px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.25);
         }
         .goto-panel label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
@@ -729,19 +737,22 @@
                 <button class="view-toggle-btn" id="view-thread-btn" onclick="setViewMode('thread')"><i class="ti ti-needle"></i> Thread</button>
             </div>
             <script>!function(){var m=localStorage.getItem('pv-viewMode');if(m!=='thread')m='chart';var el=document.getElementById(m==='thread'?'view-thread-btn':'view-chart-btn');if(el)el.classList.add('active');}();</script>
-            <button class="nav-link" id="zen-btn" onclick="toggleZenMode()" title="Zen Mode (F)" aria-label="Zen mode"><i class="ti ti-maximize"></i> Zen Mode</button>
-            <button class="nav-link" id="cell-mark-btn" onclick="toggleCellMarkMode()"
-                    title="Mark stitched cells (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i> Mark Complete</button>
-            <button class="nav-link" id="marker-mode-btn" onclick="toggleMarkerMode()"
-                    title="Place Marker (B)" aria-label="Place marker"><i class="ti ti-map-pin-2"></i> Place Marker</button>
-            <button class="nav-link" id="pick-btn" onclick="togglePickMode()"
-                    title="Pick thread color (K)" aria-label="Pick thread color"><i class="ti ti-color-picker"></i> Pick Color</button>
-            <button class="nav-link" id="crosshair-btn" onclick="toggleCrosshair()"
-                    title="Crosshair guides (X)" aria-label="Toggle crosshair guides"><i class="ti ti-crosshair"></i> Crosshair</button>
-            <button class="nav-link" onclick="openGotoPanel()"
-                    title="Jump to row/column (G)" aria-label="Go to row/column"><i class="ti ti-map-pin"></i> Go to</button>
-            <button class="nav-link" id="notes-toggle" onclick="toggleNotesPanel()"
-                    title="Pattern notes" style="display:none"><i class="ti ti-notes"></i> Notes</button>
+            <div class="vw-tools">
+                <button class="vw-tbtn" id="zen-btn" onclick="toggleZenMode()"
+                        title="Zen Mode (F)" aria-label="Zen mode"><i class="ti ti-maximize"></i></button>
+                <button class="vw-tbtn" id="cell-mark-btn" onclick="toggleCellMarkMode()"
+                        title="Mark Complete (M)" aria-label="Mark stitched cells"><i class="ti ti-pencil-check"></i></button>
+                <button class="vw-tbtn" id="marker-mode-btn" onclick="toggleMarkerMode()"
+                        title="Place Marker (B)" aria-label="Place marker"><i class="ti ti-map-pin-2"></i></button>
+                <button class="vw-tbtn" id="pick-btn" onclick="togglePickMode()"
+                        title="Pick Color (K)" aria-label="Pick thread color"><i class="ti ti-color-picker"></i></button>
+                <button class="vw-tbtn" id="crosshair-btn" onclick="toggleCrosshair()"
+                        title="Crosshair (X)" aria-label="Toggle crosshair guides"><i class="ti ti-crosshair"></i></button>
+                <button class="vw-tbtn" onclick="openGotoPanel()"
+                        title="Go to (G)" aria-label="Go to row/column"><i class="ti ti-map-pin"></i></button>
+                <button class="vw-tbtn" id="notes-toggle" onclick="toggleNotesPanel()"
+                        title="Notes (N)" aria-label="Pattern notes" style="display:none"><i class="ti ti-notes"></i></button>
+            </div>
             <div class="calc-dropdown-wrap">
                 <button class="nav-link" id="calc-toggle" onclick="toggleCalcMenu(event)"><i class="ti ti-calculator"></i> Calculate Materials <i class="ti ti-chevron-down"></i></button>
                 <div class="calc-dropdown-menu" id="calc-menu">
@@ -824,25 +835,20 @@
 <div class="zen-toolbar" id="zen-toolbar">
     <div class="zen-bar" id="zen-bar">
         <button class="zen-bar-btn" id="zen-view-btn" onclick="zenMenuAction('view-mode')" title="Toggle view mode">
-            <i class="ti ti-needle" id="zen-view-icon"></i> <span id="zen-view-label">Thread</span>
+            <i class="ti ti-needle" id="zen-view-icon"></i>
         </button>
-        <div class="zen-bar-sep"></div>
         <button class="zen-bar-btn" id="zen-mark-btn" onclick="zenMenuAction('mark-complete')" title="Mark stitches complete (M)">
-            <i class="ti ti-pencil-check"></i> <span id="zen-mark-label">Mark</span>
+            <i class="ti ti-pencil-check"></i>
         </button>
-        <div class="zen-bar-sep"></div>
         <button class="zen-bar-btn" id="zen-marker-btn" onclick="zenMenuAction('place-marker')" title="Place marker (B)">
-            <i class="ti ti-map-pin-2"></i> <span id="zen-marker-label">Marker</span>
+            <i class="ti ti-map-pin-2"></i>
         </button>
-        <div class="zen-bar-sep"></div>
         <button class="zen-bar-btn" id="zen-pick-btn" onclick="zenMenuAction('pick-color')" title="Pick thread color (K)">
-            <i class="ti ti-color-picker"></i> <span id="zen-pick-label">Pick</span>
+            <i class="ti ti-color-picker"></i>
         </button>
-        <div class="zen-bar-sep"></div>
         <button class="zen-bar-btn" id="zen-crosshair-btn" onclick="toggleCrosshair()" title="Crosshair guides (X)">
-            <i class="ti ti-crosshair"></i> <span id="zen-crosshair-label">Crosshair</span>
+            <i class="ti ti-crosshair"></i>
         </button>
-        <div class="zen-bar-sep"></div>
         <div class="zen-bar-more">
             <button class="zen-bar-btn" id="zen-menu-btn" onclick="toggleZenMenu(event)" title="More actions" aria-label="More actions">
                 <i class="ti ti-dots"></i>

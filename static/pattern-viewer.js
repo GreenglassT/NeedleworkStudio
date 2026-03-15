@@ -70,29 +70,19 @@ function zenMenuAction(action) {
 }
 
 function _syncZenMenuLabels() {
-    const markLabel = document.getElementById('zen-mark-label');
     const markBtn   = document.getElementById('zen-mark-btn');
-    if (markLabel) markLabel.textContent = _cellMarkMode ? 'Marking' : 'Mark';
     if (markBtn) markBtn.classList.toggle('active', _cellMarkMode);
 
-    const markerLabel = document.getElementById('zen-marker-label');
     const markerBtn   = document.getElementById('zen-marker-btn');
-    if (markerLabel) markerLabel.textContent = _markerMode ? 'Placing' : 'Marker';
     if (markerBtn) markerBtn.classList.toggle('active', _markerMode);
 
-    const pickLabel = document.getElementById('zen-pick-label');
     const pickBtn   = document.getElementById('zen-pick-btn');
-    if (pickLabel) pickLabel.textContent = _pickMode ? 'Picking' : 'Pick';
     if (pickBtn) pickBtn.classList.toggle('active', _pickMode);
 
-    const crosshairLabel = document.getElementById('zen-crosshair-label');
     const crosshairBtn   = document.getElementById('zen-crosshair-btn');
-    if (crosshairLabel) crosshairLabel.textContent = _crosshairMode ? 'On' : 'Crosshair';
     if (crosshairBtn) crosshairBtn.classList.toggle('active', _crosshairMode);
 
-    const viewLabel = document.getElementById('zen-view-label');
     const viewIcon  = document.getElementById('zen-view-icon');
-    if (viewLabel) viewLabel.textContent = viewMode === 'chart' ? 'Thread' : 'Chart';
     if (viewIcon)  viewIcon.className = viewMode === 'chart' ? 'ti ti-needle' : 'ti ti-grid-dots';
 }
 
@@ -635,8 +625,6 @@ function togglePickMode() {
     if (btn) btn.classList.toggle('active', _pickMode);
     const zenBtn = document.getElementById('zen-pick-btn');
     if (zenBtn) zenBtn.classList.toggle('active', _pickMode);
-    const zenLabel = document.getElementById('zen-pick-label');
-    if (zenLabel) zenLabel.textContent = _pickMode ? 'Picking' : 'Pick';
     document.getElementById('canvas-area').style.cursor = _pickMode ? 'crosshair' : '';
     if (!_pickMode) _hidePickTip();
 }
@@ -649,8 +637,6 @@ function toggleCrosshair() {
     if (btn) btn.classList.toggle('active', _crosshairMode);
     const zenBtn = document.getElementById('zen-crosshair-btn');
     if (zenBtn) zenBtn.classList.toggle('active', _crosshairMode);
-    const zenLabel = document.getElementById('zen-crosshair-label');
-    if (zenLabel) zenLabel.textContent = _crosshairMode ? 'On' : 'Crosshair';
     // If editor is active, sync its crosshair state
     if (editor && editor.isActive() && editor.setCrosshair) {
         editor.setCrosshair(_crosshairMode);
@@ -1673,7 +1659,7 @@ function exitZenMode() {
 function _updateZenUI() {
     const btn = document.getElementById('zen-btn');
     if (btn) {
-        btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i> Exit Zen' : '<i class="ti ti-maximize"></i> Zen Mode';
+        btn.innerHTML = zenMode ? '<i class="ti ti-arrows-minimize"></i>' : '<i class="ti ti-maximize"></i>';
         btn.title = zenMode ? 'Exit Zen (F)' : 'Zen Mode (F)';
     }
     if (!zenMode) _closeDropdown('zen-menu', 'zen-menu-btn');
