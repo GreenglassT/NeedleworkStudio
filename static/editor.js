@@ -2483,7 +2483,7 @@ function createPatternEditor(config) {
         if (_crosshairMode && _hoverCell) {
             const pd = getPatternData();
             ctx.save();
-            ctx.fillStyle = 'rgba(200, 145, 58, 0.10)';
+            ctx.fillStyle = 'rgba(200, 145, 58, 0.18)';
             // Full row band
             ctx.fillRect(offset.x, offset.y + _hoverCell.row * cp, pd.grid_w * cp, cp);
             // Full column band
@@ -4357,6 +4357,7 @@ function createPatternEditor(config) {
         startReplace,
         setFabricColor: _setFabricColor,
         setBrand(b) { _brand = b; allDmcThreads = null; },
+        setCrosshair(on) { _crosshairMode = on; _redrawOverlay(); },
         injectUI,
         removeUI,
         isUIElement:       (el) => !!el.closest('.editor-toolbar,.ed-replace-panel,.ed-confetti-bar,.ed-select-bar,.ed-shape-bar,.ed-add-color-modal,.ed-resize-modal,.ed-resize-backdrop,.ed-text-panel,.stitch-mode-bar,.zoom-controls,.fabric-dropdown'),

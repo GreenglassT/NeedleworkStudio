@@ -12,6 +12,7 @@
         { key: 'N',      desc: 'Toggle notes panel' },
         { key: '\u2190\u2191\u2192\u2193 , .',   desc: 'Cycle legend color' },
         { key: 'G',      desc: 'Go to row / column' },
+        { key: 'X',      desc: 'Toggle crosshair guides' },
         { key: 'Ctrl+Z', desc: 'Undo mark progress' },
         { key: 'Ctrl+\u21e7+Z', desc: 'Redo mark progress' },
         { key: 'Esc',    desc: 'Exit fullscreen · clear highlight · close search' },

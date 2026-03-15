@@ -85,6 +85,11 @@ function _syncZenMenuLabels() {
     if (pickLabel) pickLabel.textContent = _pickMode ? 'Picking' : 'Pick';
     if (pickBtn) pickBtn.classList.toggle('active', _pickMode);
 
+    const crosshairLabel = document.getElementById('zen-crosshair-label');
+    const crosshairBtn   = document.getElementById('zen-crosshair-btn');
+    if (crosshairLabel) crosshairLabel.textContent = _crosshairMode ? 'On' : 'Crosshair';
+    if (crosshairBtn) crosshairBtn.classList.toggle('active', _crosshairMode);
+
     const viewLabel = document.getElementById('zen-view-label');
     const viewIcon  = document.getElementById('zen-view-icon');
     if (viewLabel) viewLabel.textContent = viewMode === 'chart' ? 'Thread' : 'Chart';
@@ -106,6 +111,10 @@ let _progressTimer = null;        // debounce handle for auto-save
 let _progressDirty = false;       // true if unsaved progress exists
 let _patternNotes = '';           // current notes text
 let _notesSaveTimer = null;       // debounce for notes save
+let _crosshairMode = localStorage.getItem('dmc-ed-crosshair') === '1';
+let _viewerHoverCell = null;      // { col, row } or null — for crosshair in viewer mode
+let _crosshairCvs = null;         // cached crosshair canvas element
+let _crosshairCtx = null;         // cached crosshair 2d context
 
 /* ——— PROGRESS UNDO/REDO ——— */
 const _undoStack = [];              // [{stitched: Set, completed: Set}]
@@ -227,8 +236,10 @@ function renderMain() {
 
     const canvas  = document.getElementById('main-canvas');
     const overlay = document.getElementById('overlay-canvas');
+    _crosshairCvs = document.getElementById('crosshair-canvas');
     canvas.width  = W;  canvas.height  = H;
     overlay.width = W;  overlay.height = H;
+    if (_crosshairCvs) { _crosshairCvs.width = W; _crosshairCvs.height = H; _crosshairCtx = _crosshairCvs.getContext('2d'); }
 
     const ctx = canvas.getContext('2d');
 
@@ -628,6 +639,37 @@ function togglePickMode() {
     if (zenLabel) zenLabel.textContent = _pickMode ? 'Picking' : 'Pick';
     document.getElementById('canvas-area').style.cursor = _pickMode ? 'crosshair' : '';
     if (!_pickMode) _hidePickTip();
+}
+
+/* ——— CROSSHAIR GUIDES ——— */
+function toggleCrosshair() {
+    _crosshairMode = !_crosshairMode;
+    localStorage.setItem('dmc-ed-crosshair', _crosshairMode ? '1' : '0');
+    const btn = document.getElementById('crosshair-btn');
+    if (btn) btn.classList.toggle('active', _crosshairMode);
+    const zenBtn = document.getElementById('zen-crosshair-btn');
+    if (zenBtn) zenBtn.classList.toggle('active', _crosshairMode);
+    const zenLabel = document.getElementById('zen-crosshair-label');
+    if (zenLabel) zenLabel.textContent = _crosshairMode ? 'On' : 'Crosshair';
+    // If editor is active, sync its crosshair state
+    if (editor && editor.isActive() && editor.setCrosshair) {
+        editor.setCrosshair(_crosshairMode);
+    }
+    _drawViewerCrosshair();
+}
+
+function _drawViewerCrosshair() {
+    if (!_crosshairCvs || !_crosshairCtx) return;
+    _crosshairCtx.clearRect(0, 0, _crosshairCvs.width, _crosshairCvs.height);
+    // Don't draw in edit mode (editor handles its own crosshair)
+    if (editMode) return;
+    if (!_crosshairMode || !_viewerHoverCell || !patternData) return;
+    const gutXv = gX(), gutYv = gY();
+    _crosshairCtx.fillStyle = 'rgba(200, 145, 58, 0.18)';
+    // Full row band
+    _crosshairCtx.fillRect(gutXv, gutYv + _viewerHoverCell.row * cellPx, patternData.grid_w * cellPx, cellPx);
+    // Full column band
+    _crosshairCtx.fillRect(gutXv + _viewerHoverCell.col * cellPx, gutYv, cellPx, patternData.grid_h * cellPx);
 }
 
 /* ——— PICK MODE TOOLTIP ——— */
@@ -1223,6 +1265,15 @@ function toggleEditMode() {
         document.getElementById('edit-toggle-btn').style.display = '';
         document.getElementById('cancel-btn').style.display = 'none';
         document.getElementById('save-btn').style.display = 'none';
+        // Sync crosshair state back from editor (user may have toggled G in edit mode)
+        const savedCrosshair = localStorage.getItem('dmc-ed-crosshair') === '1';
+        if (savedCrosshair !== _crosshairMode) {
+            _crosshairMode = savedCrosshair;
+            const chBtn = document.getElementById('crosshair-btn');
+            if (chBtn) chBtn.classList.toggle('active', _crosshairMode);
+            const zenChBtn = document.getElementById('zen-crosshair-btn');
+            if (zenChBtn) zenChBtn.classList.toggle('active', _crosshairMode);
+        }
         renderMain();  // re-render in chart/thread view mode
     } else {
         if (!isForked) { showForkDialog(); return; }
@@ -1412,6 +1463,16 @@ document.addEventListener('mousemove', function(e) {
     if (_pickMode && !editMode) _showPickTip(e);
     else _hidePickTip();
 
+    // Crosshair tracking (viewer mode only — editor handles its own)
+    if (_crosshairMode && !editMode && patternData) {
+        const prev = _viewerHoverCell;
+        _viewerHoverCell = _canvasEventToCell(e);
+        if ((!prev && _viewerHoverCell) || (prev && !_viewerHoverCell) ||
+            (prev && _viewerHoverCell && (prev.col !== _viewerHoverCell.col || prev.row !== _viewerHoverCell.row))) {
+            _drawViewerCrosshair();
+        }
+    }
+
     if (_cellDragActive && _cellMarkMode && !editMode) {
         _moveCellMark(e.clientX, e.clientY);
         return;
@@ -1438,6 +1499,7 @@ document.addEventListener('mouseup', function() {
 // Hover cell highlight — clear on leave
 document.getElementById('canvas-area').addEventListener('mouseleave', function() {
     if (editor && editor.isActive()) editor.handleMouseLeave();
+    if (_viewerHoverCell) { _viewerHoverCell = null; _drawViewerCrosshair(); }
 });
 document.getElementById('canvas-area').addEventListener('contextmenu', function(e) {
     if (editor && editor.isActive() && editor.handleContextMenu(e)) return;
@@ -1782,6 +1844,14 @@ document.addEventListener('keydown', function(e) {
             return;
         }
     }
+    // X key — toggle crosshair guides (viewer only; editor uses G)
+    if (e.key.toLowerCase() === 'x' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!inInput && !editMode) {
+            e.preventDefault();
+            toggleCrosshair();
+            return;
+        }
+    }
     // Ctrl+Z — undo progress (viewer only)
     if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey) && !e.altKey && !editMode) {
         if (e.shiftKey) { e.preventDefault(); redoProgress(); return; }
@@ -2057,6 +2127,14 @@ async function init() {
 
         // Initialise shared editor module
         _initEditor();
+
+        // Initialise crosshair button state from saved preference
+        if (_crosshairMode) {
+            const chBtn = document.getElementById('crosshair-btn');
+            if (chBtn) chBtn.classList.add('active');
+            const zenChBtn = document.getElementById('zen-crosshair-btn');
+            if (zenChBtn) zenChBtn.classList.add('active');
+        }
 
         // Check for autosave recovery
         _checkAutosaveRecovery();

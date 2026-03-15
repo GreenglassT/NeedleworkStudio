@@ -182,7 +182,7 @@
         }
 
         #main-canvas  { display: block; }
-        #overlay-canvas {
+        #overlay-canvas, #crosshair-canvas {
             display: block;
             position: absolute;
             top: 0; left: 0;
@@ -479,7 +479,8 @@
         .canvas-area.cell-mark-mode { cursor: crosshair; }
         .canvas-area.cell-mark-mode.dragging { cursor: crosshair; }
 
-        #cell-mark-btn.active {
+        #cell-mark-btn.active,
+        #crosshair-btn.active {
             color: var(--gold);
             background: rgba(200,145,58,0.12);
             border-color: var(--gold-dim);
@@ -488,6 +489,7 @@
         body.edit-mode-on #cell-mark-btn,
         body.edit-mode-on #marker-mode-btn,
         body.edit-mode-on #pick-btn,
+        body.edit-mode-on #crosshair-btn,
         body.edit-mode-on .cell-progress-wrap { display: none; }
 
         /* ——— ZEN / FULLSCREEN MODE ——— */
@@ -734,6 +736,8 @@
                     title="Place Marker (B)" aria-label="Place marker"><i class="ti ti-map-pin-2"></i> Place Marker</button>
             <button class="nav-link" id="pick-btn" onclick="togglePickMode()"
                     title="Pick thread color (K)" aria-label="Pick thread color"><i class="ti ti-color-picker"></i> Pick Color</button>
+            <button class="nav-link" id="crosshair-btn" onclick="toggleCrosshair()"
+                    title="Crosshair guides (X)" aria-label="Toggle crosshair guides"><i class="ti ti-crosshair"></i> Crosshair</button>
             <button class="nav-link" onclick="openGotoPanel()"
                     title="Jump to row/column (G)" aria-label="Go to row/column"><i class="ti ti-map-pin"></i> Go to</button>
             <button class="nav-link" id="notes-toggle" onclick="toggleNotesPanel()"
@@ -771,6 +775,7 @@
         <div class="canvas-wrapper" id="canvas-wrapper">
             <canvas id="main-canvas" role="img" aria-label="Cross-stitch pattern grid"></canvas>
             <canvas id="overlay-canvas" aria-hidden="true"></canvas>
+            <canvas id="crosshair-canvas" aria-hidden="true"></canvas>
         </div>
         <div class="minimap-wrap" id="minimap-wrap">
             <canvas id="mini-canvas" aria-hidden="true"></canvas>
@@ -832,6 +837,10 @@
         <div class="zen-bar-sep"></div>
         <button class="zen-bar-btn" id="zen-pick-btn" onclick="zenMenuAction('pick-color')" title="Pick thread color (K)">
             <i class="ti ti-color-picker"></i> <span id="zen-pick-label">Pick</span>
+        </button>
+        <div class="zen-bar-sep"></div>
+        <button class="zen-bar-btn" id="zen-crosshair-btn" onclick="toggleCrosshair()" title="Crosshair guides (X)">
+            <i class="ti ti-crosshair"></i> <span id="zen-crosshair-label">Crosshair</span>
         </button>
         <div class="zen-bar-sep"></div>
         <div class="zen-bar-more">

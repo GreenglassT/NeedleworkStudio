@@ -792,6 +792,7 @@
     <script src="{{ url_for('static', filename='pdf-export.js') }}"></script>
     <script src="{{ url_for('static', filename='svg-export.js') }}"></script>
     <script src="{{ url_for('static', filename='oxs-export.js') }}"></script>
+    <script src="{{ url_for('static', filename='chart-image-export.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -873,6 +874,7 @@
                         <button onclick="bulkExport('svg')">SVG</button>
                         <button onclick="bulkExport('oxs')">OXS</button>
                         <button onclick="bulkExport('json')">JSON</button>
+                        <button onclick="bulkExport('png')">PNG</button>
                     </div>
                 </div>
             </div>
@@ -1199,6 +1201,7 @@
                                 <button onclick="exportSVG('${p.slug}', this)">Export SVG</button>
                                 <button onclick="exportOXS('${p.slug}', this)">Export OXS</button>
                                 <button onclick="exportJSON('${p.slug}', this)">Export JSON</button>
+                                <button onclick="exportPNG('${p.slug}', this)">Export PNG</button>
                                 <div class="card-dropdown-sep"></div>
                                 <button class="card-menu-danger" onclick="deletePattern('${p.slug}', this)"><i class="ti ti-trash"></i> Delete</button>
                             </div>
@@ -1410,6 +1413,10 @@
 
         function exportOXS(patternId, btn) {
             return _withExport(patternId, btn, 'OXS', p => generatePatternOXS(p.name, _exportData(p)));
+        }
+
+        function exportPNG(patternId, btn) {
+            return _withExport(patternId, btn, 'PNG', p => generateChartPNG(p.name, _exportData(p)));
         }
 
         function exportJSON(patternId, btn) {
@@ -1869,6 +1876,7 @@
                         if (format === 'pdf') await generatePatternPDF(p.name, data);
                         else if (format === 'svg') generatePatternSVG(p.name, data);
                         else if (format === 'oxs') generatePatternOXS(p.name, data);
+                        else if (format === 'png') generateChartPNG(p.name, data);
                     }
                 }
                 const label = format.toUpperCase();
